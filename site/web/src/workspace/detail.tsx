@@ -16,10 +16,10 @@ import { useMemory, useRunWatch } from "./run-watch"
 import { dday } from "./views"
 
 export type Open = { kind: "item"; id: string } | { kind: "signal"; id: string } | null
-type Loaded = { kind: "item"; item: Item; note: Note | null } | { kind: "signal"; signal: Signal; note: Note | null }
+type Loaded = { kind: "item"; item: Item; note: Note | null } | { kind: "signal"; signal: Signal; note: Note | null; approvalPreview?: string; previewHash?: string }
 /** true 면 성공, 문자열이면 실패 이유 */
 type ActResult = true | string
-type Acts = { approve: (s: Signal) => Promise<ActResult>; reject: (s: Signal) => Promise<ActResult>; resolve: (s: Signal) => Promise<ActResult>; done: (i: Item) => Promise<ActResult>; ask: (i: Item) => Promise<ActResult> }
+type Acts = { approve: (s: Signal, previewHash?: string) => Promise<ActResult>; reject: (s: Signal) => Promise<ActResult>; resolve: (s: Signal) => Promise<ActResult>; done: (i: Item) => Promise<ActResult>; ask: (i: Item) => Promise<ActResult> }
 const AUTO = new Set(["agent", "goat", "system"])
 const ROLES = [["ceo", "CEO"], ["reviewer", "Reviewer"], ["qa", "QA"], ["cso", "CSO"]] as const
 const when = (ms: number) => new Date(ms).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
@@ -187,7 +187,16 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf, returnFo
               </div>
               {run && <RunPanel run={run} signals={runSignals} act={act} onDone={() => refresh()} />}
               {/* 이 사건의 제안 카드가 위 진행에 이미 있으면 거기 Approve/Reject 하나만 둬요(같은 버튼이 두 번 나오지 않게) */}
-              {data.kind === "signal" && <SignalActions s={data.signal} act={act} onDone={(m) => { setError(null); refresh(m) }} onFail={(why) => { setSaved(null); setError(why) }} inCard={!!run && runId === data.signal.meta?.runId && !!run.proposals[String(data.signal.meta?.proposalId)]} />}
+              {data.kind === "signal" && (() => {
+                const inCard = !!run && runId === data.signal.meta?.runId && !!run.proposals[String(data.signal.meta?.proposalId)]
+                const preview = data.approvalPreview && data.previewHash ? { text: data.approvalPreview, hash: data.previewHash } : null
+                return (
+                  <>
+                    {preview && !inCard && <ExactTask preview={preview} executor={String(data.signal.meta?.executor)} />}
+                    <SignalActions s={data.signal} act={act} preview={preview} onDone={(m) => { setError(null); refresh(m) }} onFail={(why) => { setSaved(null); setError(why) }} inCard={inCard} />
+                  </>
+                )
+              })()}
             </div>
 
             {/* 아래: 사람 기록 */}
@@ -316,6 +325,14 @@ function ProposalCard({ p, signal, act, onDone }: { p: Proposal; signal: Signal 
   const waiting = signal && signal.status === "open" && ["decide", "now"].includes(signal.lane)
   const [busy, setBusy] = useState(false)
   const [fail, setFail] = useState<string | null>(null)
+  // 승인하면 실행기에 보낼 글 그대로(리뷰 지적 6). 서버가 같은 글의 지문을 확인해요
+  const [preview, setPreview] = useState<{ text: string; hash: string } | null>(null)
+  useEffect(() => {
+    if (!waiting || !signal) { setPreview(null); return }
+    let live = true
+    ws.signal(signal.id).then((r) => { if (live && r.approvalPreview && r.previewHash) setPreview({ text: r.approvalPreview, hash: r.previewHash }) }).catch(() => {})
+    return () => { live = false }
+  }, [waiting, signal?.id, signal?.updated_at])
   const go = async (fn: () => Promise<ActResult>) => { setBusy(true); setFail(null); try { const r = await fn(); if (r === true) onDone(); else setFail(r) } finally { setBusy(false) } }
   const after = signal && signal.meta?.decidedBy ? (signal.status === "running" ? "approved · running" : signal.meta.decision === "reject" ? "rejected by you" : "approved by you") : null
   return (
@@ -342,9 +359,10 @@ function ProposalCard({ p, signal, act, onDone }: { p: Proposal; signal: Signal 
           <Md text={result.summary || result.text} />
         </div>
       )}
+      {waiting && <ExactTask preview={preview} executor={String(signal.meta?.executor)} />}
       {waiting && (
         <div className="mt-2.5 flex flex-wrap items-center gap-2">
-          <Button size="sm" className="rounded-full" disabled={busy} onClick={() => void go(() => act.approve(signal))}><Check />{signal.kind === "error" ? "Retry" : "Approve"}</Button>
+          <Button size="sm" className="rounded-full" disabled={busy || !preview} onClick={() => void go(() => act.approve(signal, preview?.hash))}><Check />{signal.kind === "error" ? "Retry" : "Approve"}</Button>
           <Button size="sm" variant="outline" className="rounded-full" disabled={busy} onClick={() => void go(() => act.reject(signal))}><X />{signal.kind === "error" ? "Dismiss" : "Reject"}</Button>
           <span className="text-2xs text-muted-foreground">{signal.kind === "error" ? "Retry runs it on " + String(signal.meta?.executor) + " again." : "Approve runs it on " + String(signal.meta?.executor) + " now."}</span>
         </div>
@@ -357,7 +375,17 @@ function ProposalCard({ p, signal, act, onDone }: { p: Proposal; signal: Signal 
   )
 }
 
-function SignalActions({ s, act, onDone, onFail, inCard }: { s: Signal; act: Acts; onDone: (m: string) => void; onFail: (why: string) => void; inCard?: boolean }) {
+/** 승인하면 보낼 글 그대로. 접어 두지 않고 보여 줘요 */
+export function ExactTask({ preview, executor }: { preview: { text: string; hash: string } | null; executor: string }) {
+  return (
+    <div className="mt-2">
+      <p className="mb-1 text-2xs text-muted-foreground">Approve sends exactly this to {executor}:</p>
+      {preview ? <pre data-exact-task className="max-h-48 overflow-auto rounded-lg border bg-muted/40 p-2.5 font-mono text-2xs leading-4 whitespace-pre-wrap break-words">{preview.text}</pre> : <p className="text-2xs text-muted-foreground">Loading the exact task…</p>}
+    </div>
+  )
+}
+
+function SignalActions({ s, act, onDone, onFail, inCard, preview }: { s: Signal; act: Acts; onDone: (m: string) => void; onFail: (why: string) => void; inCard?: boolean; preview?: { text: string; hash: string } | null }) {
   const council = !!s.meta?.runId && !!s.meta?.proposalId
   const waiting = s.status === "open" && ["decide", "now", "main"].includes(s.lane)
   const items: [string, () => Promise<ActResult>, string][] = []
@@ -366,7 +394,7 @@ function SignalActions({ s, act, onDone, onFail, inCard }: { s: Signal; act: Act
   else if (s.status !== "open") return null
   else if (waiting && council && inCard) return null
   // 실행이 실패한 판정은 보류가 아니라서 "다시 실행 / 닫기"로 불러요(같은 승인·거절 길을 써요)
-  else if (waiting && council) items.push(s.kind === "error" ? ["Retry", () => act.approve(s), "Running again"] : ["Approve", () => act.approve(s), "Approved"], s.kind === "error" ? ["Dismiss", () => act.reject(s), "Dismissed"] : ["Reject", () => act.reject(s), "Rejected"])
+  else if (waiting && council) items.push(s.kind === "error" ? ["Retry", () => act.approve(s, preview?.hash), "Running again"] : ["Approve", () => act.approve(s, preview?.hash), "Approved"], s.kind === "error" ? ["Dismiss", () => act.reject(s), "Dismissed"] : ["Reject", () => act.reject(s), "Rejected"])
   else items.push([s.lane === "review" ? "Mark reviewed" : "Mark handled", () => act.resolve(s), "Closed"])
   return (
     <div className="flex flex-wrap gap-2">

@@ -17,6 +17,11 @@ import { resolveShortcut } from "./shortcuts"
 import { GoalHeader, groupByWhen, ListFilters, Roadmap, useListState, useSignalSections, type RowSpec, type SectionSpec } from "./views"
 import { SyncButton, WsSidebar, useStored, type View } from "./ws-sidebar"
 import { hashFor, parseHash, type Route } from "./route"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
+
+/** 되돌릴 수 없는 일(돈이 드는 실행·밖으로 나가는 작업) 앞에서 한 번 묻는 창(리뷰 지적 8) */
+type Confirm = { title: string; lead: string; detail: string; confirm: string; run: () => void } | null
 const TITLES: Record<View, string> = { now: "Now", inbox: "Inbox", goals: "Goals", signals: "Signals", list: "All tasks" }
 /** 줄의 제목 버튼(완료 버튼이 아닌 것). 키보드 고르기와 팝업을 닫은 뒤 포커스가 돌아갈 자리 */
 const rowTitle = (key: string) => document.querySelector<HTMLElement>('[data-row="' + key + '"] button[title]:not([title^="Done"])')
@@ -110,10 +115,26 @@ export function Workspace() {
     // board task-row 처럼 동그라미는 양쪽으로: 끝낸 일을 누르면 다시 열어요
     done: (i: Item) => i.done ? act("i:" + i.id, "Reopened: " + i.text.split("\n")[0], () => ws.patch(i.id, { done: false })) : act("i:" + i.id, "Done: " + i.text.split("\n")[0], () => ws.done(i.id)),
     ask: (i: Item) => act("i:" + i.id, "Sent to the council", () => ws.ask(i)),
-    approve: (s: Signal) => act("s:" + s.id, "Approved — running on " + (s.meta?.executor ?? "executor"), () => ws.approve(s.id)),
+    approve: (s: Signal, previewHash?: string) => act("s:" + s.id, "Approved — running on " + (s.meta?.executor ?? "executor"), () => ws.approve(s.id, previewHash)),
     reject: (s: Signal) => act("s:" + s.id, "Rejected", () => ws.reject(s.id)),
     resolve: (s: Signal) => act("s:" + s.id, s.lane === "review" ? "Marked reviewed" : "Marked handled", () => ws.resolve(s.id)),
   }), [act])
+
+  // 한 키(a·q)나 ⌘K 로는 Aside·Codex 일을 바로 시작하지 않아요. 무엇이 실행되는지 그대로 보여 주고 한 번 묻어요
+  const [confirm, setConfirm] = useState<Confirm>(null)
+  const confirmApprove = useCallback(async (s: Signal) => {
+    const ex = String(s.meta?.executor ?? "")
+    if (!["aside", "codex"].includes(ex)) { void actions.approve(s); return }
+    try {
+      const r = await ws.signal(s.id)
+      if (!r.approvalPreview || !r.previewHash) { setToast({ tone: "error", text: "This is no longer waiting for approval" }); return }
+      const hash = r.previewHash
+      setConfirm({ title: (s.kind === "error" ? "Retry" : "Approve") + " on " + ex + "?", lead: "This starts " + ex + " now and can't be undone — it may cost money or act on sites you're signed in to. It sends exactly:", detail: r.approvalPreview, confirm: s.kind === "error" ? "Retry on " + ex : "Approve and run", run: () => void actions.approve(s, hash) })
+    } catch (e) { setToast({ tone: "error", text: "Couldn't load the task: " + (e instanceof Error ? e.message : String(e)) }) }
+  }, [actions])
+  const confirmSend = useCallback((text: string, run: () => void) => {
+    setConfirm({ title: "Send to the council?", lead: "The council's bots read and argue this on Aside (a paid session). Nothing runs on Aside or Codex until you approve a proposal. It sends:", detail: text, confirm: "Send to agent", run })
+  }, [])
 
   // 보기마다 줄 묶음. 키보드는 이 순서로 고르고 처리해요
   const sigSections = useSignalSections(signals)
@@ -172,16 +193,16 @@ export function Workspace() {
         case "row.prev": move(-1); break
         case "row.open": if (s) openRow(s); break
         case "row.done": if (s?.kind === "item") void actions.done(s.item); else if (s?.kind === "signal" && s.resolve) void actions.resolve(s.signal); break
-        case "row.approve": if (s?.kind === "signal" && s.decide) void actions.approve(s.signal); break
+        case "row.approve": if (s?.kind === "signal" && s.decide) void confirmApprove(s.signal); break
         case "row.reject": if (s?.kind === "signal" && s.decide) void actions.reject(s.signal); break
-        case "row.ask": if (s?.kind === "item" && s.ask && !s.item.runId) void actions.ask(s.item); break
+        case "row.ask": if (s?.kind === "item" && s.ask && !s.item.runId) { const it = s.item; confirmSend(it.raw ?? it.text, () => void actions.ask(it)) } break
         case "go.console": location.href = "/app"; break
         case "go.home": location.href = "/"; break
       }
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [actions, move, openRow, selected])
+  }, [actions, move, openRow, selected, confirmApprove, confirmSend])
 
   const renderRow = (r: RowSpec) => {
     const b = busy.has(r.key)
@@ -191,7 +212,7 @@ export function Workspace() {
           <ItemRow item={r.item} area={areaOf(r.item)} selected={sel === r.key} busy={b} onSelect={() => setSel(r.key)} onOpen={() => openRow(r)} onDone={() => void actions.done(r.item)} onAsk={r.ask ? () => void actions.ask(r.item) : undefined} />
         ) : (
           <SignalRow s={r.signal} selected={sel === r.key} busy={b} onSelect={() => setSel(r.key)} onOpen={() => openRow(r)}
-            onApprove={r.decide ? () => void actions.approve(r.signal) : undefined} onReject={r.decide ? () => void actions.reject(r.signal) : undefined}
+            onApprove={r.decide ? () => void confirmApprove(r.signal) : undefined} onReject={r.decide ? () => void actions.reject(r.signal) : undefined}
             onResolve={r.resolve ? () => void actions.resolve(r.signal) : undefined} />
         )}
       </div>
@@ -272,9 +293,20 @@ export function Workspace() {
       <CommandPalette open={palette} onOpenChange={setPalette} view={now}
         onOpenItem={(id) => setOpen({ kind: "item", id })} onOpenSignal={(id) => setOpen({ kind: "signal", id })}
         onCapture={(t) => void act("capture", "Saved", () => ws.capture(t, "p" + Date.now().toString(36)))}
-        onAsk={(t) => void act("ask", "Sent to the council", async () => { const r = await ws.capture(t, "p" + Date.now().toString(36)); await ws.ask(r.item) })}
+        onAsk={(t) => confirmSend(t, () => void act("ask", "Sent to the council", async () => { const r = await ws.capture(t, "p" + Date.now().toString(36)); await ws.ask(r.item) }))}
         onShortcuts={() => setHelp(true)} returnFocus={() => lastFocus.current?.focus?.()} />
       <ShortcutHelp open={help} onOpenChange={setHelp} />
+      <Dialog open={!!confirm} onOpenChange={(o) => { if (!o) setConfirm(null) }}>
+        <DialogContent className="gap-3 p-5 sm:max-w-lg">
+          <DialogTitle>{confirm?.title}</DialogTitle>
+          <DialogDescription className="text-xs">{confirm?.lead}</DialogDescription>
+          <pre data-confirm-detail className="max-h-64 overflow-auto rounded-lg border bg-muted/40 p-2.5 font-mono text-2xs leading-4 whitespace-pre-wrap break-words">{confirm?.detail}</pre>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" className="rounded-full" onClick={() => setConfirm(null)}>Cancel</Button>
+            <Button autoFocus className="rounded-full" onClick={() => { const c = confirm; setConfirm(null); c?.run() }}>{confirm?.confirm}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       {toast && <div role="status" className={cn("fixed right-4 bottom-4 z-50 max-w-sm rounded-xl border px-3 py-2 text-sm shadow-lg backdrop-blur-xl", toast.tone === "error" ? "border-transparent " + ALERT : "bg-card/90")}>{toast.text}</div>}
     </TooltipProvider>
   )

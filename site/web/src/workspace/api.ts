@@ -68,8 +68,9 @@ export const ws = {
   log: (id: string, text: string) => call<Item>("/api/ws/items/" + id + "/log", { method: "POST", body: { text } }),
   archive: (id: string) => call<{ ok: true }>("/api/ws/items/" + id, { method: "DELETE" }),
   item: (id: string) => call<{ item: Item; note: Note | null }>("/api/ws/items/" + id),
-  signal: (id: string) => call<{ signal: Signal; note: Note | null }>("/api/ws/signals/" + id),
-  approve: (id: string) => call<{ signal: Signal; execRunId?: string }>("/api/ws/signals/" + id + "/approve", { method: "POST" }),
+  signal: (id: string) => call<{ signal: Signal; note: Note | null; approvalPreview?: string; previewHash?: string }>("/api/ws/signals/" + id),
+  /** previewHash: 사람이 본 실행 글의 지문. 그사이 글이 바뀌었으면 서버가 409 로 실행하지 않아요 */
+  approve: (id: string, previewHash?: string) => call<{ signal: Signal; execRunId?: string }>("/api/ws/signals/" + id + "/approve", { method: "POST", body: previewHash ? { previewHash } : {} }),
   reject: (id: string, why = "") => call<{ signal: Signal }>("/api/ws/signals/" + id + "/reject", { method: "POST", body: { why } }),
   resolve: (id: string) => call<{ signal: Signal }>("/api/ws/signals/" + id + "/resolve", { method: "POST" }),
   /** baseUpdatedAt: 화면이 연 노트의 updatedAt(새 노트는 0). 그사이 바뀌었으면 409, 너무 길면 413 */
