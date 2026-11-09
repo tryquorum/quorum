@@ -17,7 +17,7 @@ export type Signal = {
   id: string; ref: string | null; source: string; kind: string; title: string; body: string | null; lane: string; reason: string | null
   status: "open" | "running" | "resolved"; meta: Record<string, any>; created_at: number; updated_at: number; resolved_at: number | null
 }
-export type Note = { ref: string; md: string; by: string; updatedAt: number; personEdited: boolean }
+export type Note = { ref: string; md: string; by: string; updatedAt: number; personEdited: boolean; overflow?: number }
 export type NowView = {
   today: string; needsYou: Signal[]; running: Signal[]; dueToday: Item[]; goals: GoalView[]; review: Signal[]; inbox: Item[]; later: Item[]
   counts: { needsYou: number; dueToday: number; review: number; inbox: number; running: number; goals: number }
@@ -68,11 +68,13 @@ export const ws = {
   log: (id: string, text: string) => call<Item>("/api/ws/items/" + id + "/log", { method: "POST", body: { text } }),
   archive: (id: string) => call<{ ok: true }>("/api/ws/items/" + id, { method: "DELETE" }),
   item: (id: string) => call<{ item: Item; note: Note | null }>("/api/ws/items/" + id),
-  signal: (id: string) => call<{ signal: Signal; note: Note | null }>("/api/ws/signals/" + id),
-  approve: (id: string) => call<{ signal: Signal; execRunId?: string }>("/api/ws/signals/" + id + "/approve", { method: "POST" }),
+  signal: (id: string) => call<{ signal: Signal; note: Note | null; approvalPreview?: string; previewHash?: string }>("/api/ws/signals/" + id),
+  /** previewHash: 사람이 본 실행 글의 지문. 그사이 글이 바뀌었으면 서버가 409 로 실행하지 않아요 */
+  approve: (id: string, previewHash?: string) => call<{ signal: Signal; execRunId?: string }>("/api/ws/signals/" + id + "/approve", { method: "POST", body: previewHash ? { previewHash } : {} }),
   reject: (id: string, why = "") => call<{ signal: Signal }>("/api/ws/signals/" + id + "/reject", { method: "POST", body: { why } }),
   resolve: (id: string) => call<{ signal: Signal }>("/api/ws/signals/" + id + "/resolve", { method: "POST" }),
-  saveNote: (ref: string, md: string) => call<Note>("/api/ws/notes?ref=" + encodeURIComponent(ref), { method: "PUT", body: { md } }),
+  /** baseUpdatedAt: 화면이 연 노트의 updatedAt(새 노트는 0). 그사이 바뀌었으면 409, 너무 길면 413 */
+  saveNote: (ref: string, md: string, baseUpdatedAt?: number) => call<Note>("/api/ws/notes?ref=" + encodeURIComponent(ref), { method: "PUT", body: { md, ...(baseUpdatedAt !== undefined ? { baseUpdatedAt } : {}) } }),
   /** 의회에 넘기기: 콘솔과 같은 POST /api/runs 로 열고, runId 를 항목에 이어요 */
   ask: async (item: Item) => {
     const r = await call<{ runId: string }>("/api/runs", { method: "POST", body: { request: item.raw ?? item.text } })

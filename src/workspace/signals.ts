@@ -88,7 +88,9 @@ export function ingestSignal(db: Database, raw: any, now = Date.now()): Signal |
   if (existing) {
     const prev = pubSignal(existing)
     if (prev.meta.decidedBy || (existing.status === "resolved" && prev.meta.resolvedBy)) return prev
-    const next = { source: str(raw.source, 40) || existing.source, kind, title, body: str(raw.body, 8000) || null, lane, reason, status: resolved ? "resolved" : "open", meta: JSON.stringify({ ...prev.meta, ...meta }) }
+    // 결정 전 의회 사건(quorum:)의 실행 지시는 다시 들어온 meta 가 바꾸지 못해요(리뷰 지적 6: 승인 카드에 보인 일과 실행되는 일이 같아야 해요)
+    const locked = existing.ref?.startsWith("quorum:") && existing.status !== "resolved" ? Object.fromEntries(["task", "executor", "proposalId", "runId"].filter((k) => prev.meta[k] !== undefined).map((k) => [k, prev.meta[k]])) : {}
+    const next = { source: str(raw.source, 40) || existing.source, kind, title, body: str(raw.body, 8000) || null, lane, reason, status: resolved ? "resolved" : "open", meta: JSON.stringify({ ...prev.meta, ...meta, ...locked }) }
     // 3070 사건은 60초마다, 의회 판정은 읽을 때마다 다시 들어와요. 바뀐 게 없으면 손대지 않아요(updated_at 이 그대로라 Needs you 순서가 흔들리지 않아요)
     const same = next.source === existing.source && next.kind === existing.kind && next.title === existing.title && next.body === existing.body && next.lane === existing.lane && next.reason === existing.reason && next.status === existing.status && next.meta === (existing.meta ?? "{}")
     if (same) return prev
