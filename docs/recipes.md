@@ -18,7 +18,7 @@ const out = await runRecipe("luma-blasts", {
 // out = { ok, version, endpoint, result, repaired, reason, nextSeq }
 ```
 
-ctx에서 생략한 값: `store`는 기본 저장소(`.quorum/recipes.db`, env QUORUM_RECIPES_DB), `memory`는 `new GbrainMemory()`(env QUORUM_GBRAIN_BIN)예요. `memory: null`이면 기억을 끄고 그 사실을 error 이벤트로 남겨요. `aside`가 없으면 http 후보까지만 시도해요. get-blasts처럼 로그인이 필요한 수리는 엔진이 맥에서 `aside`를 넘겨야 끝나요.
+ctx에서 생략한 값: `store`는 기본 저장소(`.quorum/recipes.db`, env QUORUM_RECIPES_DB), `memory`는 `new GbrainMemory()`(env QUORUM_GBRAIN_BIN)예요. `memory: null`이면 기억을 꺼요. 정상 호출에는 기억이 필요 없어서 조용하고, 수리해서 기록을 남겨야 할 때 "기억 저장소가 연결되지 않았어요" error 이벤트를 내요. `aside`가 없으면 http 후보까지만 시도해요. get-blasts처럼 로그인이 필요한 수리는 엔진이 맥에서 `aside`를 넘겨야 끝나요.
 
 - `POST /api/recipes/:id/run` → `runRecipe(id, ctx, emit)`. id는 `[a-z0-9-]`만 받아요.
 - 주기 점검: `watchRecipes(store, [{ id, vars }], ms, { memory, aside }, emit)` — DB를 닫으면 멈춰요.
@@ -49,7 +49,7 @@ ctx에서 생략한 값: `store`는 기본 저장소(`.quorum/recipes.db`, env Q
 
 - `{{name}}`은 vars로 채워요(url은 인코딩). `{{env.NAME}}`은 환경 변수이고, 값이 없으면 그 머리글만 빠져요.
 - `path`·`pick`의 `a|b`는 앞에서부터 값이 있는 첫 경로예요. `markdown` 필드는 HTML을 마크다운으로 바꿔요.
-- 수리 순서: ① gbrain 회상 — 지난 수리 기록의 `new endpoint` 경로를 먼저 시도해요(레시피에 적힌 호스트만, 쿠키가 다른 곳으로 새지 않게). ② http 후보를 순서대로 시도하고(깨진 경로는 건너뜀), 모두 실패하면 Aside가 `startUrl`을 열어 그 페이지가 부른 `match` 요청과 후보 경로를 로그인된 페이지 안에서 불러 봐요(`aside repl --account $ASIDE_ACCOUNT --file <script>`). 찾은 URL의 값은 다시 `{{eventApiId}}`로 바꿔 저장해요(질의 값·경로 조각이 정확히 같을 때만, 레시피에 적힌 고정 경로 단어는 그대로). 머리글은 같은 호스트로 선언된 요청의 것(예: `cookie: {{env.LUMA_COOKIE}}`)을 물려받고, 비밀 질의값(access_token·api_key·session·sig 등 키 이름 전체로 판정)이 필요한 URL은 저장하지 않고, 회상한 기록의 비밀 질의값은 빼고 다시 검증해요. 머리글은 같은 출처(scheme+host+port)일 때만 물려받아요. 지금 버전과 똑같은 요청이 브라우저에서만 되면 새 버전을 만들지 않고 "서버에는 로그인 쿠키가 필요해요"로 알려요.
+- 수리 순서: ① gbrain 회상 — 지난 수리 기록의 `new endpoint` 경로를 먼저 시도해요(레시피에 적힌 호스트만, 쿠키가 다른 곳으로 새지 않게). ② http 후보를 순서대로 시도하고(깨진 경로는 건너뜀), 모두 실패하면 Aside가 `startUrl`을 열어 그 페이지가 부른 `match` 요청과 후보 경로를 로그인된 페이지 안에서 불러 봐요(`aside repl --account $ASIDE_ACCOUNT --file <script>`). 찾은 URL의 값은 다시 `{{eventApiId}}`로 바꿔 저장해요(질의 값·경로 조각이 정확히 같을 때만, 레시피에 적힌 고정 경로 단어는 그대로). 머리글은 같은 호스트로 선언된 요청의 것(예: `cookie: {{env.LUMA_COOKIE}}`)을 물려받고, 비밀 질의값(access_token·api_key·session·sig 등 키 이름 전체로 판정)이 필요한 URL은 저장하지 않고, 회상한 기록의 비밀 질의값은 빼고 다시 검증해요. 머리글은 같은 출처(scheme+host+port)일 때만 물려받아요(`discover.aside.headers`도 레시피에 적힌 출처로 가는 URL에만 붙어요). 지금 버전과 똑같은 요청이 브라우저에서만 되면 새 버전을 만들지 않고 "서버에는 로그인 쿠키가 필요해요"로 알려요.
 - 기록: `recipes/<id>-v<n>` 페이지. 다른 기기가 같은 번호를 먼저 썼으면(gbrain revision_required) 그 페이지를 읽어 같은 수리면 duplicate로, 다른 수리면 `-<runId>`를 붙여 남겨요(board dedup의 normTitle 규칙).
 
 ## 실제 Luma (2026-11-09 확인)

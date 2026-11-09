@@ -51,7 +51,9 @@ export async function discover(def: RecipeDef, ctx: RecipeCtx & { vars: Record<s
   // 머리글은 a.headers, 없으면 같은 호스트로 선언된 요청의 것을 물려받아요(쿠키 템플릿이 v2 에서 빠지지 않게)
   // 같은 출처(scheme+host+port)일 때만: http:// 로 쿠키가 나가지 않게
   const declared = [def.request, ...(def.discover.http?.candidates || []).map((c) => c.request)]
-  const headersFor = (u: string) => a.headers || declared.find((q) => q.headers && originOf(q.url) === originOf(u))?.headers
+  // a.headers 도 레시피에 적힌 출처(요청·후보·startUrl)로 가는 URL 에만 붙여요
+  const known = new Set([...declared.map((q) => originOf(q.url)), originOf(a.startUrl)].filter(Boolean))
+  const headersFor = (u: string) => (a.headers && known.has(originOf(u)) ? a.headers : declared.find((q) => q.headers && originOf(q.url) === originOf(u))?.headers)
   for (const p of probesOut) {
     const templ = templatize(p.url, ctx.vars, fixed)
     const url = stripSecretParams(templ)

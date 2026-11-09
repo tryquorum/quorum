@@ -81,7 +81,7 @@ export async function runRecipe(id: string, ctx: RecipeCtx, emit: Emit): Promise
   catch (e) {
     // 예상하지 못한 오류(DB·코드 오류)도 조용히 던지지 않고 이벤트로 남겨요
     const msg = String((e as Error)?.message || e)
-    ev.send("error", `recipe:${id}`, `레시피 실행 중 오류: ${msg.slice(0, 200)}`, { recipeId: id, reason: msg })
+    ev.send("error", `recipe:${id}`, `레시피 실행 중 오류: ${msg.slice(0, 200)}`, { recipeId: id, version: 0, endpoint: "", reason: msg })
     return { ok: false, version: 0, endpoint: "", reason: msg, nextSeq: ev.next() }
   }
 }
@@ -123,7 +123,7 @@ async function run(id: string, ctx: Resolved, ev: ReturnType<typeof recipeEmitte
   let def: RecipeDef
   try { def = ctx.store.current(id) }
   catch (e) {
-    ev.send("error", actor, `레시피를 열지 못했어요: ${(e as Error).message}`, { recipeId: id, reason: (e as Error).message })
+    ev.send("error", actor, `레시피를 열지 못했어요: ${(e as Error).message}`, { recipeId: id, version: 0, endpoint: "", reason: (e as Error).message })
     return { ok: false, version: 0, endpoint: "", reason: (e as Error).message, nextSeq: ev.next() }
   }
   if (def.derive) ctx = await deriveVars(def, ctx, ev, depth)
