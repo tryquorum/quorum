@@ -118,7 +118,7 @@ export function Workspace() {
       { id: "review", title: "Review", hint: "what the council ran", tone: "review", rows: now.review.map((s) => ({ key: "s:" + s.id, kind: "signal", signal: s, resolve: true })), empty: "Nothing to review." },
       { id: "inbox", title: "Inbox", hint: "written down, no date yet", rows: itemRows(now.inbox, true).slice(0, 12), empty: "Inbox zero. Write something down above (press N)." , extra: now.inbox.filter(inSpace).length > 12 ? <a href="#/inbox" className="px-3 text-xs text-muted-foreground hover:text-foreground">{now.inbox.filter(inSpace).length - 12} more in Inbox →</a> : null },
     ]
-    if (route.view === "inbox") return [{ id: "inbox", title: "Inbox", hint: "no date yet — Ask the council or just do it", rows: itemRows(now.inbox, true), empty: "Inbox zero. Write something down above (press N)." }]
+    if (route.view === "inbox") return [{ id: "inbox", title: "Inbox", hint: "no date yet — send it to an agent or just do it", rows: itemRows(now.inbox, true), empty: "Inbox zero. Write something down above (press N)." }]
     if (route.view === "signals") return sigSections
     if (route.view === "goals") {
       const all = route.goal ? now.goals.filter((g) => g.goal.id === route.goal) : now.goals
@@ -200,8 +200,13 @@ export function Workspace() {
           <header className="sticky top-0 z-30 border-b bg-background/80 backdrop-blur-xl">
             <div className="mx-auto flex max-w-[880px] items-center gap-2 px-4 py-2.5 sm:px-6">
               <SidebarTrigger className="-ml-1" />
-              <h1 className="text-sm font-semibold">{route.goal ? "Goal" : TITLES[route.view]}</h1>
-              {route.view === "now" && now && <span className="font-mono text-2xs text-muted-foreground">{now.today} · {total ? total + " to handle" : "all clear"}</span>}
+              {route.goal ? (
+                <h1 className="flex min-w-0 items-center gap-1.5 text-sm font-semibold">
+                  <a href="#/goals" className="shrink-0 text-muted-foreground hover:text-foreground max-md:py-3">Goals ›</a>
+                  <span className="truncate">{now?.goals.find((g) => g.goal.id === route.goal)?.goal.text ?? "Goal"}</span>
+                </h1>
+              ) : <h1 className="text-sm font-semibold">{TITLES[route.view]}</h1>}
+              {route.view === "now" && now && <span className="truncate font-mono text-2xs text-muted-foreground"><span className="max-sm:hidden">{now.today} · </span>{total ? total + " to handle" : "all clear"}</span>}
               <div className="ml-auto flex items-center gap-1.5">
                 {imp && <SyncButton onSync={async () => {
                   // 3070 을 GET 으로 다시 읽고 결과를 알려 줘요(board 처럼 실패해도 마지막 사본은 그대로)
@@ -225,7 +230,13 @@ export function Workspace() {
             {imp && !imp.ok && imp.error && <div role="status" className={"mx-2 mb-3 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2 text-xs " + ALERT}><span className="min-w-0 flex-1">Direction Board import paused: {imp.error}. Your copies stay as they were.</span><button type="button" onClick={() => void ws.syncBoard().catch(() => null).then(() => Promise.all([data.reload(), data.reloadMeta()]))} className="rounded-full border border-current px-2.5 py-0.5 max-md:h-11 max-md:px-4">Retry</button></div>}
             {route.view === "goals" && now && !route.goal && <div className="mx-2 mb-4"><Roadmap goals={now.goals} onOpen={goGoal} /></div>}
             {route.view === "list" && <div className="mx-2"><ListFilters areas={areas} area={area} onArea={setArea} q={list.q} onQ={list.setQ} showDone={list.showDone} onShowDone={list.setShowDone} /></div>}
-            {!now && !data.error && <p className="px-3 py-8 text-sm text-muted-foreground">Loading…</p>}
+            {!now && !data.error && (
+              // 불러오는 동안: 구조를 아는 화면이라 줄 모양 뼈대를 보여 줘요(UX-STATE-01)
+              <div aria-busy="true" aria-label="Loading" className="flex flex-col gap-3 px-3 py-2">
+                <div className="h-3 w-24 animate-pulse rounded bg-muted" />
+                {[0, 1, 2, 3, 4].map((i) => <div key={i} className="flex items-center gap-3"><div className="size-[18px] animate-pulse rounded-full bg-muted" /><div className="h-4 flex-1 animate-pulse rounded bg-muted" style={{ maxWidth: 520 - i * 60 }} /></div>)}
+              </div>
+            )}
             {sections.map((s) => (
               <section key={s.id} aria-label={s.title || "Goal"} className={cn("mb-5", s.id.startsWith("goal-") && "mx-2 rounded-2xl border bg-card/40 p-3")}>
                 {s.title && (

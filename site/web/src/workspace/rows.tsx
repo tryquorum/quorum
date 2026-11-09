@@ -1,6 +1,6 @@
 // 항목 한 줄. 출처: board/apps/web/src/components/task-row.tsx — 동그란 완료 버튼, 제목 버튼(열기), 오른쪽 날짜 칩, 터치에서 44px 높이.
 // Workspace 판: 사건(의회 판정) 줄에는 Approve/Reject·Reviewed 버튼을 바로 붙여요(열지 않고 처리).
-import { Check, CircleAlert, ExternalLink, Gavel, Loader2, MessageSquareText, X } from "lucide-react"
+import { Check, CircleAlert, ExternalLink, Gavel, Loader2, MessageSquareText, Send, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { Area, Item, Signal } from "./api"
@@ -22,7 +22,7 @@ export const whenOf = (i: Item) => i.due ?? i.remindAt ?? null
 export function SourceChip({ item, className }: { item: { source?: string; meta?: Record<string, any> }; className?: string }) {
   const from = item.source === "direction-board" || item.meta?.from === "direction-board"
   if (!from) return null
-  return <span title="from Direction Board — read-only copy; changes stay in Quorum" className={cn("shrink-0 rounded border border-border px-1 font-mono text-[10px] leading-4 text-muted-foreground", className)}>from Direction Board</span>
+  return <span title="from Direction Board — read-only copy; changes stay in Quorum" aria-label="from Direction Board" className={cn("shrink-0 rounded border border-border px-1 font-mono text-[10px] leading-4 text-muted-foreground", className)}><span className="max-sm:hidden">from Direction Board</span><span className="sm:hidden" aria-hidden>DB</span></span>
 }
 
 type RowShell = { selected: boolean; onSelect: () => void; children: React.ReactNode; tone?: "decide" | "review" | "plain" }
@@ -67,8 +67,8 @@ export function ItemRow({ item, area, selected, busy, onSelect, onOpen, onDone, 
       </div>
       {when && <span className={cn("mt-0.5 shrink-0 num font-mono text-2xs text-muted-foreground", late && LATE)}>{dueLabel(when)}</span>}
       {onAsk && !item.runId && !item.done && (
-        <Button type="button" variant="outline" size="xs" className="shrink-0 rounded-full max-sm:w-11 max-sm:px-1.5" onClick={onAsk} disabled={busy} title="Ask the council (Q)" aria-label={"Ask the council: " + item.text}>
-          <Gavel /><span className="max-sm:hidden">Ask the council</span>
+        <Button type="button" variant="outline" size="xs" className="shrink-0 rounded-full max-sm:w-11 max-sm:px-1.5" onClick={onAsk} disabled={busy} title="Send to agent (Q)" aria-label={"Send to agent: " + item.text}>
+          <Send /><span className="max-sm:hidden">Send to agent</span>
         </Button>
       )}
     </Row>
