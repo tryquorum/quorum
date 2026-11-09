@@ -63,7 +63,7 @@ export function Workspace() {
   const [space, setSpace] = useStored("qw:space", "all")
   const [area, setArea] = useStored("qw:area", "all")
   const data = useWorkspaceData(list.showDone)
-  const { now, items, signals, meta } = data
+  const { now: nowAll, items, signals, meta } = data
   const open: Open = route.open ?? null
   const setOpen = useCallback((o: Open) => {
     if (o) {
@@ -88,6 +88,12 @@ export function Workspace() {
   const lastFocus = useRef<HTMLElement | null>(null)
 
   const inSpace = useCallback((i: Item) => space === "all" || (i.space ?? "personal") === space, [space])
+  // 고른 공간으로 거른 Now(board 처럼 목록·배지·사이드바가 같은 공간을 봐요). 3070 사건 사본은 공간이 없어 거르지 않아요
+  const now = useMemo<NowView | null>(() => {
+    if (!nowAll || space === "all") return nowAll
+    const dueToday = nowAll.dueToday.filter(inSpace), inbox = nowAll.inbox.filter(inSpace), later = nowAll.later.filter(inSpace), goals = nowAll.goals.filter((g) => inSpace(g.goal))
+    return { ...nowAll, dueToday, inbox, later, goals, counts: { ...nowAll.counts, dueToday: dueToday.length, inbox: inbox.length, goals: goals.length } }
+  }, [nowAll, space, inSpace])
   const areaOf = useCallback((i: Item) => (meta?.boards.find((b) => b.id === i.boardId)?.areas.find((a) => a.id === i.area)) ?? null, [meta])
   const areas = useMemo(() => (meta?.boards ?? []).flatMap((b) => b.areas), [meta])
 
