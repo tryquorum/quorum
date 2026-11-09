@@ -354,3 +354,28 @@ describe("승인한 일의 맥락", () => {
     expect(tasks[0]).toContain("같은 의회에서 먼저 실행된 결과: 없음")
   })
 })
+
+
+describe("다시 읽어도 순서가 그대로", () => {
+  test("바뀐 게 없는 3070 사건을 다시 넣으면 updated_at 과 Needs you 순서가 그대로예요", async () => {
+    let clock = NOW
+    const sigs = [
+      { id: "a1", title: "Fake A", kind: "question", lane: "decide", status: "open", source: "goat" },
+      { id: "b1", title: "Fake B", kind: "question", lane: "decide", status: "open", source: "goat" },
+    ]
+    const get = async (url: string) => url.endsWith("/api/signals") ? { signals: sigs } : { me: null, seq: 1, boards: [], spaces: [], items: [] }
+    const ws = createWorkspace({ path: join(dir, "workspace.db"), boardBase: "http://board.test", boardGet: get, now: () => clock })
+    await ws.board!.tick(true)
+    const first = (await call(ws, "GET", "/api/ws/now")).body.needsYou.map((s: any) => [s.title, s.updated_at])
+    clock += 60_000
+    sigs.reverse()
+    await ws.board!.tick(true)
+    const second = (await call(ws, "GET", "/api/ws/now")).body.needsYou.map((s: any) => [s.title, s.updated_at])
+    expect(second).toEqual(first)
+    sigs[0] = { ...sigs[0], title: "Fake A changed" }
+    clock += 60_000
+    await ws.board!.tick(true)
+    const changed = (await call(ws, "GET", "/api/ws/signals?all=1")).body.find((s: any) => s.title === "Fake A changed" || s.title === "Fake B changed")
+    expect(changed.updated_at).toBe(clock)
+  })
+})
