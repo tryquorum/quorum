@@ -1,18 +1,9 @@
-# Quorum Cloudflare 터널 예시: quorum.lidgeai.com -> 공개 전용 리스너(127.0.0.1:4318).
-# 로컬 리스너(4317)에는 절대 연결하지 않아요. 4317 은 이 맥 안에서 온 요청이면 로그인 없이 받아요.
-# 방향판 ~/.cloudflared/direction-board.yml 과 같은 구조예요. 실제 터널·Access 앱은 통합 스레드가 만들고,
-# <TUNNEL_ID>·<ACCESS_AUD> 는 그때 채워서 ~/.cloudflared/quorum.yml 로 둬요(이 저장소에는 비밀값을 넣지 않아요).
-tunnel: <TUNNEL_ID>
-credentials-file: /Users/jun/.cloudflared/<TUNNEL_ID>.json
+# Quorum Cloudflare tunnel: quorum.lidgeai.com -> public-only listener 127.0.0.1:4318.
+# The landing page is public. Cloudflare Access protects /w, /app, /api, /mcp at the edge, and the server verifies the Access JWT on those paths again (src/engine/access.ts).
+tunnel: 15d52109-5b3e-4d61-be57-f705133046b5
+credentials-file: /Users/jun/.cloudflared/15d52109-5b3e-4d61-be57-f705133046b5.json
 no-autoupdate: true
 ingress:
   - hostname: quorum.lidgeai.com
     service: http://127.0.0.1:4318
-    originRequest:
-      # cloudflared 도 Access JWT 를 검증해요(서버 src/engine/access.ts verifyAccessJwt 와 이중 검증)
-      access:
-        required: true
-        teamName: lidgeai
-        audTag:
-          - <ACCESS_AUD>
   - service: http_status:404
