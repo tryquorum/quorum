@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Quorum 서버 (로컬 4317 + 공개 4318). 방향판 com.lidgeai.direction-board.server.plist 와 같은 구조예요.
+  비밀값(ACCESS_AUD, ALLOWED_EMAILS, DIRECTION_TOKEN 등)은 여기 넣지 않고 /Users/jun/Developer/quorum/.env.local 에서 읽어요(gitignore: .env*).
+  설치: cp infra/launchd/com.tryquorum.server.plist ~/Library/LaunchAgents/ && launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.tryquorum.server.plist
+  다시 시작: launchctl kickstart -k gui/$(id -u)/com.tryquorum.server
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.tryquorum.server</string>
+  <key>WorkingDirectory</key>
+  <string>/Users/jun/Developer/quorum</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>-c</string>
+    <string>cd /Users/jun/Developer/quorum &amp;&amp; set -a &amp;&amp; { [ -f .env.local ] &amp;&amp; source ./.env.local; } ; set +a; exec /Users/jun/.bun/bin/bun run src/server.ts</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <!-- aside(~/.local/bin), bun, gbrain(~/.bun/bin), codex(node), cloudflared·git(homebrew) -->
+    <key>PATH</key>
+    <string>/Users/jun/.local/bin:/Users/jun/.bun/bin:/Users/jun/.nvm/versions/node/v24.17.0/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+  <key>StandardOutPath</key>
+  <string>/Users/jun/Library/Logs/quorum-server.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/jun/Library/Logs/quorum-server.log</string>
+</dict>
+</plist>
