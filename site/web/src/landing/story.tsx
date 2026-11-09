@@ -201,7 +201,7 @@ export function Story() {
             </p>
             <ol className="mt-5 flex flex-col gap-1 lg:mt-7">
               {STORY_STEPS.map((s, i) => (
-                <li key={s.title} className={cn("border-l-2 py-1.5 pl-4 transition-[opacity,border-color] duration-300", i === step ? "border-foreground opacity-100" : "border-transparent opacity-45", i !== step && "max-lg:hidden")} aria-current={i === step ? "step" : undefined}>
+                <li key={s.title} className={cn("border-l-2 py-1.5 pl-4 transition-[opacity,border-color] duration-300", reduced ? "border-foreground/30" : i === step ? "border-foreground opacity-100" : "border-transparent opacity-45", !reduced && i !== step && "max-lg:hidden")} aria-current={i === step ? "step" : undefined}>
                   <p className="font-semibold"><span className="num mr-2 text-xs text-muted-foreground">0{i + 1}</span>{s.title}</p>
                   <p className="mt-0.5 text-sm text-muted-foreground">{s.body}</p>
                 </li>
