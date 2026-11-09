@@ -8,32 +8,65 @@ import { endpointsFromNote, MemoryError, noteSlug, repairNote, sameRepair, type 
 import { endpointOf } from "./spec"
 import { asideRunner } from "./aside"
 import { GbrainMemory } from "./memory"
-import { defaultStore, type RecipeSummary, type RecipeStore } from "./store"
-import type { Candidate, Emit, RecipeCtx, RecipeDef, RunOutcome } from "./types"
+import { defaultStore, RecipeStore, type RecipeSummary } from "./store"
+import type { AsideRunner } from "./aside"
+import type { Candidate, Emit, EngineEmit, EventEmit, RecipeCtx, RecipeDef, RunOutcome } from "./types"
 
 type Data = Record<string, unknown>
 
-export function recipeEmitter(ctx: RecipeCtx, emit: Emit) {
+/** 엔진 Emit(인자 3개 이상)이면 (type, actor, text, data) 로, 아니면 계약 QuorumEvent 로 내보내요 */
+export function recipeEmitter(ctx: { runId?: string; seqStart?: number; mode?: "live" | "replay" }, emit: Emit, id = "recipe") {
   let seq = ctx.seqStart ?? 1
+  const runId = ctx.runId || `recipe-${id}-${Date.now().toString(36)}`
+  const engine = emit.length >= 3
   const send = (type: EventType, actor: string, text: string, data?: Data) => {
-    const e: QuorumEvent = { runId: ctx.runId, seq: seq++, at: new Date().toISOString(), mode: ctx.mode ?? "live", type, actor, text, ...(data ? { data } : {}) }
-    emit(e)
+    if (engine) { seq++; (emit as EngineEmit)(type, actor, text, data); return }
+    const e: QuorumEvent = { runId, seq: seq++, at: new Date().toISOString(), mode: ctx.mode ?? "live", type, actor, text, ...(data ? { data } : {}) }
+    ;(emit as EventEmit)(e)
   }
   return { send, next: () => seq }
 }
 
 const countOf = (r: unknown) => (Array.isArray(r) ? r.length : r && typeof r === "object" ? 1 : 0)
 
-type Resolved = RecipeCtx & { store: RecipeStore; memory: Memory | null }
+type Resolved = RecipeCtx & { vars: Record<string, string>; store: RecipeStore; memory: Memory | null; aside: AsideRunner | null }
 
-/** 생략한 값 채우기: store -> 기본 저장소, memory -> GbrainMemory, aside -> QUORUM_ASIDE=1 일 때만 asideRunner */
+const strings = (o: unknown): Record<string, string> => {
+  const out: Record<string, string> = {}
+  if (o && typeof o === "object" && !Array.isArray(o)) for (const [k, v] of Object.entries(o)) if (typeof v === "string" && /^[A-Za-z0-9_]{1,40}$/.test(k)) out[k] = v.slice(0, 500)
+  return out
+}
+
+/**
+ * ctx 정리. 엔진은 POST 본문을 그대로 넘기니 바깥 값으로 봐요: vars 는 문자열만(없으면 최상위 문자열 값),
+ * store·memory·fetch·aside 는 진짜 객체·함수일 때만 쓰고 아니면 기본값(저장소, GbrainMemory, QUORUM_ASIDE=1 일 때 asideRunner).
+ */
 function resolveCtx(ctx: RecipeCtx): Resolved {
+  const raw = (ctx || {}) as Record<string, unknown>
+  const memory = raw.memory === null ? null : raw.memory && typeof (raw.memory as Memory).put === "function" && typeof (raw.memory as Memory).search === "function" ? (raw.memory as Memory) : new GbrainMemory()
   return {
-    ...ctx,
-    store: ctx.store ?? defaultStore(),
-    memory: ctx.memory === undefined ? new GbrainMemory() : ctx.memory,
-    aside: ctx.aside === undefined ? (process.env.QUORUM_ASIDE === "1" ? asideRunner() : null) : ctx.aside,
+    vars: raw.vars !== undefined ? strings(raw.vars) : strings(raw),
+    runId: typeof raw.runId === "string" ? raw.runId : undefined,
+    mode: raw.mode === "replay" ? "replay" : "live",
+    seqStart: typeof raw.seqStart === "number" ? raw.seqStart : undefined,
+    timeoutMs: typeof raw.timeoutMs === "number" && raw.timeoutMs > 0 ? Math.min(raw.timeoutMs, 60_000) : undefined,
+    fetch: typeof raw.fetch === "function" ? (raw.fetch as typeof fetch) : undefined,
+    store: raw.store instanceof RecipeStore ? raw.store : defaultStore(),
+    memory,
+    aside: typeof raw.aside === "function" ? (raw.aside as AsideRunner) : raw.aside === undefined && process.env.QUORUM_ASIDE === "1" ? asideRunner() : null,
   }
+}
+
+/** def.derive: 없는 값을 다른 레시피 결과에서 채워요(같은 이벤트 흐름 안에서). 깊이 2까지 */
+async function deriveVars(def: RecipeDef, ctx: Resolved, ev: ReturnType<typeof recipeEmitter>, depth: number): Promise<Resolved> {
+  const vars = { ...ctx.vars }
+  for (const [name, d] of Object.entries(def.derive || {})) {
+    if (vars[name] || depth >= 2) continue
+    const out = await run(d.recipe, ctx, ev, depth + 1)
+    const v = out.ok && out.result && typeof out.result === "object" ? (out.result as Record<string, unknown>)[d.field] : undefined
+    if (typeof v === "string" && v) vars[name] = v
+  }
+  return { ...ctx, vars }
 }
 
 /** GET /api/recipes: 레시피 목록과 현재 버전·상태 */
@@ -42,8 +75,9 @@ export function listRecipes(store: RecipeStore = defaultStore()): RecipeSummary[
 }
 
 export async function runRecipe(id: string, ctx: RecipeCtx, emit: Emit): Promise<RunOutcome> {
-  const ev = recipeEmitter(ctx, emit)
-  try { return await run(id, resolveCtx(ctx), ev) }
+  const c = resolveCtx(ctx)
+  const ev = recipeEmitter(c, emit, id)
+  try { return await run(id, c, ev, 0) }
   catch (e) {
     // 예상하지 못한 오류(DB·코드 오류)도 조용히 던지지 않고 이벤트로 남겨요
     const msg = String((e as Error)?.message || e)
@@ -77,7 +111,7 @@ async function recall(id: string, def: RecipeDef, ctx: Resolved, ev: ReturnType<
   }
 }
 
-async function run(id: string, ctx: Resolved, ev: ReturnType<typeof recipeEmitter>): Promise<RunOutcome> {
+async function run(id: string, ctx: Resolved, ev: ReturnType<typeof recipeEmitter>, depth: number): Promise<RunOutcome> {
   const actor = `recipe:${id}`
   let def: RecipeDef
   try { def = ctx.store.current(id) }
@@ -85,6 +119,7 @@ async function run(id: string, ctx: Resolved, ev: ReturnType<typeof recipeEmitte
     ev.send("error", actor, `레시피를 열지 못했어요: ${(e as Error).message}`, { recipeId: id, reason: (e as Error).message })
     return { ok: false, version: 0, endpoint: "", reason: (e as Error).message, nextSeq: ev.next() }
   }
+  if (def.derive) ctx = await deriveVars(def, ctx, ev, depth)
   const base = (d: RecipeDef, extra: Data = {}) => ({ recipeId: id, version: d.version, endpoint: endpointOf(d.request), ...extra })
   ev.send("recipe.run", actor, `${def.intent} — v${def.version} 호출`, base(def))
   let broken: RecipeError
@@ -130,7 +165,7 @@ async function run(id: string, ctx: Resolved, ev: ReturnType<typeof recipeEmitte
     const note = repairNote({ recipeId: id, site: def.site, intent: def.intent, fromVersion: def.version, toVersion: next.version, previousEndpoint, endpoint: endpointOf(next.request), reason, at: new Date().toISOString() })
     const where = { recipeId: id, version: next.version, endpoint: endpointOf(next.request) }
     try {
-      const saved = await saveNote(ctx.memory, slug, note, `recipe ${id} repaired v${def.version}->v${next.version}`, ctx.runId)
+      const saved = await saveNote(ctx.memory, slug, note, `recipe ${id} repaired v${def.version}->v${next.version}`, ctx.runId || Date.now().toString(36))
       ev.send("memory.saved", "gbrain", saved.duplicate ? `같은 수리 기록이 이미 있어요: ${saved.slug}` : `수리 기록을 남겼어요: ${saved.slug}`, { ...where, slug: saved.slug, duplicate: saved.duplicate })
     } catch (e) {
       const msg = (e as Error).message

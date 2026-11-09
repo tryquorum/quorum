@@ -1,5 +1,5 @@
 // 레시피 = 사이트 한 곳의 의도 하나를 부르는 방법. JSON(defs/*.json)으로 적고 runner.ts 가 실행·수리해요.
-import type { QuorumEvent } from "../contract"
+import type { EventType, QuorumEvent } from "../contract"
 import type { Memory } from "./memory"
 import type { AsideRunner } from "./aside"
 import type { RecipeStore } from "./store"
@@ -33,11 +33,19 @@ export type RecipeDef = {
   parse: ParseSpec
   verify: VerifySpec
   discover: DiscoverSpec
+  /** 값이 없을 때 다른 레시피 결과에서 채우기. 예: eventApiId <- luma-event 의 api_id */
+  derive?: Record<string, { recipe: string; field: string }>
 }
-export type Emit = (e: QuorumEvent) => void
+/** 계약 QuorumEvent 를 받는 emit */
+export type EventEmit = (e: QuorumEvent) => void
+/** 엔진(src/engine/council.ts Emit) 모양: runId·seq·at 은 엔진이 붙여요 */
+export type EngineEmit = (type: EventType, actor: string, text: string, data?: Record<string, unknown>) => void
+export type Emit = EventEmit | EngineEmit
 export type RecipeCtx = {
-  vars: Record<string, string>
-  runId: string
+  /** 없으면 ctx 최상위 문자열 값을 vars 로 써요(엔진이 POST 본문을 그대로 넘겨도 되게) */
+  vars?: Record<string, string>
+  /** EventEmit 일 때 이벤트의 runId. 없으면 recipe-<id>-<시각> */
+  runId?: string
   mode?: "live" | "replay"
   /** 첫 이벤트의 seq (기본 1). 엔진이 앞에 이벤트를 냈으면 그다음 번호를 넘겨요 */
   seqStart?: number

@@ -57,5 +57,11 @@
       "startUrl": "https://luma.com/{{slug}}",
       "match": "api2.luma.com/event/"
     }
+  },
+  "derive": {
+    "eventApiId": {
+      "recipe": "luma-event",
+      "field": "api_id"
+    }
   }
 }

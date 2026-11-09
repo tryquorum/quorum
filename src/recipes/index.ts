@@ -5,4 +5,4 @@ export { GbrainMemory, MemoryError, type Memory, type MemoryHit } from "./memory
 export { asideRunner, buildDiscoverScript, parseProbes, ASIDE_BIN, ASIDE_ACCOUNT, type AsideRunner } from "./aside"
 export { watchRecipes } from "./watch"
 export { RecipeError } from "./errors"
-export type { RecipeDef, RecipeCtx, RunOutcome, Emit } from "./types"
+export type { RecipeDef, RecipeCtx, RunOutcome, Emit, EngineEmit, EventEmit } from "./types"

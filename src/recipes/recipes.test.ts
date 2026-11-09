@@ -26,6 +26,7 @@ beforeAll(() => {
       const url = new URL(req.url)
       hits.push(url.pathname + url.search)
       const ev = url.searchParams.get("event_api_id")
+      if (url.pathname === "/url") return Response.json({ kind: "event", data: { api_id: `evt-${url.searchParams.get("url")}`, event: { name: "행사" } } })
       if (url.pathname === "/event/get-posts") return Response.json({ message: "Not found." }, { status: 404 })
       if (url.pathname === "/event/get-wrong") return Response.json({ entries: [{ nope: 1 }] }) // 같은 키, 다른 모양(스키마 불일치)
       if (url.pathname === "/event/get-empty") return Response.json({ entries: [] })
@@ -221,6 +222,21 @@ describe("runRecipe", () => {
       expect(events.filter((e) => e.type === "error" && e.actor === "gbrain").length).toBe(2)
     } finally { delete process.env.QUORUM_GBRAIN_BIN }
     expect(listRecipes(store)).toEqual([expect.objectContaining({ id: "t-blasts", version: 2 })])
+  })
+
+  test("engine Emit (type, actor, text, data) + POST body as ctx: top-level strings become vars, derive fills eventApiId from another recipe", async () => {
+    await writeFile(join(dir, "t-event.json"), JSON.stringify({ id: "t-event", site: "test", intent: "행사 읽기", version: 1, vars: ["slug"], request: { method: "GET", url: `${base}/url?url={{slug}}` }, parse: { path: "data", pick: { api_id: "api_id", name: "event.name" } }, verify: { schema: { type: "object", required: ["api_id"] } }, discover: {} }))
+    await useDef(blasts(["/event/get-blasts"], { derive: { eventApiId: { recipe: "t-event", field: "api_id" } } }))
+    const calls: [string, string, string, Record<string, unknown> | undefined][] = []
+    const engineEmit = (type: string, actor: string, text: string, data?: Record<string, unknown>) => { calls.push([type, actor, text, data]) }
+    const body = { slug: "my-event", nested: { ignored: true }, store, memory } as Record<string, unknown>
+    const out = await runRecipe("t-blasts", body as any, engineEmit as any)
+    expect(out).toMatchObject({ ok: true, version: 2 })
+    expect(calls.map((c) => c[0])).toEqual(["recipe.run", "recipe.run", "recipe.run", "recipe.broken", "recall", "recipe.run", "recipe.repaired", "memory.saved"])
+    expect(calls[0][1]).toBe("recipe:t-event")
+    expect(calls[2][1]).toBe("recipe:t-blasts")
+    expect((out.result as any[])[0].id).toBe("b1-evt-my-event")
+    expect(hits).toContain("/event/get-blasts?event_api_id=evt-my-event")
   })
 
   test("memory: null is reported, never silently skipped", async () => {

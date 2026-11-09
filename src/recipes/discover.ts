@@ -11,7 +11,7 @@ export type Found = { candidate: Candidate; result: unknown; via: "http" | "asid
 export type DiscoverOut = { found: Found | null; attempts: Attempt[]; asideError?: string }
 
 /** recalled: gbrain 에서 회상한 지난 수리 경로. 정의에 적힌 후보보다 먼저 시도해요 */
-export async function discover(def: RecipeDef, ctx: RecipeCtx, onAttempt: (a: Attempt) => void, recalled: Candidate[] = []): Promise<DiscoverOut> {
+export async function discover(def: RecipeDef, ctx: RecipeCtx & { vars: Record<string, string> }, onAttempt: (a: Attempt) => void, recalled: Candidate[] = []): Promise<DiscoverOut> {
   const attempts: Attempt[] = []
   const note = (a: Attempt) => { attempts.push(a); onAttempt(a) }
   const broken = endpointOf(def.request)
