@@ -82,7 +82,12 @@ describe("public listener: Cloudflare Access (board auth.ts)", () => {
     const cookie = await call(pub, "/api/me", { headers: { cookie: "a=b; CF_Authorization=" + good } })
     expect(await cookie.json()).toEqual({ email: "jun@lidgeai.com", listener: "public" })
     expect((await (await call(pub, "/api/health", { headers: tok(good) })).json()) as object).toHaveProperty("executors")
-    expect((await call(pub, "/", { headers: tok(good) })).status).toBe(404) // 인증은 통과, 테스트용 siteRoot 에 파일이 없을 뿐
+    expect((await call(pub, "/app", { headers: tok(good) })).status).toBe(404) // 인증은 통과, 테스트용 siteRoot 에 파일이 없을 뿐
+    // 로그인한 사람의 '/' 는 Workspace 대시보드로 보내요(쿼리는 그대로)
+    const home = await call(pub, "/?from=mail", { headers: tok(good), redirect: "manual" })
+    expect(home.status).toBe(302)
+    expect(home.headers.get("location")).toBe("/w?from=mail")
+    expect((await call(pub, "/", { headers: tok(good), method: "POST", body: "{}" })).status).not.toBe(302)
     const mcp = await call(pub, "/mcp", { method: "POST", headers: { ...tok(good), "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }) })
     expect(mcp.status).toBe(200)
   })
@@ -108,6 +113,8 @@ describe("public listener: Cloudflare Access (board auth.ts)", () => {
     const { local } = setup(certsFetch, "jun@lidgeai.com")
     const r = await local(new Request("http://localhost:4317/api/me", { headers: { host: "localhost:4317" } }))
     expect(await r.json()).toEqual({ email: "jun@lidgeai.com", listener: "local" })
+    // 로컬 '/' 는 Workspace 로 보내지 않고 랜딩을 그대로 줘요(테스트 siteRoot 에 파일이 없어 404)
+    expect((await local(new Request("http://localhost:4317/", { headers: { host: "localhost:4317" }, redirect: "manual" }))).status).toBe(404)
     expect((await local(new Request("http://localhost:4317/api/me", { headers: { host: "quorum.lidgeai.com" } }))).status).toBe(403)
   })
   test("publicCsrfAllowed and publicPortFrom follow board rules", () => {

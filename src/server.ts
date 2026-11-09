@@ -139,6 +139,10 @@ export function createApp(d: AppDeps, listener: Listener = "local", pub?: Public
     if (parts[0] === "mcp" && parts.length === 1) {
       return mcpHandler({ store: d.store, start: (request) => d.runs.start(request).runId, memory: d.memory, allowPropose: !!d.mcpPropose, version: VERSION }, req)
     }
+    // 공개 리스너(quorum.lidgeai.com)에서 로그인한 사람의 첫 화면은 Workspace 대시보드(/w, workspace 레인)예요. 로컬 '/' 는 랜딩 그대로
+    if (listener === "public" && url.pathname === "/" && (m === "GET" || m === "HEAD")) {
+      return new Response(null, { status: 302, headers: { location: "/w" + url.search, "cache-control": "no-store" } })
+    }
     if (parts[0] !== "api") return serveStatic(d.siteRoot, url.pathname)
 
     if (parts[1] === "health" && m === "GET") return json({ ok: true, version: VERSION, executors: await d.health() })
