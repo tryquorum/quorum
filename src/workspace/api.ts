@@ -15,6 +15,8 @@ const json = (data: unknown, status = 200) =>
 const err = (status: number, message: string) => json({ error: message }, status)
 const failed = (r: unknown): r is { status: number; error: string } => !!r && typeof r === "object" && "error" in r && "status" in r
 const REF = /^(item|signal):[A-Za-z0-9_-]{1,40}$/
+/** 이 프로세스에서 결과를 기다리는 승인 실행 id(모든 Workspace 인스턴스가 같이 써요) */
+const LIVE_EXEC = new Set<string>()
 /** 밖에서 보낸 사건이 넣을 수 없는 meta 열쇠: 실행을 가리키거나 사람의 결정을 흉내 내는 것(리뷰 지적 6) */
 const RESERVED_META = ["runId", "proposalId", "executor", "execRunId", "askRunId", "decidedBy", "decidedAt", "decision", "resolvedBy", "fence", "itemId"]
 
@@ -22,6 +24,8 @@ export type WorkspaceDeps = {
   path: string; engine?: EngineStore; execute?: ExecuteFn; now?: () => number
   /** 승인 실행 시간 상한(ms). 기본 council.EXEC_TIMEOUT_MS */
   execTimeoutMs?: number
+  /** 결과를 기다리는 승인 실행 집합. 기본은 프로세스 공용(LIVE_EXEC); 새 프로세스(재시작)를 흉내 내는 시험만 빈 집합을 넘겨요 */
+  liveExec?: Set<string>
   /** 방향판 읽기 전용 가져오기(예: http://127.0.0.1:3070). 없으면 가져오지 않아요 */
   boardBase?: string; boardGet?: GetJson
 }
@@ -96,8 +100,9 @@ export function createWorkspace(deps: WorkspaceDeps) {
   const board = deps.boardBase ? createBoardImport(db, { base: deps.boardBase, get: deps.boardGet, now: clock }) : null
   /** 시험이 승인 실행을 기다릴 때 써요 */
   const pending = new Set<Promise<void>>()
-  // 이 프로세스가 결과를 기다리는 승인 실행. 시작할 때는 비어 있어서, 앞 프로세스가 남긴 running 사건은 끊김으로 돌려요
-  const live = new Set<string>()
+  // 이 프로세스가 결과를 기다리는 승인 실행. 프로세스 전체가 한 집합을 같이 써서, 같은 DB 로 Workspace 를 하나 더 만들어도
+  // 다른 인스턴스가 지켜보는 실행은 건드리지 않고, 앞 프로세스가 남긴 running 사건만 끊김으로 돌려요
+  const live = deps.liveExec ?? LIVE_EXEC
   recoverRunning(db, clock(), live)
 
   async function handle(req: Request, parts: string[]): Promise<Response> {

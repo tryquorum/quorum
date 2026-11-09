@@ -76,12 +76,12 @@ describe("2 · 실행 중으로 멈춘 사건", () => {
   test("서버가 다시 시작되면 살아 있는 실행이 없는 running 사건은 끊김(error)으로 Needs you 에 돌아오고 Retry 할 수 있어요", async () => {
     const store = new Store(join(dir, "q.db"))
     seedHold(store, "r1")
-    const ws1 = createWorkspace({ path: join(dir, "w.db"), engine: store, execute: never, now: () => NOW })
+    const ws1 = createWorkspace({ path: join(dir, "w.db"), engine: store, execute: never, liveExec: new Set(), now: () => NOW })
     const hold = (await call(ws1, "GET", "/api/ws/now")).body.needsYou[0]
     expect((await call(ws1, "POST", "/api/ws/signals/" + hold.id + "/approve")).status).toBe(202)
-    // 다시 시작: 같은 DB, 이 프로세스가 시작한 실행은 없어요
+    // 다시 시작: 같은 DB, 새 프로세스라 지켜보는 실행이 없어요(빈 집합)
     let ran = 0
-    const ws2 = createWorkspace({ path: join(dir, "w.db"), engine: store, execute: () => { ran++; return { runId: "rx2", done: Promise.resolve({ ok: true, summary: "다시 했어요" }) } }, now: () => NOW + 1000 })
+    const ws2 = createWorkspace({ path: join(dir, "w.db"), engine: store, liveExec: new Set(), execute: () => { ran++; return { runId: "rx2", done: Promise.resolve({ ok: true, summary: "다시 했어요" }) } }, now: () => NOW + 1000 })
     const s = (await call(ws2, "GET", "/api/ws/signals/" + hold.id)).body.signal
     expect(s).toMatchObject({ status: "open", lane: "decide", kind: "error" })
     expect(s.reason).toContain("interrupted")
@@ -275,5 +275,18 @@ describe("10 · 실행을 시작하지 못하면 502, 사건은 Retry 할 수 �
     expect((await call(ws, "POST", "/api/ws/signals/" + hold.id + "/approve")).status).toBe(202)
     await ws.settle()
     expect((await call(ws, "GET", "/api/ws/signals/" + hold.id)).body.signal).toMatchObject({ lane: "review", kind: "done" })
+  })
+})
+
+
+describe("2 · 같은 프로세스의 다른 Workspace 가 살아 있는 실행을 끊김으로 만들지 않아요", () => {
+  test("첫 Workspace 가 지켜보는 실행은 같은 DB 로 두 번째 Workspace 를 만들어도 running 이에요", async () => {
+    const store = new Store(join(dir, "q.db"))
+    seedHold(store, "r12")
+    const ws1 = createWorkspace({ path: join(dir, "w.db"), engine: store, execute: never, now: () => NOW })
+    const hold = (await call(ws1, "GET", "/api/ws/now")).body.needsYou[0]
+    await call(ws1, "POST", "/api/ws/signals/" + hold.id + "/approve")
+    const ws2 = createWorkspace({ path: join(dir, "w.db"), engine: store, now: () => NOW })
+    expect((await call(ws2, "GET", "/api/ws/signals/" + hold.id)).body.signal.status).toBe("running")
   })
 })
