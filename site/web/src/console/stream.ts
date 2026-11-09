@@ -243,10 +243,10 @@ export async function listRecipes(): Promise<{ recipes: RecipeSummary[] } | { pr
   }
 }
 
-export async function runRecipe(id: string, onRun: (runId: string) => void, onEvent: (e: QuorumEvent) => void, onDone: () => void, onError: (m: string) => void): Promise<StopFn> {
+export async function runRecipe(id: string, onRun: (runId: string) => void, onEvent: (e: QuorumEvent) => void, onDone: () => void, onError: (m: string) => void, vars: Record<string, string> = {}): Promise<StopFn> {
   let res: Response
   try {
-    res = await fetch(asset(`api/recipes/${encodeURIComponent(id)}/run`), { method: "POST", headers: { "content-type": "application/json" }, body: "{}" })
+    res = await fetch(asset(`api/recipes/${encodeURIComponent(id)}/run`), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(vars) })
   } catch (err) {
     onError(`Could not reach the Quorum server: ${err instanceof Error ? err.message : String(err)}`)
     return () => {}

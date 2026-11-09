@@ -16,7 +16,7 @@ export const SHORTCUTS: readonly Shortcut[] = Object.freeze([
   { id: "row.done", label: "Done / reviewed", group: "Now list", keys: [k("e")], whileTyping: false },
   { id: "row.approve", label: "Approve (Needs you)", group: "Now list", keys: [k("a")], whileTyping: false },
   { id: "row.reject", label: "Reject (Needs you)", group: "Now list", keys: [k("x")], whileTyping: false },
-  { id: "row.ask", label: "Ask the council (Inbox)", group: "Now list", keys: [k("q")], whileTyping: false },
+  { id: "row.ask", label: "Send to agent (Inbox)", group: "Now list", keys: [k("q")], whileTyping: false },
   { id: "go.console", label: "Council console", group: "Go to", sequence: ["g", "c"], whileTyping: false },
   { id: "go.home", label: "Landing page", group: "Go to", sequence: ["g", "h"], whileTyping: false },
   { id: "dialog.close", label: "Close dialog or menu", group: "Dialogs", keys: [k("Escape")], whileTyping: true },

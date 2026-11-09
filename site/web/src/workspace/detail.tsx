@@ -33,8 +33,8 @@ function requestFor(d: Loaded, goal: GoalView | null): string {
   return ((it.raw ?? it.text) + (w ? "\n(기한 " + w + ")" : "")).slice(0, 4000)
 }
 
-export function Detail({ open, onClose, onChanged, act, areaOf, goalOf }: {
-  open: Open; onClose: () => void; onChanged: () => void; act: Acts
+export function Detail({ open, onClose, onChanged, act, areaOf, goalOf, returnFocus }: {
+  open: Open; onClose: () => void; onChanged: () => void; act: Acts; returnFocus?: () => void
   areaOf: (i: Item) => Area | null; goalOf: (id: string) => GoalView | null
 }) {
   const [data, setData] = useState<Loaded | null>(null)
@@ -67,14 +67,18 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf }: {
   // hold 판정의 사건(Approve/Reject 대상). 실행이 도는 동안 2.5초마다 다시 읽어요(읽기가 의회 판정을 Workspace 로 옮겨요)
   const [runSignals, setRunSignals] = useState<Signal[]>([])
   const holds = run ? run.order.filter((id) => run.proposals[id].verdict?.decision === "hold").length : 0
+  // 다시 읽을 일이 있을 때만 2.5초마다: 의회가 도는 중, 승인한 일이 실행 중, 아직 사건이 안 된 판정이 있을 때. 끝나면 한 번만 읽어요
+  const verdicts = run ? run.order.filter((id) => run.proposals[id].verdict).length : 0
+  const pending = !!run && (run.status === "running" || run.status === "connecting" || runSignals.some((s) => s.status === "running") || runSignals.filter((s) => s.meta?.proposalId).length < verdicts)
   useEffect(() => {
     if (!runId) { setRunSignals([]); return }
     let live = true
     const load = () => call<Signal[]>("/api/ws/signals?run=" + encodeURIComponent(runId)).then((s) => { if (live) setRunSignals(s) }).catch(() => {})
     void load()
+    if (!pending) return () => { live = false }
     const t = window.setInterval(load, 2500)
     return () => { live = false; window.clearInterval(t) }
-  }, [runId, holds])
+  }, [runId, holds, pending])
 
   const refresh = (msg?: string) => { if (msg) setSaved(msg); setTick((t) => t + 1); onChanged() }
   const run_ = async (fn: () => Promise<unknown>, msg: string) => {
@@ -98,8 +102,14 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf }: {
   const head = data ? headOf(data, areaOf) : null
   return (
     <Dialog open={!!open} onOpenChange={(o) => { if (!o) onClose() }}>
-      <DialogContent className="max-h-[90svh] grid-cols-[minmax(0,1fr)] gap-0 overflow-x-hidden overflow-y-auto p-0 sm:max-w-2xl max-sm:inset-0 max-sm:h-dvh max-sm:max-h-none max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-none">
-        {!data && <div className="p-5"><DialogTitle className="text-sm text-muted-foreground">{error ? "Couldn't open" : "Loading…"}</DialogTitle>{error && <p role="alert" className={"mt-2 rounded-lg px-2.5 py-1.5 text-sm " + ALERT}>{error}</p>}</div>}
+      <DialogContent onCloseAutoFocus={(e) => { if (returnFocus) { e.preventDefault(); returnFocus() } }} className="max-h-[90svh] grid-cols-[minmax(0,1fr)] gap-0 overflow-x-hidden overflow-y-auto p-0 sm:max-w-2xl max-sm:inset-0 max-sm:h-dvh max-sm:max-h-none max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-none">
+        {!data && (
+          <div className="flex flex-col gap-3 p-5">
+            <DialogTitle className="text-sm text-muted-foreground">{error ? "Couldn't open this" : "Loading…"}</DialogTitle>
+            {error && <p role="alert" className={"rounded-lg px-2.5 py-1.5 text-sm " + ALERT}>{/not found/.test(error) ? "This item is gone or was not copied yet. It may have been deleted in Direction Board." : error}</p>}
+            {error && <Button variant="outline" size="sm" className="self-start rounded-full" onClick={onClose}>Back to the list</Button>}
+          </div>
+        )}
         {data && head && (
           <>
             {/* 머리 + 요약 */}
@@ -292,9 +302,9 @@ function ProposalCard({ p, signal, act, onDone }: { p: Proposal; signal: Signal 
       )}
       {waiting && (
         <div className="mt-2.5 flex flex-wrap items-center gap-2">
-          <Button size="sm" className="rounded-full" disabled={busy} onClick={() => void go(() => act.approve(signal))}><Check />Approve</Button>
-          <Button size="sm" variant="outline" className="rounded-full" disabled={busy} onClick={() => void go(() => act.reject(signal))}><X />Reject</Button>
-          <span className="text-2xs text-muted-foreground">Approve runs it on {String(signal.meta?.executor)} now.</span>
+          <Button size="sm" className="rounded-full" disabled={busy} onClick={() => void go(() => act.approve(signal))}><Check />{signal.kind === "error" ? "Retry" : "Approve"}</Button>
+          <Button size="sm" variant="outline" className="rounded-full" disabled={busy} onClick={() => void go(() => act.reject(signal))}><X />{signal.kind === "error" ? "Dismiss" : "Reject"}</Button>
+          <span className="text-2xs text-muted-foreground">{signal.kind === "error" ? "Retry runs it on " + String(signal.meta?.executor) + " again." : "Approve runs it on " + String(signal.meta?.executor) + " now."}</span>
         </div>
       )}
       {p.verdict?.decision === "hold" && !signal && <p className="mt-2 text-2xs text-muted-foreground">Waiting for the workspace to pick up this hold…</p>}
@@ -309,13 +319,14 @@ function SignalActions({ s, act, onDone }: { s: Signal; act: Acts; onDone: (m: s
   const waiting = s.status === "open" && ["decide", "now", "main"].includes(s.lane)
   if (s.status !== "open") return null
   const items: [string, () => Promise<void>, string][] = []
-  if (waiting && council) items.push(["Approve", () => act.approve(s), "Approved"], ["Reject", () => act.reject(s), "Rejected"])
+  // 실행이 실패한 판정은 보류가 아니라서 "다시 실행 / 닫기"로 불러요(같은 승인·거절 길을 써요)
+  if (waiting && council) items.push(s.kind === "error" ? ["Retry", () => act.approve(s), "Running again"] : ["Approve", () => act.approve(s), "Approved"], s.kind === "error" ? ["Dismiss", () => act.reject(s), "Dismissed"] : ["Reject", () => act.reject(s), "Rejected"])
   else items.push([s.lane === "review" ? "Mark reviewed" : "Mark handled", () => act.resolve(s), "Closed"])
   return (
     <div className="flex flex-wrap gap-2">
       {items.map(([label, fn, msg]) => (
-        <Button key={label} size="sm" variant={label === "Approve" ? "default" : "outline"} className="rounded-full" onClick={() => void fn().then(() => onDone(msg))}>
-          {label === "Reject" ? <X /> : <Check />}{label}
+        <Button key={label} size="sm" variant={label === "Approve" || label === "Retry" ? "default" : "outline"} className="rounded-full" onClick={() => void fn().then(() => onDone(msg))}>
+          {label === "Reject" || label === "Dismiss" ? <X /> : <Check />}{label}
         </Button>
       ))}
     </div>

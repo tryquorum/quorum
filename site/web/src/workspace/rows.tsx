@@ -1,6 +1,6 @@
 // 항목 한 줄. 출처: board/apps/web/src/components/task-row.tsx — 동그란 완료 버튼, 제목 버튼(열기), 오른쪽 날짜 칩, 터치에서 44px 높이.
 // Workspace 판: 사건(의회 판정) 줄에는 Approve/Reject·Reviewed 버튼을 바로 붙여요(열지 않고 처리).
-import { Check, CircleAlert, ExternalLink, Gavel, Loader2, MessageSquareText, X } from "lucide-react"
+import { Check, CircleAlert, ExternalLink, Gavel, Loader2, MessageSquareText, Send, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { Area, Item, Signal } from "./api"
@@ -22,7 +22,7 @@ export const whenOf = (i: Item) => i.due ?? i.remindAt ?? null
 export function SourceChip({ item, className }: { item: { source?: string; meta?: Record<string, any> }; className?: string }) {
   const from = item.source === "direction-board" || item.meta?.from === "direction-board"
   if (!from) return null
-  return <span title="from Direction Board — read-only copy; changes stay in Quorum" className={cn("shrink-0 rounded border border-border px-1 font-mono text-[10px] leading-4 text-muted-foreground", className)}>from Direction Board</span>
+  return <span title="from Direction Board — read-only copy; changes stay in Quorum" aria-label="from Direction Board" className={cn("shrink-0 rounded border border-border px-1 font-mono text-[10px] leading-4 text-muted-foreground", className)}><span className="max-sm:hidden">from Direction Board</span><span className="sm:hidden" aria-hidden>DB</span></span>
 }
 
 type RowShell = { selected: boolean; onSelect: () => void; children: React.ReactNode; tone?: "decide" | "review" | "plain" }
@@ -48,7 +48,7 @@ export function ItemRow({ item, area, selected, busy, onSelect, onOpen, onDone, 
   return (
     <Row selected={selected} onSelect={onSelect}>
       {/* 터치에서는 누르는 자리를 44px 로 넓히고 동그라미는 그대로(board task-row 의 coarse min-h-11 규칙) */}
-      <button type="button" onClick={onDone} disabled={busy || item.done} aria-label={(item.done ? "Done: " : "Mark done: ") + item.text} title="Done (E)"
+      <button type="button" onClick={onDone} disabled={busy} aria-pressed={item.done} aria-label={(item.done ? "Reopen: " : "Mark done: ") + item.text} title={item.done ? "Done (E)·reopen" : "Done (E)"}
         className="group/done mt-0.5 grid size-[18px] shrink-0 place-items-center disabled:opacity-60 max-md:-m-[13px] max-md:size-11 [@media(pointer:coarse)]:-m-[13px] [@media(pointer:coarse)]:size-11">
         <span className={cn("grid size-[18px] place-items-center rounded-full border border-foreground/30 text-transparent transition-colors group-hover/done:border-foreground group-hover/done:text-foreground", item.done && "border-foreground bg-foreground text-background")}>
           <Check className="size-3" strokeWidth={3} />
@@ -67,8 +67,8 @@ export function ItemRow({ item, area, selected, busy, onSelect, onOpen, onDone, 
       </div>
       {when && <span className={cn("mt-0.5 shrink-0 num font-mono text-2xs text-muted-foreground", late && LATE)}>{dueLabel(when)}</span>}
       {onAsk && !item.runId && !item.done && (
-        <Button type="button" variant="outline" size="xs" className="shrink-0 rounded-full max-sm:w-11 max-sm:px-1.5" onClick={onAsk} disabled={busy} title="Ask the council (Q)" aria-label={"Ask the council: " + item.text}>
-          <Gavel /><span className="max-sm:hidden">Ask the council</span>
+        <Button type="button" variant="outline" size="xs" className="shrink-0 rounded-full max-sm:w-11 max-sm:px-1.5" onClick={onAsk} disabled={busy} title="Send to agent (Q)" aria-label={"Send to agent: " + item.text}>
+          <Send /><span className="max-sm:hidden">Send to agent</span>
         </Button>
       )}
     </Row>
@@ -98,13 +98,13 @@ export function SignalRow({ s, selected, busy, onSelect, onOpen, onApprove, onRe
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
         {onApprove && (
-          <Button type="button" size="xs" className="rounded-full max-sm:w-11" onClick={onApprove} disabled={busy} title="Approve (A)">
-            <Check /><span className="max-sm:sr-only">Approve</span>
+          <Button type="button" size="xs" className="rounded-full max-sm:w-11" onClick={onApprove} disabled={busy} title={failed ? "Retry (A)" : "Approve (A)"}>
+            <Check /><span className="max-sm:sr-only">{failed ? "Retry" : "Approve"}</span>
           </Button>
         )}
         {onReject && (
-          <Button type="button" variant="outline" size="xs" className="rounded-full max-sm:w-11" onClick={onReject} disabled={busy} title="Reject (X)">
-            <X /><span className="max-sm:sr-only">Reject</span>
+          <Button type="button" variant="outline" size="xs" className="rounded-full max-sm:w-11" onClick={onReject} disabled={busy} title={failed ? "Dismiss (X)" : "Reject (X)"}>
+            <X /><span className="max-sm:sr-only">{failed ? "Dismiss" : "Reject"}</span>
           </Button>
         )}
         {onResolve && (

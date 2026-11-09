@@ -18,6 +18,8 @@ import { GoalHeader, groupByWhen, ListFilters, Roadmap, useListState, useSignalS
 import { SyncButton, WsSidebar, useStored, type View } from "./ws-sidebar"
 import { hashFor, parseHash, type Route } from "./route"
 const TITLES: Record<View, string> = { now: "Now", inbox: "Inbox", goals: "Goals", signals: "Signals", list: "All tasks" }
+/** 줄의 제목 버튼(완료 버튼이 아닌 것). 키보드 고르기와 팝업을 닫은 뒤 포커스가 돌아갈 자리 */
+const rowTitle = (key: string) => document.querySelector<HTMLElement>('[data-row="' + key + '"] button[title]:not([title^="Done"])')
 
 /** 데이터: /api/ws/now 5초, 항목 전체 10초, 메타 30초. 실패해도 마지막 내용은 남기고 다시 해요(board useBoard 규칙) */
 function useWorkspaceData(withDone: boolean) {
@@ -61,7 +63,7 @@ export function Workspace() {
   const [space, setSpace] = useStored("qw:space", "all")
   const [area, setArea] = useStored("qw:area", "all")
   const data = useWorkspaceData(list.showDone)
-  const { now, items, signals, meta } = data
+  const { now: nowAll, items, signals, meta } = data
   const open: Open = route.open ?? null
   const setOpen = useCallback((o: Open) => {
     if (o) {
@@ -86,6 +88,12 @@ export function Workspace() {
   const lastFocus = useRef<HTMLElement | null>(null)
 
   const inSpace = useCallback((i: Item) => space === "all" || (i.space ?? "personal") === space, [space])
+  // 고른 공간으로 거른 Now(board 처럼 목록·배지·사이드바가 같은 공간을 봐요). 3070 사건 사본은 공간이 없어 거르지 않아요
+  const now = useMemo<NowView | null>(() => {
+    if (!nowAll || space === "all") return nowAll
+    const dueToday = nowAll.dueToday.filter(inSpace), inbox = nowAll.inbox.filter(inSpace), later = nowAll.later.filter(inSpace), goals = nowAll.goals.filter((g) => inSpace(g.goal))
+    return { ...nowAll, dueToday, inbox, later, goals, counts: { ...nowAll.counts, dueToday: dueToday.length, inbox: inbox.length, goals: goals.length } }
+  }, [nowAll, space, inSpace])
   const areaOf = useCallback((i: Item) => (meta?.boards.find((b) => b.id === i.boardId)?.areas.find((a) => a.id === i.area)) ?? null, [meta])
   const areas = useMemo(() => (meta?.boards ?? []).flatMap((b) => b.areas), [meta])
 
@@ -98,7 +106,8 @@ export function Workspace() {
   useEffect(() => { if (!toast) return; const t = window.setTimeout(() => setToast(null), 4000); return () => window.clearTimeout(t) }, [toast])
 
   const actions = useMemo(() => ({
-    done: (i: Item) => act("i:" + i.id, "Done: " + i.text.split("\n")[0], () => ws.done(i.id)),
+    // board task-row 처럼 동그라미는 양쪽으로: 끝낸 일을 누르면 다시 열어요
+    done: (i: Item) => i.done ? act("i:" + i.id, "Reopened: " + i.text.split("\n")[0], () => ws.patch(i.id, { done: false })) : act("i:" + i.id, "Done: " + i.text.split("\n")[0], () => ws.done(i.id)),
     ask: (i: Item) => act("i:" + i.id, "Sent to the council", () => ws.ask(i)),
     approve: (s: Signal) => act("s:" + s.id, "Approved — running on " + (s.meta?.executor ?? "executor"), () => ws.approve(s.id)),
     reject: (s: Signal) => act("s:" + s.id, "Rejected", () => ws.reject(s.id)),
@@ -112,13 +121,13 @@ export function Workspace() {
     const council = (s: Signal) => !!s.meta?.runId && !!s.meta?.proposalId
     const itemRows = (list: Item[], ask = false): RowSpec[] => list.filter(inSpace).map((i) => ({ key: "i:" + i.id, kind: "item", item: i, ask }))
     if (route.view === "now") return [
-      { id: "needs", title: "Needs you", hint: "council holds and decisions waiting on you", tone: "decide", rows: now.needsYou.map((s) => ({ key: "s:" + s.id, kind: "signal", signal: s, decide: council(s), resolve: !council(s) })), empty: "Nothing is waiting on you." },
+      { id: "needs", title: "Needs you", hint: "council holds and decisions waiting on you", tone: "decide", rows: now.needsYou.map((s) => ({ key: "s:" + s.id, kind: "signal", signal: s, decide: council(s), resolve: !council(s) })), empty: "Nothing is waiting on you.", extra: now.running.length ? <a href="#/signals" className="mt-1 flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted/50 hover:text-foreground max-md:min-h-11"><span className="size-1.5 shrink-0 animate-pulse rounded-full bg-foreground/60" aria-hidden /><span className="shrink-0">{now.running.length} running on agents</span><span className="min-w-0 truncate">· {now.running[0].title}</span><span className="shrink-0">→</span></a> : null },
       { id: "due", title: "Due today", hint: "and overdue", rows: itemRows(now.dueToday), empty: "Nothing due today. Write a task with a date (내일 3시 …) and it lands here." },
       { id: "goals", title: "Goals", rows: [], extra: now.goals.length ? <GoalStrip goals={now.goals} onOpen={goGoal} /> : null, empty: now.goals.length ? undefined : "No open goals. Goals come from Direction Board." },
       { id: "review", title: "Review", hint: "what the council ran", tone: "review", rows: now.review.map((s) => ({ key: "s:" + s.id, kind: "signal", signal: s, resolve: true })), empty: "Nothing to review." },
       { id: "inbox", title: "Inbox", hint: "written down, no date yet", rows: itemRows(now.inbox, true).slice(0, 12), empty: "Inbox zero. Write something down above (press N)." , extra: now.inbox.filter(inSpace).length > 12 ? <a href="#/inbox" className="px-3 text-xs text-muted-foreground hover:text-foreground">{now.inbox.filter(inSpace).length - 12} more in Inbox →</a> : null },
     ]
-    if (route.view === "inbox") return [{ id: "inbox", title: "Inbox", hint: "no date yet — Ask the council or just do it", rows: itemRows(now.inbox, true), empty: "Inbox zero. Write something down above (press N)." }]
+    if (route.view === "inbox") return [{ id: "inbox", title: "Inbox", hint: "no date yet — send it to an agent or just do it", rows: itemRows(now.inbox, true), empty: "Inbox zero. Write something down above (press N)." }]
     if (route.view === "signals") return sigSections
     if (route.view === "goals") {
       const all = route.goal ? now.goals.filter((g) => g.goal.id === route.goal) : now.goals
@@ -140,7 +149,8 @@ export function Workspace() {
     const i = flat.findIndex((r) => r.key === sel)
     const next = flat[Math.max(0, Math.min(flat.length - 1, i < 0 ? 0 : i + d))]
     setSel(next.key)
-    requestAnimationFrame(() => document.querySelector('[data-row="' + next.key + '"]')?.scrollIntoView({ block: "nearest" }))
+    // 고른 줄의 제목 버튼으로 실제 포커스도 옮겨요(화면 읽기 도구가 따라오고, 팝업을 닫으면 여기로 돌아와요)
+    requestAnimationFrame(() => { const t = rowTitle(next.key); t?.focus({ preventScroll: true }); t?.scrollIntoView({ block: "nearest" }) })
   }, [flat, sel])
 
   // 단축키 디스패처 하나(board shortcut-dispatch.tsx 처럼 창에 한 번만)
@@ -160,7 +170,7 @@ export function Workspace() {
         case "row.next": move(1); break
         case "row.prev": move(-1); break
         case "row.open": if (s) openRow(s); break
-        case "row.done": if (s?.kind === "item" && !s.item.done) void actions.done(s.item); else if (s?.kind === "signal" && s.resolve) void actions.resolve(s.signal); break
+        case "row.done": if (s?.kind === "item") void actions.done(s.item); else if (s?.kind === "signal" && s.resolve) void actions.resolve(s.signal); break
         case "row.approve": if (s?.kind === "signal" && s.decide) void actions.approve(s.signal); break
         case "row.reject": if (s?.kind === "signal" && s.decide) void actions.reject(s.signal); break
         case "row.ask": if (s?.kind === "item" && s.ask && !s.item.runId) void actions.ask(s.item); break
@@ -200,8 +210,13 @@ export function Workspace() {
           <header className="sticky top-0 z-30 border-b bg-background/80 backdrop-blur-xl">
             <div className="mx-auto flex max-w-[880px] items-center gap-2 px-4 py-2.5 sm:px-6">
               <SidebarTrigger className="-ml-1" />
-              <h1 className="text-sm font-semibold">{route.goal ? "Goal" : TITLES[route.view]}</h1>
-              {route.view === "now" && now && <span className="font-mono text-2xs text-muted-foreground">{now.today} · {total ? total + " to handle" : "all clear"}</span>}
+              {route.goal ? (
+                <h1 className="flex min-w-0 items-center gap-1.5 text-sm font-semibold">
+                  <a href="#/goals" className="shrink-0 text-muted-foreground hover:text-foreground max-md:py-3">Goals ›</a>
+                  <span className="truncate">{now?.goals.find((g) => g.goal.id === route.goal)?.goal.text ?? "Goal"}</span>
+                </h1>
+              ) : <h1 className="text-sm font-semibold">{TITLES[route.view]}</h1>}
+              {route.view === "now" && now && <span className="truncate font-mono text-2xs text-muted-foreground"><span className="max-sm:hidden">{now.today} · </span>{total ? total + " to handle" : "all clear"}</span>}
               <div className="ml-auto flex items-center gap-1.5">
                 {imp && <SyncButton onSync={async () => {
                   // 3070 을 GET 으로 다시 읽고 결과를 알려 줘요(board 처럼 실패해도 마지막 사본은 그대로)
@@ -225,7 +240,13 @@ export function Workspace() {
             {imp && !imp.ok && imp.error && <div role="status" className={"mx-2 mb-3 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2 text-xs " + ALERT}><span className="min-w-0 flex-1">Direction Board import paused: {imp.error}. Your copies stay as they were.</span><button type="button" onClick={() => void ws.syncBoard().catch(() => null).then(() => Promise.all([data.reload(), data.reloadMeta()]))} className="rounded-full border border-current px-2.5 py-0.5 max-md:h-11 max-md:px-4">Retry</button></div>}
             {route.view === "goals" && now && !route.goal && <div className="mx-2 mb-4"><Roadmap goals={now.goals} onOpen={goGoal} /></div>}
             {route.view === "list" && <div className="mx-2"><ListFilters areas={areas} area={area} onArea={setArea} q={list.q} onQ={list.setQ} showDone={list.showDone} onShowDone={list.setShowDone} /></div>}
-            {!now && !data.error && <p className="px-3 py-8 text-sm text-muted-foreground">Loading…</p>}
+            {!now && !data.error && (
+              // 불러오는 동안: 구조를 아는 화면이라 줄 모양 뼈대를 보여 줘요(UX-STATE-01)
+              <div aria-busy="true" aria-label="Loading" className="flex flex-col gap-3 px-3 py-2">
+                <div className="h-3 w-24 animate-pulse rounded bg-muted" />
+                {[0, 1, 2, 3, 4].map((i) => <div key={i} className="flex items-center gap-3"><div className="size-[18px] animate-pulse rounded-full bg-muted" /><div className="h-4 flex-1 animate-pulse rounded bg-muted" style={{ maxWidth: 520 - i * 60 }} /></div>)}
+              </div>
+            )}
             {sections.map((s) => (
               <section key={s.id} aria-label={s.title || "Goal"} className={cn("mb-5", s.id.startsWith("goal-") && "mx-2 rounded-2xl border bg-card/40 p-3")}>
                 {s.title && (
@@ -236,7 +257,7 @@ export function Workspace() {
                   </h2>
                 )}
                 {s.id.startsWith("goal-") && s.extra}
-                {s.rows.length > 0 ? <ul className={cn("flex flex-col", s.id.startsWith("goal-") && "mt-2")}>{s.rows.map(renderRow)}</ul> : s.empty && !s.extra ? <p className="px-3 py-2 text-xs text-muted-foreground">{s.empty}</p> : s.empty && s.id.startsWith("goal-") ? <p className="mt-2 px-1 text-xs text-muted-foreground">{s.empty}</p> : null}
+                {s.rows.length > 0 ? <ul className={cn("flex flex-col", s.id.startsWith("goal-") && "mt-2")}>{s.rows.map(renderRow)}</ul> : s.empty && (!s.extra || s.id === "needs") ? <p className="px-3 py-2 text-xs text-muted-foreground">{s.empty}</p> : s.empty && s.id.startsWith("goal-") ? <p className="mt-2 px-1 text-xs text-muted-foreground">{s.empty}</p> : null}
                 {!s.id.startsWith("goal-") && s.extra}
               </section>
             ))}
@@ -244,7 +265,7 @@ export function Workspace() {
         </SidebarInset>
       </SidebarProvider>
 
-      <Detail open={open} onClose={() => { setOpen(null); lastFocus.current?.focus?.() }} onChanged={() => void data.reload()}
+      <Detail open={open} onClose={() => setOpen(null)} returnFocus={() => ((sel && rowTitle(sel)) || lastFocus.current)?.focus?.()} onChanged={() => void data.reload()}
         act={{ approve: actions.approve, reject: actions.reject, resolve: actions.resolve, done: actions.done, ask: actions.ask }}
         areaOf={areaOf} goalOf={(id) => now?.goals.find((g) => g.goal.id === id) ?? null} />
       <CommandPalette open={palette} onOpenChange={setPalette} view={now}
