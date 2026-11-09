@@ -8,7 +8,7 @@
   "background": "#08080A"
  },
  "beat": {
-  "bpm": 112
+  "bpm": 120
  },
  "sources": {
   "gstackLogo": {
@@ -102,12 +102,16 @@
    "type": "video",
    "path": "media/sc-cta.mp4",
    "muted": true
+  },
+  "bed": {
+   "type": "audio",
+   "path": "media/bed-v2.wav"
   }
  },
  "scenes": [
   {
    "id": "hook",
-   "duration": "4.3s",
+   "duration": "3.5s",
    "background": "#08080A",
    "layers": [
     {
@@ -138,7 +142,7 @@
      "color": "#F4ECD2",
      "states": [
       {
-       "at": "0.7s",
+       "at": "0.3s",
        "tokens": [
         {
          "text": "Too"
@@ -168,7 +172,7 @@
   },
   {
    "id": "boatmen",
-   "duration": "5s",
+   "duration": "3.5s",
    "background": "#08080A",
    "layers": [
     {
@@ -199,7 +203,7 @@
      "color": "#F4ECD2",
      "states": [
       {
-       "at": "0.2s",
+       "at": "0.15s",
        "tokens": [
         {
          "text": "Too"
@@ -208,19 +212,10 @@
          "text": "many"
         },
         {
-         "text": "boatmen"
+         "text": "boatmen?"
         },
         {
-         "text": "steer"
-        },
-        {
-         "text": "the"
-        },
-        {
-         "text": "ship"
-        },
-        {
-         "text": "up"
+         "text": "Up"
         },
         {
          "text": "a"
@@ -237,7 +232,7 @@
   },
   {
    "id": "fleet",
-   "duration": "5.9s",
+   "duration": "3s",
    "background": "#08080A",
    "layers": [
     {
@@ -268,7 +263,7 @@
      "color": "#FAFAFA",
      "states": [
       {
-       "at": "0.2s",
+       "at": "0.15s",
        "tokens": [
         {
          "text": "Now"
@@ -287,11 +282,11 @@
      ]
     }
    ],
-   "notes": "beat 3: boats multiply 1→14, each tagged by an agent (Codex, Claude Code, Cursor, Grok Bot, Muse, Pickle, your scripts); HUD age"
+   "notes": "beat 3: boats multiply 1→14 with agent tags (examples), HUD counter"
   },
   {
    "id": "spin",
-   "duration": "3.2s",
+   "duration": "2s",
    "background": "#08080A",
    "layers": [
     {
@@ -322,30 +317,27 @@
      "color": "#FAFAFA",
      "states": [
       {
-       "at": "0.2s",
+       "at": "0.15s",
        "tokens": [
         {
          "text": "Some"
         },
         {
-         "text": "spin"
+         "text": "just"
         },
         {
-         "text": "in"
-        },
-        {
-         "text": "circles."
+         "text": "spin."
         }
        ]
       }
      ]
     }
    ],
-   "notes": "beat 4: boats orbit in place; red mono labels SAME TASK · 4TH TIME, RE-PROPOSED WHAT YOU REJECTED"
+   "notes": "beat 4: boats orbit in place, red labels"
   },
   {
    "id": "rocks",
-   "duration": "3.2s",
+   "duration": "2s",
    "background": "#08080A",
    "layers": [
     {
@@ -376,19 +368,13 @@
      "color": "#FAFAFA",
      "states": [
       {
-       "at": "0.2s",
+       "at": "0.15s",
        "tokens": [
         {
          "text": "Some"
         },
         {
-         "text": "row"
-        },
-        {
-         "text": "onto"
-        },
-        {
-         "text": "the"
+         "text": "hit"
         },
         {
          "text": "rocks."
@@ -398,11 +384,11 @@
      ]
     }
    ],
-   "notes": "beat 5: a boat runs at a reef; SENT THE EMAIL, PAID THE INVOICE, POSTED IT PUBLICLY"
+   "notes": "beat 5: a boat hits the reef, red labels"
   },
   {
    "id": "mountain",
-   "duration": "3.2s",
+   "duration": "2s",
    "background": "#08080A",
    "layers": [
     {
@@ -433,33 +419,27 @@
      "color": "#FAFAFA",
      "states": [
       {
-       "at": "0.2s",
+       "at": "0.15s",
        "tokens": [
         {
          "text": "Some"
         },
         {
-         "text": "sail"
+         "text": "climb"
         },
         {
-         "text": "up"
-        },
-        {
-         "text": "a"
-        },
-        {
-         "text": "mountain."
+         "text": "mountains."
         }
        ]
       }
      ]
     }
    ],
-   "notes": "beat 6: boats climb the mountain; A RESULT NOBODY ASKED FOR"
+   "notes": "beat 6: boats climb the mountain"
   },
   {
    "id": "buried",
-   "duration": "5.4s",
+   "duration": "3.5s",
    "background": "#08080A",
    "layers": [
     {
@@ -490,13 +470,10 @@
      "color": "#FAFAFA",
      "states": [
       {
-       "at": "0.2s",
+       "at": "0.15s",
        "tokens": [
         {
-         "text": "And"
-        },
-        {
-         "text": "the"
+         "text": "The"
         },
         {
          "text": "email"
@@ -515,11 +492,11 @@
      ]
     }
    ],
-   "notes": "beat 7: rebuilt inbox (vector, fictional): agent noise rows pile in; \"Re: pilot pricing — can we start Monday?\" and \"Action need"
+   "notes": "beat 7: rebuilt inbox (fictional): the lead and the important mail sink under agent noise"
   },
   {
    "id": "judgment",
-   "duration": "4.6s",
+   "duration": "4.5s",
    "background": "#08080A",
    "layers": [
     {
@@ -541,16 +518,16 @@
       "style": "fade",
       "duration": "0.2s"
      },
-     "y": 500,
-     "size": 104,
-     "maxWidth": 1300,
+     "y": 250,
+     "size": 96,
+     "maxWidth": 1400,
      "gap": 0.2,
      "font": "serif",
      "weight": "regular",
      "color": "#F4ECD2",
      "states": [
       {
-       "at": "0.5s",
+       "at": "0.2s",
        "tokens": [
         {
          "text": "You"
@@ -587,11 +564,11 @@
      ]
     }
    ],
-   "notes": "beat 8: dark, serif, accent on \"your judgment\""
+   "notes": "beat 8: night; from 2.0 s (roll) the agent cards gather inward, frozen on the silent beat"
   },
   {
    "id": "converge",
-   "duration": "4.4s",
+   "duration": "2s",
    "background": "#08080A",
    "layers": [
     {
@@ -613,7 +590,7 @@
       "style": "fade",
       "duration": "0.2s"
      },
-     "y": 250,
+     "y": 230,
      "size": 120,
      "maxWidth": 1400,
      "gap": 0.2,
@@ -622,7 +599,7 @@
      "color": "#F4ECD2",
      "states": [
       {
-       "at": "3.3s",
+       "at": "0.3s",
        "tokens": [
         {
          "text": "Meet"
@@ -636,15 +613,11 @@
      ]
     }
    ],
-   "notes": "beat 9: chaos peak → pixel dissolve → agent cards slide, overlap and shrink to the centre (1.6 s in-out) → one card: quorum + on",
-   "transition": {
-    "type": "fadewhite",
-    "duration": "0.4s"
-   }
+   "notes": "beat 9: DROP: cards snap into the Quorum seats, lime core lands"
   },
   {
    "id": "landing",
-   "duration": "3s",
+   "duration": "4s",
    "background": "#08080A",
    "layers": [
     {
@@ -652,10 +625,31 @@
      "source": "cap_captures_landing_vid2cap",
      "fit": "cover",
      "start": 0,
-     "end": 3,
+     "end": 1.5,
      "in": {
       "event": "landing"
      },
+     "speed": 1.5,
+     "window": {
+      "x": 272,
+      "y": 214,
+      "width": 1376,
+      "height": 774,
+      "radius": 20,
+      "shadow": true,
+      "border": true
+     }
+    },
+    {
+     "type": "media",
+     "source": "cap_captures_story_vid2cap",
+     "fit": "cover",
+     "start": 1.5,
+     "end": 4,
+     "in": {
+      "event": "story"
+     },
+     "speed": 3,
      "window": {
       "x": 272,
       "y": 214,
@@ -669,47 +663,6 @@
     {
      "type": "text",
      "text": "QUORUM.LIDGEAI.COM",
-     "x": 272,
-     "y": 82,
-     "align": "left",
-     "font": "mono",
-     "weight": "bold",
-     "size": 22,
-     "color": "#D9F99D",
-     "animation": "fade",
-     "start": "0.45s"
-    }
-   ],
-   "notes": "beat 10: capture: landing hero + pixel sea"
-  },
-  {
-   "id": "story",
-   "duration": "4.5s",
-   "background": "#08080A",
-   "layers": [
-    {
-     "type": "media",
-     "source": "cap_captures_story_vid2cap",
-     "fit": "cover",
-     "start": 0,
-     "end": 4.5,
-     "in": {
-      "event": "story"
-     },
-     "speed": 2,
-     "window": {
-      "x": 272,
-      "y": 214,
-      "width": 1376,
-      "height": 774,
-      "radius": 20,
-      "shadow": true,
-      "border": true
-     }
-    },
-    {
-     "type": "text",
-     "text": "THE STORY ON THE LANDING PAGE",
      "x": 272,
      "y": 82,
      "align": "left",
@@ -743,13 +696,10 @@
      "color": "#FAFAFA",
      "states": [
       {
-       "at": "0.2s",
+       "at": "0.15s",
        "tokens": [
         {
-         "text": "Your"
-        },
-        {
-         "text": "agents"
+         "text": "Agents"
         },
         {
          "text": "propose."
@@ -771,11 +721,11 @@
      ]
     }
    ],
-   "notes": "beat 11: capture: landing story scrub, boats → CEO REV QA CSO → one direction"
+   "notes": "beat 10: capture: landing hero, then the story section (boats → CEO REV QA CSO → one direction)"
   },
   {
    "id": "workspace",
-   "duration": "6s",
+   "duration": "4s",
    "background": "#08080A",
    "layers": [
     {
@@ -783,8 +733,9 @@
      "source": "cap_captures_council_vid2cap",
      "fit": "cover",
      "start": 0,
-     "end": 6,
+     "end": 4,
      "in": 0.9,
+     "speed": 1.5,
      "camera": [
       {
        "at": 0,
@@ -793,13 +744,13 @@
        "y": 0.5
       },
       {
-       "at": 1,
+       "at": 0.6,
        "zoom": 1,
        "x": 0.5,
        "y": 0.5
       },
       {
-       "at": 1.7,
+       "at": 1.1,
        "zoom": 1.55,
        "x": 0.5,
        "y": 0.36
@@ -852,7 +803,7 @@
      "color": "#FAFAFA",
      "states": [
       {
-       "at": "0.2s",
+       "at": "0.15s",
        "tokens": [
         {
          "text": "Pick"
@@ -861,16 +812,7 @@
          "text": "a"
         },
         {
-         "text": "line"
-        },
-        {
-         "text": "on"
-        },
-        {
-         "text": "your"
-        },
-        {
-         "text": "board."
+         "text": "task."
         },
         {
          "text": "Send"
@@ -892,11 +834,11 @@
      ]
     }
    ],
-   "notes": "beat 12: capture /w: click a line → summary popup with \"gbrain remembers\" → Send to agent"
+   "notes": "beat 11: capture /w: click a task → popup with gbrain remembers → Send to agent"
   },
   {
    "id": "council",
-   "duration": "7s",
+   "duration": "4s",
    "background": "#08080A",
    "layers": [
     {
@@ -904,8 +846,9 @@
      "source": "cap_captures_council_vid2cap",
      "fit": "cover",
      "start": 0,
-     "end": 2,
-     "in": 19.8,
+     "end": 1,
+     "in": 20.5,
+     "speed": 1.5,
      "camera": [
       {
        "at": 0,
@@ -928,9 +871,10 @@
      "type": "media",
      "source": "cap_captures_council_vid2cap",
      "fit": "cover",
-     "start": 2,
-     "end": 7,
-     "in": 38,
+     "start": 1,
+     "end": 4,
+     "in": 38.5,
+     "speed": 1.5,
      "camera": [
       {
        "at": 0,
@@ -952,7 +896,7 @@
     {
      "type": "stage",
      "start": "0s",
-     "end": "7s",
+     "end": "4s",
      "nodes": [
       {
        "kind": "image",
@@ -1128,11 +1072,11 @@
        "prop": "opacity",
        "keys": [
         {
-         "at": "0.20s",
+         "at": "0.10s",
          "value": 0
         },
         {
-         "at": "0.50s",
+         "at": "0.40s",
          "value": 1,
          "ease": "out"
         }
@@ -1143,56 +1087,56 @@
        "prop": "y",
        "keys": [
         {
+         "at": "0.10s",
+         "value": 266
+        },
+        {
+         "at": "0.45s",
+         "value": 254,
+         "ease": "out"
+        }
+       ]
+      },
+      {
+       "node": "name",
+       "prop": "opacity",
+       "keys": [
+        {
+         "at": "0.13s",
+         "value": 0
+        },
+        {
+         "at": "0.42s",
+         "value": 1,
+         "ease": "out"
+        }
+       ]
+      },
+      {
+       "node": "name",
+       "prop": "y",
+       "keys": [
+        {
+         "at": "0.13s",
+         "value": 266
+        },
+        {
+         "at": "0.47s",
+         "value": 254,
+         "ease": "out"
+        }
+       ]
+      },
+      {
+       "node": "sub",
+       "prop": "opacity",
+       "keys": [
+        {
          "at": "0.20s",
-         "value": 266
-        },
-        {
-         "at": "0.55s",
-         "value": 254,
-         "ease": "out"
-        }
-       ]
-      },
-      {
-       "node": "name",
-       "prop": "opacity",
-       "keys": [
-        {
-         "at": "0.25s",
          "value": 0
         },
         {
-         "at": "0.55s",
-         "value": 1,
-         "ease": "out"
-        }
-       ]
-      },
-      {
-       "node": "name",
-       "prop": "y",
-       "keys": [
-        {
-         "at": "0.25s",
-         "value": 266
-        },
-        {
-         "at": "0.60s",
-         "value": 254,
-         "ease": "out"
-        }
-       ]
-      },
-      {
-       "node": "sub",
-       "prop": "opacity",
-       "keys": [
-        {
-         "at": "0.40s",
-         "value": 0
-        },
-        {
-         "at": "0.70s",
+         "at": "0.50s",
          "value": 1,
          "ease": "out"
         }
@@ -1203,11 +1147,11 @@
        "prop": "y",
        "keys": [
         {
-         "at": "0.40s",
+         "at": "0.20s",
          "value": 338
         },
         {
-         "at": "0.75s",
+         "at": "0.55s",
          "value": 326,
          "ease": "out"
         }
@@ -1218,11 +1162,11 @@
        "prop": "opacity",
        "keys": [
         {
-         "at": "0.50s",
+         "at": "0.25s",
          "value": 0
         },
         {
-         "at": "0.80s",
+         "at": "0.55s",
          "value": 1,
          "ease": "out"
         }
@@ -1233,11 +1177,11 @@
        "prop": "y",
        "keys": [
         {
-         "at": "0.50s",
+         "at": "0.25s",
          "value": 394
         },
         {
-         "at": "0.85s",
+         "at": "0.60s",
          "value": 382,
          "ease": "out"
         }
@@ -1248,11 +1192,11 @@
        "prop": "color",
        "keys": [
         {
-         "at": "3.90s",
+         "at": "1.95s",
          "value": "#4B5060"
         },
         {
-         "at": "4.15s",
+         "at": "2.08s",
          "value": "#D9F99D",
          "ease": "out"
         }
@@ -1263,11 +1207,11 @@
        "prop": "opacity",
        "keys": [
         {
-         "at": "0.50s",
+         "at": "0.25s",
          "value": 0
         },
         {
-         "at": "0.80s",
+         "at": "0.55s",
          "value": 1,
          "ease": "out"
         }
@@ -1278,11 +1222,11 @@
        "prop": "y",
        "keys": [
         {
-         "at": "0.50s",
+         "at": "0.25s",
          "value": 394
         },
         {
-         "at": "0.85s",
+         "at": "0.60s",
          "value": 382,
          "ease": "out"
         }
@@ -1293,11 +1237,11 @@
        "prop": "color",
        "keys": [
         {
-         "at": "4.02s",
+         "at": "2.01s",
          "value": "#4B5060"
         },
         {
-         "at": "4.27s",
+         "at": "2.14s",
          "value": "#D9F99D",
          "ease": "out"
         }
@@ -1308,11 +1252,11 @@
        "prop": "opacity",
        "keys": [
         {
-         "at": "0.50s",
+         "at": "0.25s",
          "value": 0
         },
         {
-         "at": "0.80s",
+         "at": "0.55s",
          "value": 1,
          "ease": "out"
         }
@@ -1323,11 +1267,11 @@
        "prop": "y",
        "keys": [
         {
-         "at": "0.50s",
+         "at": "0.25s",
          "value": 394
         },
         {
-         "at": "0.85s",
+         "at": "0.60s",
          "value": 382,
          "ease": "out"
         }
@@ -1338,11 +1282,11 @@
        "prop": "color",
        "keys": [
         {
-         "at": "4.14s",
+         "at": "2.07s",
          "value": "#4B5060"
         },
         {
-         "at": "4.39s",
+         "at": "2.20s",
          "value": "#D9F99D",
          "ease": "out"
         }
@@ -1353,11 +1297,11 @@
        "prop": "opacity",
        "keys": [
         {
-         "at": "0.50s",
+         "at": "0.25s",
          "value": 0
         },
         {
-         "at": "0.80s",
+         "at": "0.55s",
          "value": 1,
          "ease": "out"
         }
@@ -1368,11 +1312,11 @@
        "prop": "y",
        "keys": [
         {
-         "at": "0.50s",
+         "at": "0.25s",
          "value": 394
         },
         {
-         "at": "0.85s",
+         "at": "0.60s",
          "value": 382,
          "ease": "out"
         }
@@ -1383,11 +1327,11 @@
        "prop": "color",
        "keys": [
         {
-         "at": "4.26s",
+         "at": "2.13s",
          "value": "#4B5060"
         },
         {
-         "at": "4.51s",
+         "at": "2.26s",
          "value": "#D9F99D",
          "ease": "out"
         }
@@ -1398,11 +1342,11 @@
        "prop": "opacity",
        "keys": [
         {
-         "at": "4.50s",
+         "at": "2.25s",
          "value": 0
         },
         {
-         "at": "4.80s",
+         "at": "2.55s",
          "value": 1,
          "ease": "out"
         }
@@ -1413,11 +1357,11 @@
        "prop": "y",
        "keys": [
         {
-         "at": "4.50s",
+         "at": "2.25s",
          "value": 464
         },
         {
-         "at": "4.85s",
+         "at": "2.60s",
          "value": 452,
          "ease": "out"
         }
@@ -1428,11 +1372,11 @@
        "prop": "opacity",
        "keys": [
         {
-         "at": "4.50s",
+         "at": "2.25s",
          "value": 0
         },
         {
-         "at": "4.80s",
+         "at": "2.55s",
          "value": 1,
          "ease": "out"
         }
@@ -1443,11 +1387,11 @@
        "prop": "y",
        "keys": [
         {
-         "at": "4.50s",
+         "at": "2.25s",
          "value": 464
         },
         {
-         "at": "4.85s",
+         "at": "2.60s",
          "value": 452,
          "ease": "out"
         }
@@ -1458,11 +1402,11 @@
        "prop": "opacity",
        "keys": [
         {
-         "at": "4.75s",
+         "at": "2.38s",
          "value": 0
         },
         {
-         "at": "5.05s",
+         "at": "2.67s",
          "value": 1,
          "ease": "out"
         }
@@ -1473,11 +1417,11 @@
        "prop": "y",
        "keys": [
         {
-         "at": "4.75s",
+         "at": "2.38s",
          "value": 514
         },
         {
-         "at": "5.10s",
+         "at": "2.73s",
          "value": 502,
          "ease": "out"
         }
@@ -1488,11 +1432,11 @@
        "prop": "opacity",
        "keys": [
         {
-         "at": "4.75s",
+         "at": "2.38s",
          "value": 0
         },
         {
-         "at": "5.05s",
+         "at": "2.67s",
          "value": 1,
          "ease": "out"
         }
@@ -1503,11 +1447,11 @@
        "prop": "y",
        "keys": [
         {
-         "at": "4.75s",
+         "at": "2.38s",
          "value": 514
         },
         {
-         "at": "5.10s",
+         "at": "2.73s",
          "value": 502,
          "ease": "out"
         }
@@ -1518,11 +1462,11 @@
        "prop": "opacity",
        "keys": [
         {
-         "at": "5.00s",
+         "at": "2.50s",
          "value": 0
         },
         {
-         "at": "5.30s",
+         "at": "2.80s",
          "value": 1,
          "ease": "out"
         }
@@ -1533,11 +1477,11 @@
        "prop": "y",
        "keys": [
         {
-         "at": "5.00s",
+         "at": "2.50s",
          "value": 564
         },
         {
-         "at": "5.35s",
+         "at": "2.85s",
          "value": 552,
          "ease": "out"
         }
@@ -1548,11 +1492,11 @@
        "prop": "opacity",
        "keys": [
         {
-         "at": "5.00s",
+         "at": "2.50s",
          "value": 0
         },
         {
-         "at": "5.30s",
+         "at": "2.80s",
          "value": 1,
          "ease": "out"
         }
@@ -1563,11 +1507,11 @@
        "prop": "y",
        "keys": [
         {
-         "at": "5.00s",
+         "at": "2.50s",
          "value": 564
         },
         {
-         "at": "5.35s",
+         "at": "2.85s",
          "value": 552,
          "ease": "out"
         }
@@ -1617,25 +1561,16 @@
      "color": "#FAFAFA",
      "states": [
       {
-       "at": "0.2s",
+       "at": "0.15s",
        "tokens": [
         {
          "text": "gstack's"
         },
         {
-         "text": "CEO,"
+         "text": "four"
         },
         {
-         "text": "Reviewer,"
-        },
-        {
-         "text": "QA"
-        },
-        {
-         "text": "and"
-        },
-        {
-         "text": "CSO"
+         "text": "roles"
         },
         {
          "text": "question"
@@ -1651,11 +1586,11 @@
      ]
     }
    ],
-   "notes": "beat 13: capture: CEO · Reviewer · QA · CSO critiques → pass / hold / reject; gstack logo badge + four role chips light as each c"
+   "notes": "beat 12: capture: CEO · Reviewer · QA · CSO critiques → pass / hold; panel lights the four roles (Gstack award beat)"
   },
   {
    "id": "execute",
-   "duration": "4.5s",
+   "duration": "4s",
    "background": "#08080A",
    "layers": [
     {
@@ -1663,8 +1598,9 @@
      "source": "cap_captures_council_vid2cap",
      "fit": "cover",
      "start": 0,
-     "end": 2.3,
+     "end": 1.3,
      "in": 50,
+     "speed": 1.5,
      "camera": [
       {
        "at": 0,
@@ -1687,9 +1623,10 @@
      "type": "media",
      "source": "cap_captures_council_vid2cap",
      "fit": "cover",
-     "start": 2.3,
-     "end": 4.5,
+     "start": 1.3,
+     "end": 4,
      "in": 92,
+     "speed": 1.5,
      "camera": [
       {
        "at": 0,
@@ -1711,7 +1648,7 @@
     {
      "type": "stage",
      "start": "0s",
-     "end": "4.5s",
+     "end": "4s",
      "nodes": [
       {
        "kind": "image",
@@ -1835,11 +1772,11 @@
        "prop": "opacity",
        "keys": [
         {
-         "at": "0.20s",
+         "at": "0.11s",
          "value": 0
         },
         {
-         "at": "0.50s",
+         "at": "0.41s",
          "value": 1,
          "ease": "out"
         }
@@ -1850,11 +1787,11 @@
        "prop": "y",
        "keys": [
         {
-         "at": "0.20s",
+         "at": "0.11s",
          "value": 266
         },
         {
-         "at": "0.55s",
+         "at": "0.46s",
          "value": 254,
          "ease": "out"
         }
@@ -1865,11 +1802,11 @@
        "prop": "opacity",
        "keys": [
         {
-         "at": "0.25s",
+         "at": "0.14s",
          "value": 0
         },
         {
-         "at": "0.55s",
+         "at": "0.44s",
          "value": 1,
          "ease": "out"
         }
@@ -1880,11 +1817,11 @@
        "prop": "y",
        "keys": [
         {
-         "at": "0.25s",
+         "at": "0.14s",
          "value": 266
         },
         {
-         "at": "0.60s",
+         "at": "0.49s",
          "value": 254,
          "ease": "out"
         }
@@ -1895,11 +1832,11 @@
        "prop": "opacity",
        "keys": [
         {
-         "at": "0.40s",
+         "at": "0.22s",
          "value": 0
         },
         {
-         "at": "0.70s",
+         "at": "0.52s",
          "value": 1,
          "ease": "out"
         }
@@ -1910,11 +1847,11 @@
        "prop": "y",
        "keys": [
         {
-         "at": "0.40s",
+         "at": "0.22s",
          "value": 338
         },
         {
-         "at": "0.75s",
+         "at": "0.57s",
          "value": 326,
          "ease": "out"
         }
@@ -1925,11 +1862,11 @@
        "prop": "opacity",
        "keys": [
         {
-         "at": "0.60s",
+         "at": "0.33s",
          "value": 0
         },
         {
-         "at": "0.90s",
+         "at": "0.63s",
          "value": 1,
          "ease": "out"
         }
@@ -1940,11 +1877,11 @@
        "prop": "y",
        "keys": [
         {
-         "at": "0.60s",
+         "at": "0.33s",
          "value": 402
         },
         {
-         "at": "0.95s",
+         "at": "0.68s",
          "value": 390,
          "ease": "out"
         }
@@ -1955,11 +1892,11 @@
        "prop": "opacity",
        "keys": [
         {
-         "at": "0.70s",
+         "at": "0.39s",
          "value": 0
         },
         {
-         "at": "1.00s",
+         "at": "0.69s",
          "value": 1,
          "ease": "out"
         }
@@ -1970,11 +1907,11 @@
        "prop": "y",
        "keys": [
         {
-         "at": "0.70s",
+         "at": "0.39s",
          "value": 442
         },
         {
-         "at": "1.05s",
+         "at": "0.73s",
          "value": 430,
          "ease": "out"
         }
@@ -1985,11 +1922,11 @@
        "prop": "opacity",
        "keys": [
         {
-         "at": "1.00s",
+         "at": "0.55s",
          "value": 0
         },
         {
-         "at": "1.30s",
+         "at": "0.85s",
          "value": 1,
          "ease": "out"
         }
@@ -2000,11 +1937,11 @@
        "prop": "y",
        "keys": [
         {
-         "at": "1.00s",
+         "at": "0.55s",
          "value": 506
         },
         {
-         "at": "1.35s",
+         "at": "0.90s",
          "value": 494,
          "ease": "out"
         }
@@ -2015,11 +1952,11 @@
        "prop": "opacity",
        "keys": [
         {
-         "at": "1.10s",
+         "at": "0.61s",
          "value": 0
         },
         {
-         "at": "1.40s",
+         "at": "0.91s",
          "value": 1,
          "ease": "out"
         }
@@ -2030,11 +1967,11 @@
        "prop": "y",
        "keys": [
         {
-         "at": "1.10s",
+         "at": "0.61s",
          "value": 546
         },
         {
-         "at": "1.45s",
+         "at": "0.96s",
          "value": 534,
          "ease": "out"
         }
@@ -2045,11 +1982,11 @@
        "prop": "opacity",
        "keys": [
         {
-         "at": "2.50s",
+         "at": "1.38s",
          "value": 0
         },
         {
-         "at": "2.80s",
+         "at": "1.68s",
          "value": 1,
          "ease": "out"
         }
@@ -2060,11 +1997,11 @@
        "prop": "y",
        "keys": [
         {
-         "at": "2.50s",
+         "at": "1.38s",
          "value": 610
         },
         {
-         "at": "2.85s",
+         "at": "1.73s",
          "value": 598,
          "ease": "out"
         }
@@ -2075,11 +2012,11 @@
        "prop": "opacity",
        "keys": [
         {
-         "at": "2.60s",
+         "at": "1.43s",
          "value": 0
         },
         {
-         "at": "2.90s",
+         "at": "1.73s",
          "value": 1,
          "ease": "out"
         }
@@ -2090,11 +2027,11 @@
        "prop": "y",
        "keys": [
         {
-         "at": "2.60s",
+         "at": "1.43s",
          "value": 650
         },
         {
-         "at": "2.95s",
+         "at": "1.78s",
          "value": 638,
          "ease": "out"
         }
@@ -2144,7 +2081,7 @@
      "color": "#FAFAFA",
      "states": [
       {
-       "at": "0.2s",
+       "at": "0.15s",
        "tokens": [
         {
          "text": "Only"
@@ -2159,10 +2096,7 @@
          "text": "runs."
         },
         {
-         "text": "Risky"
-        },
-        {
-         "text": "sends"
+         "text": "Sends"
         },
         {
          "text": "wait"
@@ -2178,11 +2112,11 @@
      ]
     }
    ],
-   "notes": "beat 14: capture: passed work runs in Aside; the send is held"
+   "notes": "beat 13: capture: Aside reads the public page; the reply is held"
   },
   {
    "id": "reuse",
-   "duration": "5s",
+   "duration": "4s",
    "background": "#08080A",
    "layers": [
     {
@@ -2190,8 +2124,9 @@
      "source": "cap_captures_reuse_vid2cap",
      "fit": "cover",
      "start": 0,
-     "end": 5,
-     "in": 3.3,
+     "end": 4,
+     "in": 3,
+     "speed": 1.5,
      "camera": [
       {
        "at": 0,
@@ -2213,7 +2148,7 @@
     {
      "type": "stage",
      "start": "0s",
-     "end": "5s",
+     "end": "4s",
      "nodes": [
       {
        "kind": "image",
@@ -2325,11 +2260,11 @@
        "prop": "opacity",
        "keys": [
         {
-         "at": "0.20s",
+         "at": "0.15s",
          "value": 0
         },
         {
-         "at": "0.50s",
+         "at": "0.45s",
          "value": 1,
          "ease": "out"
         }
@@ -2340,11 +2275,11 @@
        "prop": "y",
        "keys": [
         {
-         "at": "0.20s",
+         "at": "0.15s",
          "value": 266
         },
         {
-         "at": "0.55s",
+         "at": "0.50s",
          "value": 254,
          "ease": "out"
         }
@@ -2355,11 +2290,11 @@
        "prop": "opacity",
        "keys": [
         {
-         "at": "0.40s",
+         "at": "0.30s",
          "value": 0
         },
         {
-         "at": "0.70s",
+         "at": "0.60s",
          "value": 1,
          "ease": "out"
         }
@@ -2370,11 +2305,11 @@
        "prop": "y",
        "keys": [
         {
-         "at": "0.40s",
+         "at": "0.30s",
          "value": 338
         },
         {
-         "at": "0.75s",
+         "at": "0.65s",
          "value": 326,
          "ease": "out"
         }
@@ -2385,11 +2320,11 @@
        "prop": "opacity",
        "keys": [
         {
-         "at": "0.60s",
+         "at": "0.45s",
          "value": 0
         },
         {
-         "at": "0.90s",
+         "at": "0.75s",
          "value": 1,
          "ease": "out"
         }
@@ -2400,11 +2335,11 @@
        "prop": "y",
        "keys": [
         {
-         "at": "0.60s",
+         "at": "0.45s",
          "value": 402
         },
         {
-         "at": "0.95s",
+         "at": "0.80s",
          "value": 390,
          "ease": "out"
         }
@@ -2415,11 +2350,11 @@
        "prop": "opacity",
        "keys": [
         {
-         "at": "0.70s",
+         "at": "0.52s",
          "value": 0
         },
         {
-         "at": "1.00s",
+         "at": "0.82s",
          "value": 1,
          "ease": "out"
         }
@@ -2430,11 +2365,11 @@
        "prop": "y",
        "keys": [
         {
-         "at": "0.70s",
+         "at": "0.52s",
          "value": 442
         },
         {
-         "at": "1.05s",
+         "at": "0.87s",
          "value": 430,
          "ease": "out"
         }
@@ -2445,11 +2380,11 @@
        "prop": "opacity",
        "keys": [
         {
-         "at": "2.60s",
+         "at": "1.95s",
          "value": 0
         },
         {
-         "at": "2.90s",
+         "at": "2.25s",
          "value": 1,
          "ease": "out"
         }
@@ -2460,11 +2395,11 @@
        "prop": "y",
        "keys": [
         {
-         "at": "2.60s",
+         "at": "1.95s",
          "value": 514
         },
         {
-         "at": "2.95s",
+         "at": "2.30s",
          "value": 502,
          "ease": "out"
         }
@@ -2475,11 +2410,11 @@
        "prop": "opacity",
        "keys": [
         {
-         "at": "2.70s",
+         "at": "2.03s",
          "value": 0
         },
         {
-         "at": "3.00s",
+         "at": "2.33s",
          "value": 1,
          "ease": "out"
         }
@@ -2490,11 +2425,11 @@
        "prop": "y",
        "keys": [
         {
-         "at": "2.70s",
+         "at": "2.03s",
          "value": 554
         },
         {
-         "at": "3.05s",
+         "at": "2.38s",
          "value": 542,
          "ease": "out"
         }
@@ -2505,11 +2440,11 @@
        "prop": "opacity",
        "keys": [
         {
-         "at": "2.90s",
+         "at": "2.17s",
          "value": 0
         },
         {
-         "at": "3.20s",
+         "at": "2.47s",
          "value": 1,
          "ease": "out"
         }
@@ -2520,11 +2455,11 @@
        "prop": "y",
        "keys": [
         {
-         "at": "2.90s",
+         "at": "2.17s",
          "value": 614
         },
         {
-         "at": "3.25s",
+         "at": "2.52s",
          "value": 602,
          "ease": "out"
         }
@@ -2535,11 +2470,11 @@
        "prop": "opacity",
        "keys": [
         {
-         "at": "3.00s",
+         "at": "2.25s",
          "value": 0
         },
         {
-         "at": "3.30s",
+         "at": "2.55s",
          "value": 1,
          "ease": "out"
         }
@@ -2550,11 +2485,11 @@
        "prop": "y",
        "keys": [
         {
-         "at": "3.00s",
+         "at": "2.25s",
          "value": 654
         },
         {
-         "at": "3.35s",
+         "at": "2.60s",
          "value": 642,
          "ease": "out"
         }
@@ -2604,7 +2539,7 @@
      "color": "#FAFAFA",
      "states": [
       {
-       "at": "0.2s",
+       "at": "0.15s",
        "tokens": [
         {
          "text": "gbrain"
@@ -2632,11 +2567,11 @@
      ]
     }
    ],
-   "notes": "beat 15: capture: same request → verdicts reused from gbrain; gbrain logo badge, the recalled verdict page id (quorum/verdicts/<r"
+   "notes": "beat 14: capture: same request → verdicts reused; panel 35 s → 0.9 s (Gbrain award beat)"
   },
   {
    "id": "heal",
-   "duration": "3.8s",
+   "duration": "2s",
    "background": "#08080A",
    "layers": [
     {
@@ -2644,9 +2579,9 @@
      "source": "cap_captures_recipe4_vid2cap",
      "fit": "cover",
      "start": 0,
-     "end": 3.8,
+     "end": 2,
      "in": 5,
-     "speed": 2,
+     "speed": 4,
      "camera": [
       {
        "at": 0,
@@ -2701,43 +2636,27 @@
      "color": "#FAFAFA",
      "states": [
       {
-       "at": "0.2s",
+       "at": "0.15s",
        "tokens": [
         {
          "text": "APIs"
         },
         {
-         "text": "that"
+         "text": "repair"
         },
         {
-         "text": "break"
-        },
-        {
-         "text": "get"
-        },
-        {
-         "text": "repaired:"
-        },
-        {
-         "text": "recipe"
-        },
-        {
-         "text": "v3."
+         "text": "themselves."
         }
        ]
       }
      ]
     }
    ],
-   "notes": "beat 16: terminal capture: recipe v2 404 → Aside → v3 PASS",
-   "transition": {
-    "type": "fade",
-    "duration": "0.3s"
-   }
+   "notes": "beat 15: recorded terminal run rmw8phbj41fbe4b: v2 404 → Aside → v3"
   },
   {
    "id": "mcp",
-   "duration": "3.6s",
+   "duration": "4s",
    "background": "#08080A",
    "layers": [
     {
@@ -2768,7 +2687,7 @@
      "color": "#FAFAFA",
      "states": [
       {
-       "at": "0.2s",
+       "at": "0.15s",
        "tokens": [
         {
          "text": "Bring"
@@ -2796,11 +2715,11 @@
      ]
     }
    ],
-   "notes": "beat 17: rebuilt: agent chips → quorum_propose over MCP"
+   "notes": "beat 16: rebuilt: agent chips → quorum_propose over MCP"
   },
   {
    "id": "built",
-   "duration": "4.2s",
+   "duration": "2s",
    "background": "#08080A",
    "layers": [
     {
@@ -2831,42 +2750,24 @@
      "color": "#FAFAFA",
      "states": [
       {
-       "at": "0.2s",
+       "at": "0.1s",
        "tokens": [
         {
          "text": "Built"
         },
         {
          "text": "on"
-        },
-        {
-         "text": "Aside,"
-        },
-        {
-         "text": "gbrain,"
-        },
-        {
-         "text": "gstack,"
-        },
-        {
-         "text": "Direction"
-        },
-        {
-         "text": "Board,"
-        },
-        {
-         "text": "Codex."
         }
        ]
       }
      ]
     }
    ],
-   "notes": "beat 18: logos: Aside · gbrain · gstack · Direction Board · Codex"
+   "notes": "beat 17: logos: Aside · gbrain · gstack · Direction Board · Codex"
   },
   {
    "id": "cta",
-   "duration": "4.5s",
+   "duration": "4s",
    "background": "#08080A",
    "layers": [
     {
@@ -2875,71 +2776,31 @@
      "fit": "cover"
     }
    ],
-   "notes": "beat 19: wordmark, one boat sails the moon path"
+   "notes": "beat 18: wordmark, one boat sails the moon path"
   }
  ],
- "qa": {
-  "waive": [
-   {
-    "check": "contrast",
-    "from": 38.8,
-    "to": 39.7,
-    "reason": "fadewhite from the night close-up into the light landing capture: text is sampled while the frame is washing to white"
-   }
-  ]
- },
  "audio": {
   "music": {
-   "synth": {
-    "preset": "launch",
-    "key": "Am",
-    "sections": [
-     {
-      "at": 0,
-      "energy": "intro"
-     },
-     {
-      "at": 9.3,
-      "energy": "build"
-     },
-     {
-      "at": 30.2,
-      "energy": "break"
-     },
-     {
-      "at": 38.1,
-      "energy": "drop"
-     },
-     {
-      "at": 76.6,
-      "energy": "outro"
-     }
-    ]
-   },
-   "volume": 0.75,
-   "fadeOut": "1.5s"
+   "source": "bed",
+   "volume": 1,
+   "fadeOut": "0.6s"
   },
-  "autoCues": true,
+  "autoCues": false,
   "cues": [
    {
-    "at": 19.9,
-    "sfx": "preset:impact",
-    "volume": 0.6
+    "at": 30.637,
+    "sfx": "preset:click",
+    "volume": 0.4
    },
    {
-    "at": 30.7,
-    "sfx": "preset:shimmer",
-    "volume": 0.5
+    "at": 32.535,
+    "sfx": "preset:click",
+    "volume": 0.18
    },
    {
-    "at": 36.75,
-    "sfx": "preset:riser",
-    "anchor": "start",
-    "volume": 0.6
-   },
-   {
-    "at": 38.1,
-    "sfx": "preset:impact"
+    "at": 43.391,
+    "sfx": "preset:click",
+    "volume": 0.4
    }
   ]
  }

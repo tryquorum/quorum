@@ -22,29 +22,32 @@ synthesized music bed, −14 LUFS. Replaces the 61 s film in `video/timeline.jso
 4. "You need something that stands in for your judgment." Quorum: gstack roles argue first, only what passes runs in Aside or Codex,
    gbrain remembers your call, the direction lives on your board.
 
-## Beat sheet (85.3 s; hard cap 90 s, target 80–88 s — submission form: PUBLIC 90-second video link)
+## Beat sheet v2 (58.0 s at 120 BPM — beat 0.5 s, bar 2.0 s; drop at 24.0 s; v1 85.3 s sheet is in STORY-v1.md)
+
+User feedback on v1: "1.5배 하고 비트 드랍이 없어." Every cut sits on a beat, every cut after the drop on a bar; hard cuts only.
+Music (`music.mjs`): low-pass-swept buildup 0–21.5, riser 16–23.5, one-bar snare roll 21.5–23.5, one silent beat 23.5–24.0, kick+bass+impact
+drop at 24.0 on the convergence, outro 54–58. Captures play at 1.5x (story scrub 3x, terminal 4x) with the waits cut by in-points.
 
 | # | t (s) | dur | id | picture | caption |
 |---|---|---|---|---|---|
-| 1 | 0.0 | 4.3 | hook | night pixel sea, empty, moon | Too many cooks spoil the broth. |
-| 2 | 4.3 | 5.0 | boatmen | one boat on the moon path | Too many boatmen steer the ship up a mountain. (small, Korean original: 사공이 많으면 배가 산으로 간다 · 船頭多くして船山に登る) |
-| 3 | 9.3 | 5.9 | fleet | boats multiply 1→14, each tagged by an agent (Codex, Claude Code, Cursor, Grok Bot, Muse, Pickle, your scripts); HUD agents/directions counter | Now everyone has agents. (small label: your agents — examples) |
-| 4 | 15.2 | 3.2 | spin | boats orbit in place; red mono labels SAME TASK · 4TH TIME, RE-PROPOSED WHAT YOU REJECTED | Some spin in circles. |
-| 5 | 18.4 | 3.2 | rocks | a boat runs at a reef; SENT THE EMAIL, PAID THE INVOICE, POSTED IT PUBLICLY | Some row onto the rocks. |
-| 6 | 21.6 | 3.2 | mountain | boats climb the mountain; A RESULT NOBODY ASKED FOR | Some sail up a mountain. |
-| 7 | 24.8 | 5.4 | buried | rebuilt inbox (vector, fictional): agent noise rows pile in; "Re: pilot pricing — can we start Monday?" and "Action needed: confirm your demo slot" slide under | And the email that mattered sinks. |
-| 8 | 30.2 | 4.6 | judgment | dark, serif, accent on "your judgment" | You need something that stands in for your judgment. |
-| 9 | 34.8 | 4.4 | converge | chaos peak → pixel dissolve → agent cards slide, overlap and shrink to the centre (1.6 s in-out) → one card: quorum + one boat | Meet Quorum. |
-| 10 | 39.2 | 3.0 | landing | capture: landing hero + pixel sea | (the site headline) |
-| 11 | 42.2 | 4.5 | story | capture: landing story scrub, boats → CEO REV QA CSO → one direction | Your agents propose. The council argues first. |
-| 12 | 46.7 | 6.0 | workspace | capture /w: click a line → summary popup with "gbrain remembers" → Send to agent | Pick a line on your board. Send it to the council. |
-| 13 | 52.7 | 7.0 | council | capture: CEO · Reviewer · QA · CSO critiques → pass / hold / reject; gstack logo badge + four role chips light as each critique lands (Gstack award beat) | gstack's CEO, Reviewer, QA and CSO question every proposal. |
-| 14 | 59.7 | 4.5 | execute | capture: passed work runs in Aside; the send is held | Only what passes runs. Risky sends wait for you. |
-| 15 | 64.2 | 5.0 | reuse | capture: same request → verdicts reused from gbrain; gbrain logo badge, the recalled verdict page id (quorum/verdicts/<runId>) and both measured run times side by side (Gbrain award beat) | gbrain remembers your call, and reuses it. |
-| 16 | 69.2 | 3.8 | heal | terminal capture: recipe v2 404 → Aside → v3 PASS | APIs that break get repaired: recipe v3. |
-| 17 | 73.0 | 3.6 | mcp | rebuilt: agent chips → quorum_propose over MCP | Bring your own agents — over MCP. |
-| 18 | 76.6 | 4.2 | built | logos: Aside · gbrain · gstack · Direction Board · Codex | Built on Aside, gbrain, gstack, Direction Board, Codex. |
-| 19 | 80.8 | 4.5 | cta | wordmark, one boat sails the moon path | quorum.lidgeai.com · github.com/tryquorum/quorum |
+| 1 | 0.0 | 3.5 | hook | night pixel sea, empty, moon | Too many cooks spoil the broth. |
+| 2 | 3.5 | 3.5 | boatmen | one boat on the moon path | Too many boatmen? Up a mountain. (small, Korean original: 사공이 많으면 배가 산으로 간다 · 船頭多くして船山に登る) |
+| 3 | 7.0 | 3.0 | fleet | boats multiply 1→14 with agent tags (examples), HUD counter | Now everyone has agents. (small label: your agents — examples) |
+| 4 | 10.0 | 2.0 | spin | boats orbit in place, red labels | Some just spin. |
+| 5 | 12.0 | 2.0 | rocks | a boat hits the reef, red labels | Some hit rocks. |
+| 6 | 14.0 | 2.0 | mountain | boats climb the mountain | Some climb mountains. |
+| 7 | 16.0 | 3.5 | buried | rebuilt inbox (fictional): the lead and the important mail sink under agent noise | The email that mattered sinks. |
+| 8 | 19.5 | 4.5 | judgment | night; from 2.0 s (roll) the agent cards gather inward, frozen on the silent beat | You need something that stands in for your judgment. |
+| 9 | 24.0 | 2.0 | converge | DROP: cards snap into the Quorum seats, lime core lands | Meet Quorum. |
+| 10 | 26.0 | 4.0 | landing | capture: landing hero, then the story section (boats → CEO REV QA CSO → one direction) | Agents propose. The council argues first. |
+| 11 | 30.0 | 4.0 | workspace | capture /w: click a task → popup with gbrain remembers → Send to agent | Pick a task. Send it to the council. |
+| 12 | 34.0 | 4.0 | council | capture: CEO · Reviewer · QA · CSO critiques → pass / hold; panel lights the four roles (Gstack award beat) | gstack's four roles question every proposal. |
+| 13 | 38.0 | 4.0 | execute | capture: Aside reads the public page; the reply is held | Only what passes runs. Sends wait for you. |
+| 14 | 42.0 | 4.0 | reuse | capture: same request → verdicts reused; panel 35 s → 0.9 s (Gbrain award beat) | gbrain remembers your call, and reuses it. |
+| 15 | 46.0 | 2.0 | heal | recorded terminal run rmw8phbj41fbe4b: v2 404 → Aside → v3 | APIs repair themselves. |
+| 16 | 48.0 | 4.0 | mcp | rebuilt: agent chips → quorum_propose over MCP | Bring your own agents — over MCP. |
+| 17 | 52.0 | 2.0 | built | logos: Aside · gbrain · gstack · Direction Board · Codex | Built on |
+| 18 | 54.0 | 4.0 | cta | wordmark, one boat sails the moon path | quorum.lidgeai.com · github.com/tryquorum/quorum |
 
 Award beats: the form lists the Gbrain / Gstack award, so beat 13 (gstack's four roles arguing, real run) and beat 15 (gbrain recalling a stored verdict, real run) are the clearest shots in the film; gbrain also appears in beat 12's popup ("gbrain remembers").
 

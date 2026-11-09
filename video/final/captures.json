@@ -1,20 +1,27 @@
 {
  "landing": {
-  "session": "captures/landing.vid2cap",
-  "in": {
-   "event": "landing"
-  }
- },
- "story": {
-  "session": "captures/story.vid2cap",
-  "in": {
-   "event": "story"
-  },
-  "speed": 2
+  "parts": [
+   {
+    "session": "captures/landing.vid2cap",
+    "in": {
+     "event": "landing"
+    },
+    "dur": 1.5,
+    "speed": 1.5
+   },
+   {
+    "session": "captures/story.vid2cap",
+    "in": {
+     "event": "story"
+    },
+    "speed": 3
+   }
+  ]
  },
  "workspace": {
   "session": "captures/council.vid2cap",
   "in": 0.9,
+  "speed": 1.5,
   "camera": [
    {
     "at": 0,
@@ -23,13 +30,13 @@
     "y": 0.5
    },
    {
-    "at": 1,
+    "at": 0.6,
     "zoom": 1,
     "x": 0.5,
     "y": 0.5
    },
    {
-    "at": 1.7,
+    "at": 1.1,
     "zoom": 1.55,
     "x": 0.5,
     "y": 0.36
@@ -40,13 +47,14 @@
  "council": {
   "session": "captures/council.vid2cap",
   "split": true,
+  "speed": 1.5,
   "parts": [
    {
-    "in": 19.8,
-    "dur": 2
+    "in": 20.5,
+    "dur": 1
    },
    {
-    "in": 38
+    "in": 38.5
    }
   ],
   "camera": [
@@ -56,15 +64,20 @@
     "x": 0.5,
     "y": 0.4
    }
-  ]
+  ],
+  "panel": {
+   "kind": "gstack",
+   "scale": 0.5
+  }
  },
  "execute": {
   "session": "captures/council.vid2cap",
   "split": true,
+  "speed": 1.5,
   "parts": [
    {
     "in": 50,
-    "dur": 2.3
+    "dur": 1.3
    },
    {
     "in": 92
@@ -77,12 +90,17 @@
     "x": 0.5,
     "y": 0.45
    }
-  ]
+  ],
+  "panel": {
+   "kind": "aside",
+   "scale": 0.55
+  }
  },
  "reuse": {
   "session": "captures/reuse.vid2cap",
   "split": true,
-  "in": 3.3,
+  "speed": 1.5,
+  "in": 3,
   "camera": [
    {
     "at": 0,
@@ -90,12 +108,16 @@
     "x": 0.5,
     "y": 0.4
    }
-  ]
+  ],
+  "panel": {
+   "kind": "gbrain",
+   "scale": 0.75
+  }
  },
  "heal": {
   "session": "captures/recipe4.vid2cap",
   "in": 5,
-  "speed": 2,
+  "speed": 4,
   "camera": [
    {
     "at": 0,
