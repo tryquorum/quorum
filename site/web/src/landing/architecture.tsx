@@ -25,7 +25,7 @@ function Roles({ x, y, w, h, cols }: { x: number; y: number; w: number; h: numbe
       <rect x={x} y={y} width={w} height={h} rx={14} fill={C.card} stroke={C.escalate} strokeOpacity={0.55} />
       <rect x={x} y={y} width={w} height={h} rx={14} fill={C.escalate} fillOpacity={0.05} />
       <text x={x + 14} y={y + 22} fontSize={13} fontWeight={600} fill={C.fg}>gstack roles argue</text>
-      <text x={x + w - 14} y={y + 22} textAnchor="end" fontSize={11} fill={C.muted} fontFamily="var(--font-mono)">keep · cut · escalate</text>
+      {cols > 2 && <text x={x + w - 14} y={y + 22} textAnchor="end" fontSize={11} fill={C.muted} fontFamily="var(--font-mono)">keep · cut · escalate</text>}
       {roles.map((r, i) => {
         const cx = x + 12 + (i % cols) * (cw + 8)
         const cy = y + h - 12 - (rows - Math.floor(i / cols)) * (ch + 6) + 6
