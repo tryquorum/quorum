@@ -4,15 +4,23 @@
 @layer components {
 html:not(.dark) { color-scheme: light; }
 .lp { --lp-max: 1160px; --lp-gutter: clamp(20px, 4vw, 40px); --lp-canvas: #f3f3f4; --lp-ring: rgb(11 11 12 / 0.08); --lp-shadow: rgb(11 11 12 / 0.16);
-  background: var(--lp-canvas); font-size: 1.0625rem; line-height: 1.6; }
+  background: var(--lp-canvas); font-size: 1rem; line-height: 1.6; }
 .dark .lp, .lp.dark { --lp-canvas: var(--background); --lp-ring: rgb(255 255 255 / 0.09); --lp-shadow: rgb(0 0 0 / 0.55); }
 .lp :lang(ko) { word-break: keep-all; }
 .lp-container { width: 100%; max-width: calc(var(--lp-max) + 2 * var(--lp-gutter)); margin-inline: auto; padding-inline: var(--lp-gutter); }
-.lp-h1 { max-width: 15ch; font-size: clamp(2.75rem, 1rem + 6.2vw, 6.25rem); line-height: 0.98; font-weight: 650; letter-spacing: -0.045em; text-wrap: balance; }
-.lp-h2 { max-width: 20ch; font-size: clamp(1.875rem, 1rem + 2.6vw, 3.25rem); line-height: 1.06; font-weight: 650; letter-spacing: -0.035em; text-wrap: balance; }
+.lp-h1 { max-width: 16ch; font-size: clamp(2.25rem, 1.15rem + 3.2vw, 4rem); line-height: 1.02; font-weight: 650; letter-spacing: -0.04em; text-wrap: balance; }
+.lp-h2 { max-width: 20ch; font-size: clamp(1.625rem, 1rem + 1.6vw, 2.5rem); line-height: 1.1; font-weight: 650; letter-spacing: -0.03em; text-wrap: balance; }
 .lp-eyebrow { margin-bottom: 14px; font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted-foreground); }
-.lp-lede { color: var(--muted-foreground); font-size: clamp(1.0625rem, 1rem + 0.35vw, 1.25rem); line-height: 1.55; text-wrap: pretty; }
-.lp p { max-width: 65ch; text-wrap: pretty; }
+.lp-lede { color: var(--muted-foreground); font-size: clamp(1rem, 0.95rem + 0.25vw, 1.125rem); line-height: 1.55; text-wrap: pretty; }
+.lp p { max-width: 66ch; text-wrap: pretty; }
+/* Text that sits on the pixel sea keeps AA: the horizon is placed below it, this only firms up the muted tone. */
+.lp-onscene { color: color-mix(in oklab, var(--foreground) 72%, var(--lp-canvas)); }
+.lp-rise { opacity: 0; transform: translateY(10px); transition: opacity 350ms var(--ease-standard), transform 350ms var(--ease-standard); }
+.lp-rise.is-in { opacity: 1; transform: none; }
+.lp-step { opacity: 0.42; transition: opacity 250ms ease; }
+.lp-step.is-on { opacity: 1; }
+.lp-step.is-now::before { color: var(--foreground); }
+@media (prefers-reduced-motion: reduce) { .lp-rise { opacity: 1; transform: none; } .lp-step { opacity: 1; } }
 .lp-section { padding-block: clamp(72px, 10vw, 136px); }
 .lp-split { display: grid; gap: 40px; }
 @media (min-width: 900px) { .lp-split { grid-template-columns: 5fr 7fr; gap: 64px; } }
