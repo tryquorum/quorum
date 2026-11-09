@@ -307,3 +307,20 @@ describe("방향판(3070) 읽기 전용 가져오기 — 가짜 데이터", () =
     expect((await call(ws, "GET", "/api/ws/meta")).body.import).toMatchObject({ ok: false })
   })
 })
+
+
+describe("팝업 보조 경로", () => {
+  test("signals?run= 은 그 의회의 사건만, link 는 askRunId 만 더해요", async () => {
+    const store = new Store(join(dir, "quorum.db"))
+    recordCouncil(store, "r8")
+    recordCouncil(store, "r9")
+    const ws = createWorkspace({ path: join(dir, "workspace.db"), engine: store, now: () => NOW })
+    const r8 = (await call(ws, "GET", "/api/ws/signals?run=r8")).body
+    expect(r8.map((s: any) => s.meta.runId)).toEqual(["r8", "r8", "r8"])
+    const s = r8[0]
+    expect((await call(ws, "POST", "/api/ws/signals/" + s.id + "/link", { runId: "../bad" })).status).toBe(400)
+    const linked = (await call(ws, "POST", "/api/ws/signals/" + s.id + "/link", { runId: "rnew" })).body
+    expect(linked.meta).toMatchObject({ runId: "r8", askRunId: "rnew" })
+    expect(linked.title).toBe(s.title)
+  })
+})

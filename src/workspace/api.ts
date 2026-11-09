@@ -144,7 +144,12 @@ export function createWorkspace(deps: WorkspaceDeps) {
     }
 
     if (res === "signals") {
-      if (!id && m === "GET") { sync(); return json(listSignals(db, { open: url.searchParams.get("all") !== "1" })) }
+      if (!id && m === "GET") {
+        sync()
+        const run = url.searchParams.get("run")
+        const list = listSignals(db, { open: url.searchParams.get("all") !== "1" && !run, limit: run ? 1000 : 200 })
+        return json(run ? list.filter((s) => s.meta?.runId === run) : list)
+      }
       if (!id && m === "POST") {
         // 다른 봇도 방향판처럼 "시작/에러/끝/승인 필요"를 보낼 수 있어요
         const b = await body()
@@ -167,6 +172,16 @@ export function createWorkspace(deps: WorkspaceDeps) {
         return json(r.body, r.status)
       }
       if (action === "resolve" && m === "POST") { const r = resolveSignal(db, id, clock()); return json(r.body, r.status) }
+      if (action === "link" && m === "POST") {
+        // 팝업의 "Send to agent": 이 사건을 의회에 보낸 실행을 사건에 이어 둬요(사건 내용은 바꾸지 않아요)
+        const b = await body()
+        const runId = typeof b?.runId === "string" && /^[A-Za-z0-9_-]{1,80}$/.test(b.runId) ? b.runId : ""
+        if (!runId) return err(400, "bad runId")
+        const s = getSignal(db, id)
+        if (!s) return err(404, "signal not found")
+        db.query("UPDATE signals SET meta=?, updated_at=? WHERE id=?").run(JSON.stringify({ ...s.meta, askRunId: runId }), clock(), id)
+        return json(getSignal(db, id))
+      }
     }
 
     if (res === "notes") {

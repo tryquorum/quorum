@@ -17,7 +17,7 @@ export default defineConfig({
   build: {
     outDir: process.env.QUORUM_OUT ? resolve(process.env.QUORUM_OUT) : resolve(root, ".."),
     emptyOutDir: Boolean(process.env.QUORUM_OUT),
-    rollupOptions: { input: { index: resolve(root, "index.html"), app: resolve(root, "app.html") } },
+    rollupOptions: { input: { index: resolve(root, "index.html"), app: resolve(root, "app.html"), workspace: resolve(root, "workspace.html") } },
   },
   server: { port: 5173, proxy: { "/api": `http://127.0.0.1:${apiPort}` } },
 })
