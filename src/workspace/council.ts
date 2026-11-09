@@ -18,8 +18,22 @@ export type ExecOut = { ok: true; summary: string; data?: Record<string, unknown
 export type ProposalRef = { proposalId: string; title: string; executor: string; task: string; why: string }
 /** 승인한 제안 하나 실행. 바로 runId 를 주고, done 은 결과로 끝나요(던지지 않아요) */
 export type ExecuteFn = (p: ProposalRef, ctx: { runId: string; request: string }) => { runId: string; done: Promise<ExecOut> }
-/** 호스팅 비소유자: 승인한 일을 실행하지 않고 그 사람의 대기열에 넣어요. taskId 를 돌려줘요 */
-export type EnqueueFn = (p: { signalId: string; ref: string; executor: string; title: string; task: string; request: string; runId: string; proposalId: string }) => { taskId: string; prompt: string }
+/**
+ * 호스팅 비소유자: 승인한 일을 실행하지 않고 그 사람의 대기열에 넣어요.
+ * preview 는 승인하면 에이전트가 받을 글 전체예요. 화면이 승인 전에 이 글과 해시를 보여 주고, 승인은 그 해시에 묶여요
+ */
+export type HostedApprove = {
+  preview: (db: Database, s: Signal) => string
+  enqueue: (p: { signalId: string; ref: string; executor: string; title: string; prompt: string; request: string; runId: string; proposalId: string }) => { taskId: string; prompt: string }
+}
+export const sendHash = (text: string) => new Bun.CryptoHasher("sha256").update(text).digest("hex")
+
+/** 승인을 기다리는 대기열행 사건이면 보낼 글과 해시. 아니면 null */
+export function sendPreview(db: Database, s: Signal, hosted: HostedApprove | undefined): { text: string; hash: string } | null {
+  if (!hosted || s.status !== "open" || !["decide", "now"].includes(s.lane) || !s.meta?.runId || !s.meta?.proposalId || !["aside", "codex"].includes(s.meta.executor)) return null
+  const text = hosted.preview(db, s)
+  return { text, hash: sendHash(text) }
+}
 
 const msg = (e: unknown) => (e instanceof Error ? e.message : String(e))
 const firstLine = (s: string, n = 160) => (s.split("\n").find((l) => l.trim()) || "").trim().slice(0, n)
@@ -97,7 +111,8 @@ function applyEvent(db: Database, run: RunSummary, e: QuorumEvent, proposals: Ma
     // 통과한 일이 그 사람의 대기열로 갔어요. running 칸에 "Aside 를 기다려요"로 보여요(결과는 quorum_report_result 가 Review 로)
     const s = ingestSignal(db, { ...base, meta: { ...meta, ...(d.taskId ? { taskId: String(d.taskId) } : {}) }, kind: "start", agent: p.executor, body: "Queued for your Aside. It picks this up through quorum_next_task and reports with quorum_report_result.", reason: "Queued · waiting for your Aside" }, now)
     if (typeof s !== "string" && typeof d.sent === "string") {
-      const sent = d.sent.slice(0, 12_000)
+      // 보낸 글 전체(대기열 상한 20000자)를 그대로 남겨요. 자르면 "그대로 보냈다"는 말이 거짓이 돼요
+      const sent = d.sent
       const f = "`".repeat(Math.max(2, ...[...sent.matchAll(/`+/g)].map((x) => x[0].length)) + 1)
       appendNote(db, "signal:" + s.id, "## Passed by the council\nQueued for your Aside (task " + String(d.taskId ?? "") + "). Exactly this text was sent:\n\n" + f + "text\n" + sent + "\n" + f, "system", now)
     }
@@ -125,7 +140,7 @@ export function approvalTask(db: Database, s: Signal): string {
   ].join("\n")
 }
 
-export function approveSignal(db: Database, id: string, execute: ExecuteFn | undefined, now = Date.now(), enqueue?: EnqueueFn): { status: number; body: Record<string, unknown>; done?: Promise<void> } {
+export function approveSignal(db: Database, id: string, execute: ExecuteFn | undefined, now = Date.now(), hosted?: HostedApprove, approvedHash?: string | null): { status: number; body: Record<string, unknown>; done?: Promise<void> } {
   const cur = getSignal(db, id)
   if (!cur) return { status: 404, body: { error: "signal not found" } }
   if (cur.status !== "open" || !["decide", "now"].includes(cur.lane)) return { status: 409, body: { error: "승인을 기다리는 사건이 아니에요", signal: cur } }
@@ -139,18 +154,30 @@ export function approveSignal(db: Database, id: string, execute: ExecuteFn | und
     return { status: 200, body: { signal: s } }
   }
   if (!["aside", "codex", "board"].includes(m.executor)) return { status: 400, body: { error: "모르는 실행기: " + m.executor } }
-  if (enqueue) {
+  if (hosted) {
     // 호스팅 비소유자: 서버는 이 사람 대신 실행하지 않아요. 승인한 일을 이 사람 대기열에 넣고, 이 사람 Aside 가 가져가요
     if (m.executor === "board") return { status: 400, body: { error: "Direction Board is not available on the hosted site" } }
+    // 사람이 본 글과 지금 보낼 글이 같을 때만 승인해요(그 사이 다른 결과가 붙거나 바뀌면 다시 보여 줘요)
+    const prompt = hosted.preview(db, cur)
+    const hash = sendHash(prompt)
+    if (!approvedHash || approvedHash !== hash) return { status: 409, body: { error: "Review the exact text your Aside will receive, then approve it", send: { text: prompt, hash } } }
     const moved = moveSignal(db, id, ["open"], { status: "running", lane: "running", reason: "Approved · waiting for your Aside", kind: "start", meta: decided }, now)
     if (!moved) return { status: 409, body: { error: "이미 처리됐어요" } }
     // 다시 승인(실패 뒤 재시도)도 새 일이 되도록 ref 에 시각을 붙여요. 대기열 결과는 ref 의 사건 id 로 돌아와요
-    const { taskId, prompt } = enqueue({ signalId: id, ref: "approve:" + id + ":" + now, executor: m.executor, title: cur.title, task: approvalTask(db, cur), request: String(m.request || cur.title), runId: String(m.runId), proposalId: String(m.proposalId) })
+    let queued: { taskId: string; prompt: string }
+    try {
+      queued = hosted.enqueue({ signalId: id, ref: "approve:" + id + ":" + now, executor: m.executor, title: cur.title, prompt, request: String(m.request || cur.title), runId: String(m.runId), proposalId: String(m.proposalId) })
+    } catch (e) {
+      moveSignal(db, id, ["running"], { status: "open", lane: "decide", kind: "error", reason: "Could not queue this for your Aside: " + firstLine(msg(e)), meta: { execError: msg(e) } }, Date.now())
+      return { status: 400, body: { error: "Could not queue this for your Aside: " + msg(e) } }
+    }
+    const { taskId } = queued
     const s = moveSignal(db, id, ["running"], { status: "running", lane: "running", reason: moved.reason ?? "Approved", meta: { taskId } }, now)
     // 승인한 사람이 실제로 넘어간 글을 그대로 볼 수 있게 노트에 남겨요
-    const longest = Math.max(2, ...[...prompt.matchAll(/`+/g)].map((x) => x[0].length))
+    const sent = queued.prompt
+    const longest = Math.max(2, ...[...sent.matchAll(/`+/g)].map((x) => x[0].length))
     const f = "`".repeat(longest + 1)
-    appendNote(db, "signal:" + id, "## Approved\nQueued for your Aside (task " + taskId + "). It runs when your Aside calls quorum_next_task. Exactly this text was sent:\n\n" + f + "text\n" + prompt + "\n" + f, "system", now)
+    appendNote(db, "signal:" + id, "## Approved\nQueued for your Aside (task " + taskId + "). It runs when your Aside calls quorum_next_task. Exactly this text was sent:\n\n" + f + "text\n" + sent + "\n" + f, "system", now)
     return { status: 202, body: { signal: s ?? moved, taskId } }
   }
   if (!execute) return { status: 501, body: { error: "이 서버에는 실행기가 연결되지 않았어요" } }

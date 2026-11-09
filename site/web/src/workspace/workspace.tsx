@@ -130,10 +130,14 @@ export function Workspace() {
     // board task-row 처럼 동그라미는 양쪽으로: 끝낸 일을 누르면 다시 열어요
     done: (i: Item) => i.done ? act("i:" + i.id, "Reopened: " + i.text.split("\n")[0], () => ws.patch(i.id, { done: false })) : act("i:" + i.id, "Done: " + i.text.split("\n")[0], () => ws.done(i.id)),
     ask: (i: Item) => act("i:" + i.id, hosted ? "Sent to the council — your Aside answers it through your queue" : "Sent to the council", () => ws.ask(i)),
-    approve: (s: Signal) => act("s:" + s.id, hosted ? "Approved — queued for your Aside" : "Approved — running on " + (s.meta?.executor ?? "executor"), () => ws.approve(s.id)),
+    // 호스팅: 목록·단축키의 Approve 는 사건을 열어 Aside 가 받을 글을 먼저 보여 줘요(그 글에 묶어 승인해요)
+    approve: hosted
+      ? async (s: Signal) => { setOpen({ kind: "signal", id: s.id }); setToast({ tone: "ok", text: "Review the exact text your Aside will receive, then approve" }) }
+      : (s: Signal) => act("s:" + s.id, "Approved — running on " + (s.meta?.executor ?? "executor"), () => ws.approve(s.id)),
+    approveExact: (s: Signal, hash: string) => act("s:" + s.id, "Approved — queued for your Aside", () => ws.approve(s.id, hash)),
     reject: (s: Signal) => act("s:" + s.id, "Rejected", () => ws.reject(s.id)),
     resolve: (s: Signal) => act("s:" + s.id, s.lane === "review" ? "Marked reviewed" : "Marked handled", () => ws.resolve(s.id)),
-  }), [act, hosted])
+  }), [act, hosted, setOpen])
 
   // 보기마다 줄 묶음. 키보드는 이 순서로 고르고 처리해요
   const sigSections = useSignalSections(signals)
@@ -288,7 +292,7 @@ export function Workspace() {
       </SidebarProvider>
 
       <Detail open={open} onClose={() => setOpen(null)} returnFocus={() => ((sel && rowTitle(sel)) || lastFocus.current)?.focus?.()} onChanged={() => void data.reload()}
-        act={{ approve: actions.approve, reject: actions.reject, resolve: actions.resolve, done: actions.done, ask: actions.ask }}
+        act={{ approve: actions.approve, approveExact: actions.approveExact, reject: actions.reject, resolve: actions.resolve, done: actions.done, ask: actions.ask }}
         areaOf={areaOf} goalOf={(id) => now?.goals.find((g) => g.goal.id === id) ?? null} />
       <CommandPalette open={palette} onOpenChange={setPalette} view={now}
         onOpenItem={(id) => setOpen({ kind: "item", id })} onOpenSignal={(id) => setOpen({ kind: "signal", id })}

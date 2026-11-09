@@ -100,7 +100,8 @@ async function callTool(d: McpDeps, name: string, args: Record<string, unknown>,
     case "quorum_report_result": {
       if (!d.queue) break
       const taskId = str(args.taskId, 40), leaseId = str(args.leaseId, 40)
-      const result = typeof args.result === "string" ? args.result.slice(0, 20000) : ""
+      // 길이 검사는 대기열이 해요(넘으면 거절). 여기서 자르면 사람이 못 보는 뒷부분을 성공으로 받아 버려요
+      const result = typeof args.result === "string" ? args.result : ""
       if (!taskId || !leaseId || typeof args.ok !== "boolean" || !result.trim()) throw new ToolError("taskId, leaseId, ok and result are required.", "Use the taskId and leaseId from quorum_next_task.")
       const out = d.queue.report({ taskId, leaseId, ok: args.ok, result }) as { error?: string; guidance?: string }
       if (out.error) throw new ToolError(out.error, out.guidance || "Fetch a task again with quorum_next_task.")

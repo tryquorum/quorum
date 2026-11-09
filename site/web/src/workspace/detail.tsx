@@ -16,8 +16,9 @@ import { useMemory, useRunWatch } from "./run-watch"
 import { dday } from "./views"
 
 export type Open = { kind: "item"; id: string } | { kind: "signal"; id: string } | null
-type Loaded = { kind: "item"; item: Item; note: Note | null } | { kind: "signal"; signal: Signal; note: Note | null }
-type Acts = { approve: (s: Signal) => Promise<void>; reject: (s: Signal) => Promise<void>; resolve: (s: Signal) => Promise<void>; done: (i: Item) => Promise<void>; ask: (i: Item) => Promise<void> }
+type Loaded = { kind: "item"; item: Item; note: Note | null } | { kind: "signal"; signal: Signal; note: Note | null; send?: { text: string; hash: string } }
+/** approveExact: 호스팅에서 화면에 보인 글(해시)에 묶어 승인해요 */
+type Acts = { approve: (s: Signal) => Promise<void>; approveExact?: (s: Signal, hash: string) => Promise<void>; reject: (s: Signal) => Promise<void>; resolve: (s: Signal) => Promise<void>; done: (i: Item) => Promise<void>; ask: (i: Item) => Promise<void> }
 const AUTO = new Set(["agent", "goat", "system"])
 const ROLES = [["ceo", "CEO"], ["reviewer", "Reviewer"], ["qa", "QA"], ["cso", "CSO"]] as const
 const when = (ms: number) => new Date(ms).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
@@ -58,6 +59,11 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf, returnFo
   useEffect(() => { setTick(0); setSaved(null); setLine("") }, [open])
 
   const goal = data?.kind === "item" && data.item.type === "goal" ? goalOf(data.item.id) : null
+  // 호스팅: 이 사건의 Approve 는 화면에 보인 글(해시)에 묶어요. 다른 사건의 Approve 는 그 사건을 열어 글부터 보여 줘요
+  const sendPreview = data?.kind === "signal" ? data.send : undefined
+  const actHere: Acts = sendPreview && data?.kind === "signal" && act.approveExact
+    ? { ...act, approve: (s) => (s.id === data.signal.id ? act.approveExact!(s, sendPreview.hash) : act.approve(s)) }
+    : act
   const runId = data ? (data.kind === "item" ? data.item.runId : (data.signal.meta?.askRunId ?? data.signal.meta?.runId)) : undefined
   const run = useRunWatch(runId)
   const memQ = data ? (data.kind === "item" ? data.item.text : data.signal.title).split("\n")[0] : ""
@@ -158,9 +164,16 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf, returnFo
                 </Button>
                 <span className="text-2xs leading-4 text-muted-foreground">gstack CEO · Reviewer · QA · CSO argue it, Aside or Codex runs only what passes, gbrain remembers the verdict.</span>
               </div>
-              {run && <RunPanel run={run} signals={runSignals} act={act} onDone={() => refresh()} />}
+              {sendPreview && (
+                <div className="rounded-xl border bg-background/60 p-3">
+                  <p className="text-xs font-medium">When you approve, your Aside receives exactly this</p>
+                  <p className="text-2xs text-muted-foreground">The request and the council's task are fenced as data, followed by the rules. If this text changes before you approve, Quorum asks you to look again.</p>
+                  <pre className="mt-2 max-h-72 overflow-auto rounded-lg bg-muted/40 p-2.5 font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-words">{sendPreview.text}</pre>
+                </div>
+              )}
+              {run && <RunPanel run={run} signals={runSignals} act={actHere} onDone={() => refresh()} />}
               {/* 이 사건의 제안 카드가 위 진행에 이미 있으면 거기 Approve/Reject 하나만 둬요(같은 버튼이 두 번 나오지 않게) */}
-              {data.kind === "signal" && <SignalActions s={data.signal} act={act} onDone={(m) => refresh(m)} inCard={!!run && runId === data.signal.meta?.runId && !!run.proposals[String(data.signal.meta?.proposalId)]} />}
+              {data.kind === "signal" && <SignalActions s={data.signal} act={actHere} onDone={(m) => refresh(m)} inCard={!!run && runId === data.signal.meta?.runId && !!run.proposals[String(data.signal.meta?.proposalId)]} />}
             </div>
 
             {/* 아래: 사람 기록 */}

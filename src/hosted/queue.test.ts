@@ -89,14 +89,15 @@ describe("task queue", () => {
     expect(restarted.lease({})).toBeNull()
   })
 
-  test("a failed report rejects the waiting opinion; long results are capped", async () => {
+  test("a failed report rejects the waiting opinion; results over the limit are refused, not cut", async () => {
     const { queue } = q()
     const op = queue.enqueue({ kind: "opinion", ref: "opinion:r4:bot:cso", title: "cso", prompt: "{}", actor: "bot:cso", runId: "r4" })
     const waiting = queue.waitFor(op.id, 60_000)
     const l = queue.lease({})!
-    queue.report({ taskId: l.task.id, leaseId: l.leaseId, ok: false, text: "x".repeat(30_000) })
+    expect(queue.report({ taskId: l.task.id, leaseId: l.leaseId, ok: false, text: "x".repeat(30_000) }).status).toBe(413)
+    queue.report({ taskId: l.task.id, leaseId: l.leaseId, ok: false, text: "could not answer" })
     await expect(waiting).rejects.toThrow()
-    expect(queue.get(op.id)!.result!.length).toBeLessThanOrEqual(20_000)
+    expect(queue.get(op.id)!.result).toBe("could not answer")
   })
 
   test("waitForWork wakes up when a task arrives", async () => {

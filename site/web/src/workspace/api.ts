@@ -77,8 +77,9 @@ export const ws = {
   log: (id: string, text: string) => call<Item>("/api/ws/items/" + id + "/log", { method: "POST", body: { text } }),
   archive: (id: string) => call<{ ok: true }>("/api/ws/items/" + id, { method: "DELETE" }),
   item: (id: string) => call<{ item: Item; note: Note | null }>("/api/ws/items/" + id),
-  signal: (id: string) => call<{ signal: Signal; note: Note | null }>("/api/ws/signals/" + id),
-  approve: (id: string) => call<{ signal: Signal; execRunId?: string }>("/api/ws/signals/" + id + "/approve", { method: "POST" }),
+  /** send: 호스팅에서 승인하면 그 사람 Aside 가 받을 글 전체와 해시(승인은 이 해시에 묶여요) */
+  signal: (id: string) => call<{ signal: Signal; note: Note | null; send?: { text: string; hash: string } }>("/api/ws/signals/" + id),
+  approve: (id: string, sendHash?: string) => call<{ signal: Signal; execRunId?: string; taskId?: string }>("/api/ws/signals/" + id + "/approve", { method: "POST", ...(sendHash ? { body: { sendHash } } : {}) }),
   reject: (id: string, why = "") => call<{ signal: Signal }>("/api/ws/signals/" + id + "/reject", { method: "POST", body: { why } }),
   resolve: (id: string) => call<{ signal: Signal }>("/api/ws/signals/" + id + "/resolve", { method: "POST" }),
   saveNote: (ref: string, md: string) => call<Note>("/api/ws/notes?ref=" + encodeURIComponent(ref), { method: "PUT", body: { md } }),

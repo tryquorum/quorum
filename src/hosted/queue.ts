@@ -16,7 +16,7 @@ export type Task = {
   result: string | null; createdAt: number; updatedAt: number
 }
 export type EnqueueInput = { kind: TaskKind; ref: string; title: string; prompt: string; runId?: string; proposalId?: string; actor?: string; executor?: string; request?: string }
-export type ReportResult = { status: 200; recorded: "new" | "duplicate"; task: Task } | { status: 404 | 409 | 500; error: string }
+export type ReportResult = { status: 200; recorded: "new" | "duplicate"; task: Task } | { status: 404 | 409 | 413 | 500; error: string }
 
 type Row = {
   id: string; kind: TaskKind; ref: string; run_id: string | null; proposal_id: string | null; actor: string | null; executor: string | null
@@ -142,6 +142,8 @@ export function createQueue(db: Database, o: { now?: () => number; leaseMs?: num
     return { status: 200, recorded: "new", task: finish(row, p.ok, p.text, p.leaseId) }
   })
   function report(p: { taskId: string; leaseId: string; ok: boolean; text: string }): ReportResult {
+    // 자르지 않고 거절해요: 잘린 뒷부분(실패·경고·출처)을 사람이 못 보는데 에이전트는 성공으로 알게 돼요
+    if (p.text.length > RESULT_MAX) return { status: 413, error: "the result is longer than " + RESULT_MAX + " characters; shorten it and report again with the same lease" }
     let r: ReportResult
     try { r = reportTx(p) } catch (e) {
       console.error("[queue] could not record a result:", e)

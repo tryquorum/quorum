@@ -25,7 +25,8 @@ describe("review round 4 fixes", () => {
       const g = makeGuestTenant({ email: "judge@example.com", key: "k", dir, hosted: openHosted(":memory:"), bots: "client" })
       const call = async (method: string, path: string, body?: unknown) => (await g.workspace!(new Request("http://x" + path, { method, ...(body ? { body: JSON.stringify(body) } : {}) }), path.split("?")[0].split("/").filter(Boolean), "judge@example.com")).json() as Promise<any>
       const s = await call("POST", "/api/ws/signals", { kind: "approval", title: "Draft a reply", ref: "manual:1", meta: { runId: "r1", proposalId: "p1", executor: "aside", task: "`````` draft it", request: "reply" } })
-      const ap = await call("POST", "/api/ws/signals/" + s.id + "/approve")
+      const send = (await call("GET", "/api/ws/signals/" + s.id)).send
+      const ap = await call("POST", "/api/ws/signals/" + s.id + "/approve", { sendHash: send.hash })
       const stored = g.tasks.get(ap.taskId)!.prompt
       const note = (await call("GET", "/api/ws/signals/" + s.id)).note.md as string
       expect(note).toContain(stored)
