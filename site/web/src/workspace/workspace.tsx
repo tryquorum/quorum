@@ -144,7 +144,7 @@ export function Workspace() {
   const flat = useMemo(() => sections.flatMap((s) => s.rows), [sections])
   const selected = flat.find((r) => r.key === sel) ?? null
 
-  const openRow = useCallback((r: RowSpec) => { lastFocus.current = document.activeElement as HTMLElement; setOpen(r.kind === "item" ? { kind: "item", id: r.item.id } : { kind: "signal", id: r.signal.id }) }, [])
+  const openRow = useCallback((r: RowSpec) => { lastFocus.current = document.activeElement as HTMLElement; setOpen(r.kind === "item" ? { kind: "item", id: r.item.id } : { kind: "signal", id: r.signal.id }) }, [setOpen])
   const move = useCallback((d: 1 | -1) => {
     if (!flat.length) return
     const i = flat.findIndex((r) => r.key === sel)

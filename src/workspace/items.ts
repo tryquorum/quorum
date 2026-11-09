@@ -133,6 +133,7 @@ export function logItem(db: Database, id: string, line: { by: string; text: stri
   })()
 }
 
+/** 보관. 사람이 한 일이라 local_edited 를 켜서, 방향판 가져오기가 그 사본을 다시 살리지 않게 해요(리뷰 지적 3) */
 export function archiveItem(db: Database, id: string, now = Date.now()): boolean {
-  return db.query("UPDATE items SET deleted=1, updated_at=?, seq=seq+1 WHERE id=? AND deleted=0").run(now, id).changes > 0
+  return db.query("UPDATE items SET deleted=1, local_edited=1, updated_at=?, seq=seq+1 WHERE id=? AND deleted=0").run(now, id).changes > 0
 }

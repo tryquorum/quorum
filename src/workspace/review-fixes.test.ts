@@ -116,3 +116,29 @@ describe("2 · 실행 중으로 멈춘 사건", () => {
     expect((await call(ws, "GET", "/api/ws/signals/" + hold.id)).body.signal).toMatchObject({ status: "resolved", lane: "info" })
   })
 })
+
+
+// ---- 3 · 보관한 방향판 사본은 다시 가져와도 보관된 채로 ----
+describe("3 · 보관한 사본을 가져오기가 되살리지 않아요", () => {
+  test("보관(DELETE)한 3070 사본은 전체 다시 읽기와 증분 변경 뒤에도 보관돼 있어요", async () => {
+    const item = (over: Record<string, unknown> = {}) => ({ id: "t1", boardId: "b1", type: "todo", text: "Fake todo", done: false, updatedAt: 1, deleted: false, ...over })
+    let changes: any[] = []
+    let seq = 1
+    const get = async (url: string) => {
+      if (url.endsWith("/api/state")) return { me: null, seq, boards: [], spaces: [], items: [item()] }
+      if (url.includes("/api/changes")) return { seq: ++seq, boards: [], items: changes }
+      return { signals: [] }
+    }
+    const ws = createWorkspace({ path: join(dir, "w.db"), boardBase: "http://board.test", boardGet: get, now: () => NOW })
+    await ws.board!.tick(false)
+    const copy = (await call(ws, "GET", "/api/ws/items")).body[0]
+    expect((await call(ws, "DELETE", "/api/ws/items/" + copy.id)).status).toBe(200)
+    changes = [item({ updatedAt: 2, text: "Fake todo changed upstream" })]
+    await ws.board!.tick(false)
+    expect((await call(ws, "GET", "/api/ws/items")).body).toEqual([])
+    // 전체 다시 읽기(실패 뒤 resync 와 같은 길)
+    const ws2 = createWorkspace({ path: join(dir, "w.db"), boardBase: "http://board.test", boardGet: get, now: () => NOW })
+    await ws2.board!.tick(false)
+    expect((await call(ws2, "GET", "/api/ws/items")).body).toEqual([])
+  })
+})
