@@ -124,7 +124,7 @@ export function WsSidebar({ view, onView, onSearch, meta, now, items, space, onS
                         <span className="truncate">{g.goal.text}</span>
                         <span className="flex items-center gap-1.5">
                           <span className="h-1 flex-1 overflow-hidden rounded-full bg-foreground/10"><span className="block h-full rounded-full bg-foreground" style={{ width: pct + "%" }} /></span>
-                          <span className="num font-mono text-2xs text-muted-foreground">{g.done}/{g.total}</span>
+                          <span className="num font-mono text-2xs text-muted-foreground">{g.total ? g.done + "/" + g.total : "–"}</span>
                         </span>
                       </div>
                     </SidebarMenuButton>
@@ -228,7 +228,7 @@ export function Section({ id, label, count, children }: { id: string; label: str
 export function SyncButton({ onSync }: { onSync: () => Promise<void> }) {
   const [busy, setBusy] = useState(false)
   return (
-    <button type="button" disabled={busy} onClick={() => { setBusy(true); void onSync().finally(() => setBusy(false)) }} className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-2xs text-muted-foreground hover:text-foreground disabled:opacity-50" title="Read Direction Board again (GET only)">
+    <button type="button" disabled={busy} onClick={() => { setBusy(true); void onSync().finally(() => setBusy(false)) }} className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-2xs text-muted-foreground hover:text-foreground disabled:opacity-50 max-md:h-11 max-md:px-3 [@media(pointer:coarse)]:h-11" title="Read Direction Board again (GET only)">
       <RefreshCw className={cn("size-3", busy && "animate-spin")} />Sync
     </button>
   )

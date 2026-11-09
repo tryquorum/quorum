@@ -15,14 +15,8 @@ import { ItemRow, SignalRow } from "./rows"
 import { ShortcutHelp } from "./shortcut-help"
 import { resolveShortcut } from "./shortcuts"
 import { GoalHeader, groupByWhen, ListFilters, Roadmap, useListState, useSignalSections, type RowSpec, type SectionSpec } from "./views"
-import { SyncButton, VIEWS, WsSidebar, useStored, type View } from "./ws-sidebar"
-
-type Route = { view: View; goal?: string }
-const parseHash = (h: string): Route => {
-  const p = h.replace(/^#\/?/, "").split("/")
-  if (p[0] === "goal" && p[1]) return { view: "goals", goal: p[1] }
-  return { view: (VIEWS as readonly string[]).includes(p[0]) ? (p[0] as View) : "now" }
-}
+import { SyncButton, WsSidebar, useStored, type View } from "./ws-sidebar"
+import { hashFor, parseHash, type Route } from "./route"
 const TITLES: Record<View, string> = { now: "Now", inbox: "Inbox", goals: "Goals", signals: "Signals", list: "All tasks" }
 
 /** 데이터: /api/ws/now 5초, 항목 전체 10초, 메타 30초. 실패해도 마지막 내용은 남기고 다시 해요(board useBoard 규칙) */
@@ -54,18 +48,35 @@ function useWorkspaceData(withDone: boolean) {
 
 export function Workspace() {
   const [route, setRoute] = useState<Route>(() => parseHash(location.hash))
+  // 팝업은 주소에 있어요(board 의 #/w/<ref> 처럼): 열면 기록이 하나 쌓이고, 뒤로가기·Esc·닫기 모두 같은 길로 닫혀요
+  const pushedOpen = useRef(false)
   useEffect(() => {
-    const on = () => setRoute(parseHash(location.hash))
+    const on = () => { const r = parseHash(location.hash); if (!r.open) pushedOpen.current = false; setRoute(r) }
     window.addEventListener("hashchange", on)
     return () => window.removeEventListener("hashchange", on)
   }, [])
   const goView = (v: View) => { location.hash = "/" + v }
+  const goGoal = (id: string) => { location.hash = hashFor({ view: "goals", goal: id }).slice(1) }
   const list = useListState()
   const [space, setSpace] = useStored("qw:space", "all")
   const [area, setArea] = useStored("qw:area", "all")
   const data = useWorkspaceData(list.showDone)
   const { now, items, signals, meta } = data
-  const [open, setOpen] = useState<Open>(null)
+  const open: Open = route.open ?? null
+  const setOpen = useCallback((o: Open) => {
+    if (o) {
+      pushedOpen.current = true
+      location.hash = hashFor({ ...route, open: o }).slice(1)
+    } else if (pushedOpen.current) {
+      pushedOpen.current = false
+      history.back()
+    } else {
+      // 주소로 바로 들어와 연 팝업: 기록을 거슬러 가지 않고 open 만 지워요
+      const next = { ...route, open: undefined }
+      history.replaceState(null, "", hashFor(next))
+      setRoute(next)
+    }
+  }, [route])
   const [palette, setPalette] = useState(false)
   const [help, setHelp] = useState(false)
   const [sel, setSel] = useState<string | null>(null)
@@ -102,22 +113,22 @@ export function Workspace() {
     const itemRows = (list: Item[], ask = false): RowSpec[] => list.filter(inSpace).map((i) => ({ key: "i:" + i.id, kind: "item", item: i, ask }))
     if (route.view === "now") return [
       { id: "needs", title: "Needs you", hint: "council holds and decisions waiting on you", tone: "decide", rows: now.needsYou.map((s) => ({ key: "s:" + s.id, kind: "signal", signal: s, decide: council(s), resolve: !council(s) })), empty: "Nothing is waiting on you." },
-      { id: "due", title: "Due today", hint: "and overdue", rows: itemRows(now.dueToday), empty: "Nothing due today." },
-      { id: "goals", title: "Goals", rows: [], extra: now.goals.length ? <GoalStrip goals={now.goals} onOpen={(id) => setOpen({ kind: "item", id })} /> : null, empty: now.goals.length ? undefined : "No open goals." },
+      { id: "due", title: "Due today", hint: "and overdue", rows: itemRows(now.dueToday), empty: "Nothing due today. Write a task with a date (내일 3시 …) and it lands here." },
+      { id: "goals", title: "Goals", rows: [], extra: now.goals.length ? <GoalStrip goals={now.goals} onOpen={goGoal} /> : null, empty: now.goals.length ? undefined : "No open goals. Goals come from Direction Board." },
       { id: "review", title: "Review", hint: "what the council ran", tone: "review", rows: now.review.map((s) => ({ key: "s:" + s.id, kind: "signal", signal: s, resolve: true })), empty: "Nothing to review." },
-      { id: "inbox", title: "Inbox", hint: "written down, no date yet", rows: itemRows(now.inbox, true).slice(0, 12), empty: "Inbox zero." , extra: now.inbox.filter(inSpace).length > 12 ? <a href="#/inbox" className="px-3 text-xs text-muted-foreground hover:text-foreground">{now.inbox.filter(inSpace).length - 12} more in Inbox →</a> : null },
+      { id: "inbox", title: "Inbox", hint: "written down, no date yet", rows: itemRows(now.inbox, true).slice(0, 12), empty: "Inbox zero. Write something down above (press N)." , extra: now.inbox.filter(inSpace).length > 12 ? <a href="#/inbox" className="px-3 text-xs text-muted-foreground hover:text-foreground">{now.inbox.filter(inSpace).length - 12} more in Inbox →</a> : null },
     ]
-    if (route.view === "inbox") return [{ id: "inbox", title: "Inbox", hint: "no date yet — Ask the council or just do it", rows: itemRows(now.inbox, true), empty: "Inbox zero." }]
+    if (route.view === "inbox") return [{ id: "inbox", title: "Inbox", hint: "no date yet — Ask the council or just do it", rows: itemRows(now.inbox, true), empty: "Inbox zero. Write something down above (press N)." }]
     if (route.view === "signals") return sigSections
     if (route.view === "goals") {
       const all = route.goal ? now.goals.filter((g) => g.goal.id === route.goal) : now.goals
-      return all.map((g) => ({ id: "goal-" + g.goal.id, title: "", rows: itemRows(g.open), extra: <button type="button" onClick={() => setOpen({ kind: "item", id: g.goal.id })} className="block w-full rounded-lg p-1 text-left hover:bg-muted/40"><GoalHeader g={g} /></button>, empty: g.total ? "All linked tasks are done." : "No tasks linked to this goal yet." }))
+      return all.map((g) => ({ id: "goal-" + g.goal.id, title: "", rows: itemRows(g.open), extra: <button type="button" onClick={() => setOpen({ kind: "item", id: g.goal.id })} className="block w-full rounded-lg p-1 text-left hover:bg-muted/40"><GoalHeader g={g} /></button>, empty: g.total ? "All linked tasks are done." : "No tasks are linked to this goal yet. Open the goal and Send to agent to break it into tasks." }))
     }
     const shown = items.filter((i) => i.type === "todo" && inSpace(i) && (area === "all" || i.area === area) && (!list.q.trim() || i.text.toLowerCase().includes(list.q.trim().toLowerCase())))
     const g = groupByWhen(shown.filter((i) => !i.done))
     const out: SectionSpec[] = (Object.keys(g) as (keyof typeof g)[]).filter((k) => g[k].length).map((k) => ({ id: "list-" + k, title: k, rows: itemRows(g[k], k === "No date") }))
     if (list.showDone) out.push({ id: "list-done", title: "Done", rows: itemRows(shown.filter((i) => i.done).sort((a, b) => (b.doneAt ?? b.updatedAt) - (a.doneAt ?? a.updatedAt)).slice(0, 50)) })
-    if (!out.length) out.push({ id: "list-empty", title: "Tasks", rows: [], empty: "No open tasks match." })
+    if (!out.length) out.push({ id: "list-empty", title: "Tasks", rows: [], empty: list.q.trim() || area !== "all" ? "No open tasks match this filter. Clear the filter to see everything." : "No open tasks. Write one down above." })
     return out
   }, [now, items, route, inSpace, area, list.q, list.showDone, sigSections])
   const flat = useMemo(() => sections.flatMap((s) => s.rows), [sections])
@@ -184,7 +195,7 @@ export function Workspace() {
       <SidebarProvider>
         <WsSidebar view={route.view} onView={goView} onSearch={() => setPalette(true)} meta={meta} now={now} items={items.filter(inSpace)}
           space={space} onSpace={setSpace} areaFilter={area} onArea={setArea}
-          onOpenItem={(id) => setOpen({ kind: "item", id })} onOpenGoal={(id) => setOpen({ kind: "item", id })} />
+          onOpenItem={(id) => setOpen({ kind: "item", id })} onOpenGoal={goGoal} />
         <SidebarInset className="min-w-0">
           <header className="sticky top-0 z-30 border-b bg-background/80 backdrop-blur-xl">
             <div className="mx-auto flex max-w-[880px] items-center gap-2 px-4 py-2.5 sm:px-6">
@@ -193,7 +204,7 @@ export function Workspace() {
               {route.view === "now" && now && <span className="font-mono text-2xs text-muted-foreground">{now.today} · {total ? total + " to handle" : "all clear"}</span>}
               <div className="ml-auto flex items-center gap-1.5">
                 {imp && <SyncButton onSync={async () => { await ws.syncBoard().catch(() => null); await Promise.all([data.reload(), data.reloadMeta()]) }} />}
-                <button type="button" onClick={() => setPalette(true)} className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground" aria-label="Search"><Search className="size-3.5" /><kbd className="font-mono text-2xs max-sm:hidden">⌘K</kbd></button>
+                <button type="button" onClick={() => setPalette(true)} className="inline-flex items-center justify-center gap-1.5 rounded-full border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground max-md:size-11 [@media(pointer:coarse)]:size-11" aria-label="Search"><Search className="size-3.5" /><kbd className="font-mono text-2xs max-sm:hidden">⌘K</kbd></button>
                 <button type="button" onClick={() => setHelp(true)} className="rounded-full p-1.5 text-muted-foreground hover:text-foreground max-sm:hidden" aria-label="Keyboard shortcuts"><Keyboard className="size-4" /></button>
               </div>
             </div>
@@ -203,9 +214,9 @@ export function Workspace() {
           </header>
 
           <main className="mx-auto w-full max-w-[880px] px-2 pt-4 pb-24 sm:px-4">
-            {data.error && <p role="alert" className={"mx-2 mb-3 rounded-xl px-3 py-2 text-xs " + ALERT}>Can't reach the Quorum server: {data.error}. Showing the last data.</p>}
-            {imp && !imp.ok && imp.error && <p className={"mx-2 mb-3 rounded-xl px-3 py-2 text-xs " + ALERT}>Direction Board import paused: {imp.error}</p>}
-            {route.view === "goals" && now && !route.goal && <div className="mx-2 mb-4"><Roadmap goals={now.goals} onOpen={(id) => setOpen({ kind: "item", id })} /></div>}
+            {data.error && <div role="alert" className={"mx-2 mb-3 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2 text-xs " + ALERT}><span className="min-w-0 flex-1">Can't reach the Quorum server: {data.error}. Showing the last data.</span><button type="button" onClick={() => void data.reload()} className="rounded-full border border-current px-2.5 py-0.5 max-md:h-11 max-md:px-4">Retry</button></div>}
+            {imp && !imp.ok && imp.error && <div role="status" className={"mx-2 mb-3 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2 text-xs " + ALERT}><span className="min-w-0 flex-1">Direction Board import paused: {imp.error}. Your copies stay as they were.</span><button type="button" onClick={() => void ws.syncBoard().catch(() => null).then(() => Promise.all([data.reload(), data.reloadMeta()]))} className="rounded-full border border-current px-2.5 py-0.5 max-md:h-11 max-md:px-4">Retry</button></div>}
+            {route.view === "goals" && now && !route.goal && <div className="mx-2 mb-4"><Roadmap goals={now.goals} onOpen={goGoal} /></div>}
             {route.view === "list" && <div className="mx-2"><ListFilters areas={areas} area={area} onArea={setArea} q={list.q} onQ={list.setQ} showDone={list.showDone} onShowDone={list.setShowDone} /></div>}
             {!now && !data.error && <p className="px-3 py-8 text-sm text-muted-foreground">Loading…</p>}
             {sections.map((s) => (

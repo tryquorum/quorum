@@ -47,14 +47,14 @@ export const CaptureBar = forwardRef<HTMLInputElement, { onSaved: (item: Item) =
           aria-label="Quick capture"
           enterKeyHint="done"
           autoComplete="off"
-          className="h-9 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground/70 sm:text-sm"
+          className="h-9 min-w-0 flex-1 bg-transparent text-base outline-none max-md:h-11 [@media(pointer:coarse)]:h-11 placeholder:text-muted-foreground/70 sm:text-sm"
         />
         {when && (
           <span className="hidden shrink-0 items-center gap-1 rounded-full bg-muted px-2 py-0.5 font-mono text-2xs text-muted-foreground sm:inline-flex" title="Read as due date">
             <CalendarClock className="size-3" />{W.long(when.at)}
           </span>
         )}
-        <button type="submit" disabled={!text.trim() || saving} className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full bg-primary px-2.5 text-xs font-medium text-primary-foreground disabled:opacity-40">
+        <button type="submit" disabled={!text.trim() || saving} className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full bg-primary max-md:h-11 max-md:px-4 [@media(pointer:coarse)]:h-11 px-2.5 text-xs font-medium text-primary-foreground disabled:opacity-40">
           Save <CornerDownLeft className="size-3" />
         </button>
       </div>
