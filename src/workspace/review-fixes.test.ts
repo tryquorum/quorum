@@ -54,3 +54,65 @@ describe("9 · 노트 저장은 버전을 확인해요", () => {
     expect(ok.body.md).toContain("의회 결과")
   })
 })
+
+
+// ---- 2 · running 이 영원히 멈추지 않아요 ----
+import { Store } from "../engine/store"
+import type { QuorumEvent } from "../contract"
+import type { ExecuteFn } from "./council"
+
+function seedHold(store: Store, runId: string) {
+  store.createRun({ runId, request: "가짜 요청", mode: "live", startedAt: new Date(NOW).toISOString() })
+  let seq = 0
+  const ev = (type: QuorumEvent["type"], text: string, data?: Record<string, unknown>) => store.appendEvent({ runId, seq: seq++, at: new Date(NOW).toISOString(), mode: "live", type, actor: "council", text, ...(data ? { data } : {}) })
+  ev("proposal", "p", { proposalId: "p1", title: "가짜 일", executor: "codex", why: "w", task: "가짜 지시" })
+  ev("verdict", "hold · 가짜 일", { proposalId: "p1", decision: "hold", reason: "r" })
+  ev("run.end", "end", { status: "done" })
+  store.finishRun(runId, "done")
+}
+const never: ExecuteFn = () => ({ runId: "rx-never", done: new Promise(() => {}) })
+
+describe("2 · 실행 중으로 멈춘 사건", () => {
+  test("서버가 다시 시작되면 살아 있는 실행이 없는 running 사건은 끊김(error)으로 Needs you 에 돌아오고 Retry 할 수 있어요", async () => {
+    const store = new Store(join(dir, "q.db"))
+    seedHold(store, "r1")
+    const ws1 = createWorkspace({ path: join(dir, "w.db"), engine: store, execute: never, now: () => NOW })
+    const hold = (await call(ws1, "GET", "/api/ws/now")).body.needsYou[0]
+    expect((await call(ws1, "POST", "/api/ws/signals/" + hold.id + "/approve")).status).toBe(202)
+    // 다시 시작: 같은 DB, 이 프로세스가 시작한 실행은 없어요
+    let ran = 0
+    const ws2 = createWorkspace({ path: join(dir, "w.db"), engine: store, execute: () => { ran++; return { runId: "rx2", done: Promise.resolve({ ok: true, summary: "다시 했어요" }) } }, now: () => NOW + 1000 })
+    const s = (await call(ws2, "GET", "/api/ws/signals/" + hold.id)).body.signal
+    expect(s).toMatchObject({ status: "open", lane: "decide", kind: "error" })
+    expect(s.reason).toContain("interrupted")
+    expect((await call(ws2, "POST", "/api/ws/signals/" + hold.id + "/approve")).status).toBe(202)
+    await ws2.settle()
+    expect(ran).toBe(1)
+    expect((await call(ws2, "GET", "/api/ws/signals/" + hold.id)).body.signal).toMatchObject({ lane: "review", kind: "done" })
+  })
+
+  test("실행기가 응답하지 않으면 시간 초과로 실패 처리해요", async () => {
+    const store = new Store(join(dir, "q.db"))
+    seedHold(store, "r2")
+    const ws = createWorkspace({ path: join(dir, "w.db"), engine: store, execute: never, execTimeoutMs: 30, now: () => NOW })
+    const hold = (await call(ws, "GET", "/api/ws/now")).body.needsYou[0]
+    await call(ws, "POST", "/api/ws/signals/" + hold.id + "/approve")
+    await ws.settle()
+    const s = (await call(ws, "GET", "/api/ws/signals/" + hold.id)).body.signal
+    expect(s).toMatchObject({ status: "open", lane: "decide", kind: "error" })
+    expect(s.reason).toContain("시간 초과")
+  })
+
+  test("실행 중인 사건도 Dismiss(거절)할 수 있고, 늦게 온 결과가 다시 열지 않아요", async () => {
+    const store = new Store(join(dir, "q.db"))
+    seedHold(store, "r3")
+    let finish!: (v: { ok: true; summary: string }) => void
+    const ws = createWorkspace({ path: join(dir, "w.db"), engine: store, execute: () => ({ runId: "rx3", done: new Promise((r) => { finish = r }) }), now: () => NOW })
+    const hold = (await call(ws, "GET", "/api/ws/now")).body.needsYou[0]
+    await call(ws, "POST", "/api/ws/signals/" + hold.id + "/approve")
+    expect((await call(ws, "POST", "/api/ws/signals/" + hold.id + "/reject", { why: "그만" })).status).toBe(200)
+    finish({ ok: true, summary: "늦은 결과" })
+    await ws.settle()
+    expect((await call(ws, "GET", "/api/ws/signals/" + hold.id)).body.signal).toMatchObject({ status: "resolved", lane: "info" })
+  })
+})

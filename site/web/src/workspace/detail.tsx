@@ -17,7 +17,9 @@ import { dday } from "./views"
 
 export type Open = { kind: "item"; id: string } | { kind: "signal"; id: string } | null
 type Loaded = { kind: "item"; item: Item; note: Note | null } | { kind: "signal"; signal: Signal; note: Note | null }
-type Acts = { approve: (s: Signal) => Promise<void>; reject: (s: Signal) => Promise<void>; resolve: (s: Signal) => Promise<void>; done: (i: Item) => Promise<void>; ask: (i: Item) => Promise<void> }
+/** true 면 성공, 문자열이면 실패 이유 */
+type ActResult = true | string
+type Acts = { approve: (s: Signal) => Promise<ActResult>; reject: (s: Signal) => Promise<ActResult>; resolve: (s: Signal) => Promise<ActResult>; done: (i: Item) => Promise<ActResult>; ask: (i: Item) => Promise<ActResult> }
 const AUTO = new Set(["agent", "goat", "system"])
 const ROLES = [["ceo", "CEO"], ["reviewer", "Reviewer"], ["qa", "QA"], ["cso", "CSO"]] as const
 const when = (ms: number) => new Date(ms).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
@@ -85,7 +87,8 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf, returnFo
 
   const refresh = (msg?: string) => { if (msg) setSaved(msg); setTick((t) => t + 1); onChanged() }
   const run_ = async (fn: () => Promise<unknown>, msg: string) => {
-    try { await fn(); refresh(msg) } catch (e) { setError(e instanceof Error ? e.message : String(e)) }
+    setError(null)
+    try { const r = await fn(); if (typeof r === "string") { setSaved(null); setError(r); return } refresh(msg) } catch (e) { setSaved(null); setError(e instanceof Error ? e.message : String(e)) }
   }
   const saveNote = async () => {
     if (!data) return
@@ -184,7 +187,7 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf, returnFo
               </div>
               {run && <RunPanel run={run} signals={runSignals} act={act} onDone={() => refresh()} />}
               {/* 이 사건의 제안 카드가 위 진행에 이미 있으면 거기 Approve/Reject 하나만 둬요(같은 버튼이 두 번 나오지 않게) */}
-              {data.kind === "signal" && <SignalActions s={data.signal} act={act} onDone={(m) => refresh(m)} inCard={!!run && runId === data.signal.meta?.runId && !!run.proposals[String(data.signal.meta?.proposalId)]} />}
+              {data.kind === "signal" && <SignalActions s={data.signal} act={act} onDone={(m) => { setError(null); refresh(m) }} onFail={(why) => { setSaved(null); setError(why) }} inCard={!!run && runId === data.signal.meta?.runId && !!run.proposals[String(data.signal.meta?.proposalId)]} />}
             </div>
 
             {/* 아래: 사람 기록 */}
@@ -312,7 +315,8 @@ function ProposalCard({ p, signal, act, onDone }: { p: Proposal; signal: Signal 
   const running = p.exec.some((x) => x.type === "execute.start") && !result
   const waiting = signal && signal.status === "open" && ["decide", "now"].includes(signal.lane)
   const [busy, setBusy] = useState(false)
-  const go = async (fn: () => Promise<void>) => { setBusy(true); try { await fn(); onDone() } finally { setBusy(false) } }
+  const [fail, setFail] = useState<string | null>(null)
+  const go = async (fn: () => Promise<ActResult>) => { setBusy(true); setFail(null); try { const r = await fn(); if (r === true) onDone(); else setFail(r) } finally { setBusy(false) } }
   const after = signal && signal.meta?.decidedBy ? (signal.status === "running" ? "approved · running" : signal.meta.decision === "reject" ? "rejected by you" : "approved by you") : null
   return (
     <div className="rounded-xl border bg-background/60 p-3">
@@ -345,6 +349,7 @@ function ProposalCard({ p, signal, act, onDone }: { p: Proposal; signal: Signal 
           <span className="text-2xs text-muted-foreground">{signal.kind === "error" ? "Retry runs it on " + String(signal.meta?.executor) + " again." : "Approve runs it on " + String(signal.meta?.executor) + " now."}</span>
         </div>
       )}
+      {fail && <p role="alert" className={"mt-2 rounded px-1.5 py-0.5 text-2xs " + ALERT}>Not done: {fail}</p>}
       {p.verdict?.decision === "hold" && !signal && <p className="mt-2 text-2xs text-muted-foreground">Waiting for the workspace to pick up this hold…</p>}
       {after && <p className="mt-2 text-2xs text-muted-foreground">{after}{signal?.body && signal.lane === "review" ? "" : ""}</p>}
       {signal && signal.meta?.decidedBy && signal.lane === "review" && signal.body && <div className="mt-2 rounded-lg bg-muted/50 p-2.5 text-xs leading-5"><Md text={signal.body} /></div>}
@@ -352,19 +357,21 @@ function ProposalCard({ p, signal, act, onDone }: { p: Proposal; signal: Signal 
   )
 }
 
-function SignalActions({ s, act, onDone, inCard }: { s: Signal; act: Acts; onDone: (m: string) => void; inCard?: boolean }) {
+function SignalActions({ s, act, onDone, onFail, inCard }: { s: Signal; act: Acts; onDone: (m: string) => void; onFail: (why: string) => void; inCard?: boolean }) {
   const council = !!s.meta?.runId && !!s.meta?.proposalId
   const waiting = s.status === "open" && ["decide", "now", "main"].includes(s.lane)
-  if (s.status !== "open") return null
-  if (waiting && council && inCard) return null
-  const items: [string, () => Promise<void>, string][] = []
+  const items: [string, () => Promise<ActResult>, string][] = []
+  // 실행 중에 멈춘 것도 닫을 수 있어요(리뷰 지적 2): 실행기는 멈추지 못하고, 늦게 온 결과는 노트에만 남아요
+  if (s.status === "running") items.push(["Dismiss", () => act.reject(s), "Dismissed — a late result will only go to the note"])
+  else if (s.status !== "open") return null
+  else if (waiting && council && inCard) return null
   // 실행이 실패한 판정은 보류가 아니라서 "다시 실행 / 닫기"로 불러요(같은 승인·거절 길을 써요)
-  if (waiting && council) items.push(s.kind === "error" ? ["Retry", () => act.approve(s), "Running again"] : ["Approve", () => act.approve(s), "Approved"], s.kind === "error" ? ["Dismiss", () => act.reject(s), "Dismissed"] : ["Reject", () => act.reject(s), "Rejected"])
+  else if (waiting && council) items.push(s.kind === "error" ? ["Retry", () => act.approve(s), "Running again"] : ["Approve", () => act.approve(s), "Approved"], s.kind === "error" ? ["Dismiss", () => act.reject(s), "Dismissed"] : ["Reject", () => act.reject(s), "Rejected"])
   else items.push([s.lane === "review" ? "Mark reviewed" : "Mark handled", () => act.resolve(s), "Closed"])
   return (
     <div className="flex flex-wrap gap-2">
       {items.map(([label, fn, msg]) => (
-        <Button key={label} size="sm" variant={label === "Approve" || label === "Retry" ? "default" : "outline"} className="rounded-full" onClick={() => void fn().then(() => onDone(msg))}>
+        <Button key={label} size="sm" variant={label === "Approve" || label === "Retry" ? "default" : "outline"} className="rounded-full" onClick={() => void fn().then((r) => (r === true ? onDone(msg) : onFail(r)))}>
           {label === "Reject" || label === "Dismiss" ? <X /> : <Check />}{label}
         </Button>
       ))}

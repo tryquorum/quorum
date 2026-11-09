@@ -107,7 +107,24 @@ export function approvalTask(db: Database, s: Signal): string {
   ].join("\n")
 }
 
-export function approveSignal(db: Database, id: string, execute: ExecuteFn | undefined, now = Date.now()): { status: number; body: Record<string, unknown>; done?: Promise<void> } {
+/** 실행 시간 상한(기본 20분). 실행기가 응답하지 않으면 running 에 멈추지 않고 실패로 돌아와요(리뷰 지적 2) */
+export const EXEC_TIMEOUT_MS = 20 * 60_000
+
+/**
+ * 서버가 다시 시작되면 승인 실행의 결과를 기다리던 promise 가 사라져서 running 사건이 영원히 멈춰요(리뷰 지적 2).
+ * 이 프로세스가 지금 지켜보는 실행(live)이 아닌 running 사건을 끊김(error)으로 Needs you 에 돌려 Retry 할 수 있게 해요
+ */
+export function recoverRunning(db: Database, now = Date.now(), live: Set<string> = new Set()): number {
+  let n = 0
+  for (const s of listSignals(db, { open: true, limit: 1000 })) {
+    if (s.status !== "running" || (s.meta?.execRunId && live.has(String(s.meta.execRunId)))) continue
+    const moved = moveSignal(db, s.id, ["running"], { status: "open", lane: "decide", kind: "error", reason: "실행이 끊겼어요(interrupted) · Retry 로 다시 실행할 수 있어요", meta: { execError: "interrupted" } }, now)
+    if (moved) { appendNote(db, "signal:" + s.id, "## 실행 끊김\n서버가 다시 시작돼서 실행 " + String(s.meta?.execRunId ?? "") + " 의 결과를 받지 못했어요. Retry 로 다시 실행하거나 Dismiss 로 닫아요.", "system", now); n++ }
+  }
+  return n
+}
+
+export function approveSignal(db: Database, id: string, execute: ExecuteFn | undefined, now = Date.now(), opts: { timeoutMs?: number; live?: Set<string> } = {}): { status: number; body: Record<string, unknown>; done?: Promise<void> } {
   const cur = getSignal(db, id)
   if (!cur) return { status: 404, body: { error: "signal not found" } }
   if (cur.status !== "open" || !["decide", "now"].includes(cur.lane)) return { status: 409, body: { error: "승인을 기다리는 사건이 아니에요", signal: cur } }
@@ -133,16 +150,22 @@ export function approveSignal(db: Database, id: string, execute: ExecuteFn | und
   }
   const withRun = moveSignal(db, id, ["running"], { status: "running", lane: "running", reason: moved.reason ?? "승인했어요 · " + m.executor + " 실행 중", meta: { execRunId: started.runId } }, now)
   appendNote(db, "signal:" + id, "## 승인\n사람이 승인했어요 · 실행 " + started.runId + " (" + m.executor + ")", "system", now)
-  const done = started.done.then((out) => {
+  opts.live?.add(started.runId)
+  const timeoutMs = opts.timeoutMs ?? EXEC_TIMEOUT_MS
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timedOut = new Promise<ExecOut>((resolve) => { timer = setTimeout(() => resolve({ ok: false, error: "시간 초과: " + Math.round(timeoutMs / 1000) + "초 안에 끝나지 않았어요" }), timeoutMs) })
+  const done = Promise.race([started.done, timedOut]).then((out) => {
+    clearTimeout(timer)
+    opts.live?.delete(started.runId)
     const at = Date.now()
     if (out.ok) {
       // 실행기가 요약 없이 끝나면 빈 결과를 성공처럼 보이지 않게 그렇다고 적어요
       const summary = out.summary.trim() || "(실행기가 요약을 남기지 않았어요 · 콘솔의 실행 " + started.runId + " 을 확인해 주세요)"
-      moveSignal(db, id, ["running"], { status: "open", lane: "review", kind: "done", reason: "승인한 일을 실행했어요 · 결과를 봐 주세요", body: summary.slice(0, 8000) }, at)
-      appendNote(db, "signal:" + id, "## 실행 결과 (" + m.executor + ")\n\n" + summary.slice(0, 8000), "agent", at)
+      const landed = moveSignal(db, id, ["running"], { status: "open", lane: "review", kind: "done", reason: "승인한 일을 실행했어요 · 결과를 봐 주세요", body: summary.slice(0, 8000) }, at)
+      appendNote(db, "signal:" + id, "## 실행 결과 (" + m.executor + ")" + (landed ? "" : " — 닫은 뒤에 도착했어요") + "\n\n" + summary.slice(0, 8000), "agent", at)
     } else {
-      moveSignal(db, id, ["running"], { status: "open", lane: "decide", kind: "error", reason: "승인한 일이 실패했어요: " + firstLine(out.error), meta: { execError: out.error } }, at)
-      appendNote(db, "signal:" + id, "## 실행 실패 (" + m.executor + ")\n\n" + out.error.slice(0, 8000), "agent", at)
+      const landed = moveSignal(db, id, ["running"], { status: "open", lane: "decide", kind: "error", reason: "승인한 일이 실패했어요: " + firstLine(out.error), meta: { execError: out.error } }, at)
+      appendNote(db, "signal:" + id, "## 실행 실패 (" + m.executor + ")" + (landed ? "" : " — 닫은 뒤에 도착했어요") + "\n\n" + out.error.slice(0, 8000), "agent", at)
     }
     if (m.itemId) logItem(db, m.itemId, { by: "agent", text: (out.ok ? "승인 실행 끝: " : "승인 실행 실패: ") + cur.title }, at)
   })
@@ -150,7 +173,9 @@ export function approveSignal(db: Database, id: string, execute: ExecuteFn | und
 }
 
 export function rejectSignal(db: Database, id: string, why: string, now = Date.now()): { status: number; body: Record<string, unknown> } {
-  const s = moveSignal(db, id, ["open"], { status: "resolved", lane: "info", reason: "사람이 거절했어요" + (why ? ": " + why : ""), meta: { decidedBy: "person", decidedAt: now, decision: "reject" } }, now)
+  // 실행 중인 것도 닫을 수 있어요(Dismiss). 이미 시작한 실행기는 멈추지 못하고, 늦게 온 결과는 노트에만 남아요
+  const wasRunning = getSignal(db, id)?.status === "running"
+  const s = moveSignal(db, id, ["open", "running"], { status: "resolved", lane: "info", reason: (wasRunning ? "실행 중에 사람이 닫았어요" : "사람이 거절했어요") + (why ? ": " + why : ""), meta: { decidedBy: "person", decidedAt: now, decision: "reject" } }, now)
   if (!s) return getSignal(db, id) ? { status: 409, body: { error: "이미 처리됐어요" } } : { status: 404, body: { error: "signal not found" } }
   appendNote(db, "signal:" + id, "## 거절\n사람이 거절했어요" + (why ? ": " + why : ""), "system", now)
   return { status: 200, body: { signal: s } }

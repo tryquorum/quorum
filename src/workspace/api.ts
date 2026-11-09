@@ -4,7 +4,7 @@
 import { Database } from "bun:sqlite"
 import { mkdirSync } from "node:fs"
 import { dirname } from "node:path"
-import { approveSignal, initCouncilSync, rejectSignal, resolveSignal, syncCouncil, type EngineStore, type ExecuteFn } from "./council"
+import { approveSignal, initCouncilSync, recoverRunning, rejectSignal, resolveSignal, syncCouncil, type EngineStore, type ExecuteFn } from "./council"
 import { archiveItem, createItem, getItem, initItems, listItems, logItem, patchItem, type Item } from "./items"
 import { appendNote, getNote, initNotes, noteOverflow, NoteRejected, putNote } from "./notes"
 import { getSignal, ingestSignal, initSignals, listSignals, type Signal } from "./signals"
@@ -18,6 +18,8 @@ const REF = /^(item|signal):[A-Za-z0-9_-]{1,40}$/
 
 export type WorkspaceDeps = {
   path: string; engine?: EngineStore; execute?: ExecuteFn; now?: () => number
+  /** 승인 실행 시간 상한(ms). 기본 council.EXEC_TIMEOUT_MS */
+  execTimeoutMs?: number
   /** 방향판 읽기 전용 가져오기(예: http://127.0.0.1:3070). 없으면 가져오지 않아요 */
   boardBase?: string; boardGet?: GetJson
 }
@@ -92,6 +94,9 @@ export function createWorkspace(deps: WorkspaceDeps) {
   const board = deps.boardBase ? createBoardImport(db, { base: deps.boardBase, get: deps.boardGet, now: clock }) : null
   /** 시험이 승인 실행을 기다릴 때 써요 */
   const pending = new Set<Promise<void>>()
+  // 이 프로세스가 결과를 기다리는 승인 실행. 시작할 때는 비어 있어서, 앞 프로세스가 남긴 running 사건은 끊김으로 돌려요
+  const live = new Set<string>()
+  recoverRunning(db, clock(), live)
 
   async function handle(req: Request, parts: string[]): Promise<Response> {
     const url = new URL(req.url)
@@ -162,7 +167,7 @@ export function createWorkspace(deps: WorkspaceDeps) {
         return s ? json({ signal: s, note: getNote(db, "signal:" + id) }) : err(404, "signal not found")
       }
       if (action === "approve" && m === "POST") {
-        const r = approveSignal(db, id, deps.execute, clock())
+        const r = approveSignal(db, id, deps.execute, clock(), { timeoutMs: deps.execTimeoutMs, live })
         if (r.done) { const p = r.done.catch((e) => console.error("[workspace] approve finish failed:", e)).finally(() => pending.delete(p)); pending.add(p) }
         return json(r.body, r.status)
       }

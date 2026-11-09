@@ -97,10 +97,11 @@ export function Workspace() {
   const areaOf = useCallback((i: Item) => (meta?.boards.find((b) => b.id === i.boardId)?.areas.find((a) => a.id === i.area)) ?? null, [meta])
   const areas = useMemo(() => (meta?.boards ?? []).flatMap((b) => b.areas), [meta])
 
-  const act = useCallback(async (key: string, label: string, fn: () => Promise<unknown>) => {
+  /** 처리 하나. 성공이면 true, 실패면 이유(팝업이 성공 문구를 잘못 보이지 않게 — 리뷰 지적 5) */
+  const act = useCallback(async (key: string, label: string, fn: () => Promise<unknown>): Promise<true | string> => {
     setBusy((b) => new Set(b).add(key))
-    try { await fn(); setToast({ tone: "ok", text: label }); await data.reload() }
-    catch (e) { setToast({ tone: "error", text: label + " failed: " + (e instanceof Error ? e.message : String(e)) }) }
+    try { await fn(); setToast({ tone: "ok", text: label }); await data.reload(); return true }
+    catch (e) { const why = e instanceof Error ? e.message : String(e); setToast({ tone: "error", text: label + " failed: " + why }); return why }
     finally { setBusy((b) => { const n = new Set(b); n.delete(key); return n }) }
   }, [data])
   useEffect(() => { if (!toast) return; const t = window.setTimeout(() => setToast(null), 4000); return () => window.clearTimeout(t) }, [toast])
