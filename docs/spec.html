@@ -1,0 +1,105 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>Quorum 스펙 v0</title>
+<style>
+@page{size:A4;margin:16mm 15mm}
+body{font-family:"Pretendard JP","Pretendard","Apple SD Gothic Neo",sans-serif;font-size:9.8pt;line-height:1.5;color:#1a1a1a}
+h1{font-size:21pt;margin:0 0 2pt}
+.sub{color:#555;margin:0 0 10pt}
+h2{font-size:12.5pt;border-bottom:1.5px solid #222;padding-bottom:2pt;margin:11pt 0 5pt}
+table{border-collapse:collapse;width:100%;margin:4pt 0}
+th,td{border:1px solid #bbb;padding:4pt 6pt;vertical-align:top;text-align:left}
+th{background:#f1f1f1}
+.flow{display:flex;flex-wrap:wrap;gap:4pt;margin:6pt 0}
+.st{border:1.2px solid #333;border-radius:5pt;padding:4pt 6pt;width:30.5%;box-sizing:border-box;font-size:9.4pt}
+.st b{display:block}
+.box{background:#f6f6f2;border-left:3px solid #333;padding:6pt 8pt;margin:6pt 0}
+code{font-family:Menlo,monospace;font-size:8.8pt;background:#eee;padding:0 2pt}
+ul,ol{margin:3pt 0 3pt 16pt;padding:0}
+.pb{page-break-before:always}
+.q li{margin-bottom:3pt}
+</style></head><body>
+<h1>Quorum — 필요한 일만 하는 에이전트 의회</h1>
+<p class="sub">스펙 v0 · 2026-11-09 · c0mpiled-17: Seoul · YC RFS: <b>Multiplayer AI</b> + <b>Self-Maintaining APIs</b> · 방향판 + Aside + gbrain + gstack</p>
+
+<div class="box"><b>한 줄 요약.</b> 여러 봇이 할 일을 제안하고 서로 반박해서 정말 필요한 일만 통과시켜요. 통과한 일은 Aside가 로그인된 브라우저에서 실행하고, gbrain이 판정을 기억해 다음 비슷한 요청에 같은 판단을 바로 내려요. 사람은 방향판에서 결과와 승인 대기만 봐요.</div>
+
+<h2>1. 문제</h2>
+<ul>
+<li>에이전트가 늘수록 제안과 알림도 늘어나요. 대부분은 필요 없는 일이고, 사람이 하나하나 걸러야 해요.</li>
+<li>에이전트가 같은 판단을 매번 처음부터 다시 해요. 어제 기각한 일을 오늘 또 제안해요.</li>
+<li>공식 API가 없는 사이트를 다루는 자동화는 경로 하나만 바뀌어도 조용히 깨져요.</li>
+</ul>
+
+<h2>2. 구성</h2>
+<table>
+<tr><th style="width:17%">구성</th><th style="width:33%">역할</th><th>연결 방식</th></tr>
+<tr><td><b>방향판</b><br>(기존 서비스)</td><td>사건 수신, 사람 승인 칸, 결과 노트. 사람이 보는 화면</td><td>REST <code>/api/act</code>, MCP <code>board_search · board_fetch · board_act · board_write</code>. 코드는 복사하지 않고 실행 중인 서비스를 호출</td></tr>
+<tr><td><b>Aside</b></td><td>로그인된 브라우저에서 실행하고 결과 확인. 깨진 경로 재탐색</td><td><code>aside repl</code>(정해진 단계), <code>aside exec</code>(판단·로그인 필요)</td></tr>
+<tr><td><b>gbrain</b></td><td>판정과 근거, 레시피 버전을 출처와 함께 기억. 비슷한 사례 회상</td><td><code>gbrain init --pglite</code>, <code>search</code>/<code>think</code>, MCP</td></tr>
+<tr><td><b>gstack</b></td><td>반박하는 봇 역할: CEO(필요한가), 리뷰어(중복·버그), QA(실제로 되나), CSO(위험)</td><td>gstack 스킬을 봇 프롬프트·역할로 사용(<code>--host codex/claude</code>)</td></tr>
+<tr><td><b>Quorum</b><br>(오늘 만드는 것)</td><td>의회 오케스트레이터, 레시피 자가수리, 데모 화면</td><td>새 저장소, 10:00 이후 커밋만</td></tr>
+</table>
+
+<h2>3. 흐름</h2>
+<div class="flow">
+<div class="st"><b>① 수신</b>방향판 사건 또는 사람 요청이 들어와요</div>
+<div class="st"><b>② 회상</b>gbrain에서 비슷한 지난 판정을 찾아요</div>
+<div class="st"><b>③ 제안</b>제안 봇 2–3개가 할 일 후보를 내요</div>
+<div class="st"><b>④ 반박</b>gstack 역할 봇이 각 후보를 필요성·중복·위험으로 까요</div>
+<div class="st"><b>⑤ 판정</b>통과/보류/기각과 이유. 위험이 높으면 방향판 승인 칸으로</div>
+<div class="st"><b>⑥ 실행·기억</b>Aside가 실행·확인하고, gbrain과 방향판에 판정·결과·출처를 남겨요</div>
+</div>
+<p>회상에서 거의 같은 판정이 나오면 ③–④를 건너뛰고 "지난번 판단 재사용"으로 바로 판정해요. 이 장면이 데모에서 기억의 가치를 보여 줘요.</p>
+
+<h2>4. 스스로 고치는 API (레시피)</h2>
+<ul>
+<li><b>레시피</b> = 사이트, 의도(예: "행사 공지 읽기"), 경로, 응답 파싱 규칙, 검증 예시.</li>
+<li><b>깨짐 감지</b>: 404, 스키마 불일치, 빈 결과가 검증 예시와 다를 때.</li>
+<li><b>수리</b>: Aside가 실제 페이지를 열어 네트워크 요청을 관찰하고 새 경로 후보를 찾아요. 검증 예시를 통과한 후보만 새 버전으로 저장하고, 이전 버전과 깨진 이유를 gbrain에 남겨요.</li>
+<li><b>실제 사례</b>: 오늘 Luma 공지를 읽을 때 <code>event/get-posts</code>는 404였고, 재탐색으로 <code>event/get-blasts</code>를 찾아 공지 7개를 읽었어요.</li>
+</ul>
+
+<h2>5. 2분 데모 시나리오</h2>
+<table>
+<tr><th style="width:12%">시간</th><th>화면</th></tr>
+<tr><td>0:00</td><td>문제: 에이전트 알림이 쏟아지는 방향판 화면</td></tr>
+<tr><td>0:15</td><td>"오늘 행사 공지에서 내가 할 일 정리해 줘" → 제안 봇 3개가 후보 6개 제출</td></tr>
+<tr><td>0:35</td><td>반박 라운드: CEO 봇 "이건 필요 없음", 리뷰어 봇 "이미 있는 일과 중복" → 2개만 통과</td></tr>
+<tr><td>0:55</td><td>Aside 실행 중 Luma 경로 404 → 재탐색 → 새 경로로 복구, gbrain에 레시피 v2 저장</td></tr>
+<tr><td>1:20</td><td>비슷한 요청 다시 → gbrain 회상으로 의회 없이 즉시 같은 판정</td></tr>
+<tr><td>1:40</td><td>방향판에 통과한 일 2개, 승인 대기 1개, 판정 이유 노트가 남은 화면</td></tr>
+</table>
+
+<h2>6. 오늘 범위</h2>
+<table>
+<tr><th style="width:50%">MVP (15:00까지)</th><th>범위 밖</th></tr>
+<tr><td><ul><li>의회: 제안 → 반박 → 판정 (CLI + 간단한 웹 화면)</li><li>gbrain 기억·회상, 재사용 판정</li><li>Aside 실행 1종(Luma 공지 읽기)</li><li>레시피 깨짐 감지·재탐색·검증</li><li>방향판에 결과·승인 대기 기록</li></ul></td>
+<td><ul><li>여러 사용자 계정·권한</li><li>사이트 여러 곳의 레시피</li><li>배포·호스팅</li><li>사람 승인 없는 고위험 실행(결제, 메일 발송)</li></ul></td></tr>
+</table>
+
+<h2>7. 규칙 맞추기</h2>
+<ul>
+<li>새 GitHub org의 새 공개 저장소에서 시작하고, 10:00 이후 커밋만 둬요.</li>
+<li>방향판·Aside·gbrain·gstack은 이미 있는 도구로 호출해요. 방향판 코드나 이틀 전 프로토타입 코드는 저장소에 넣지 않아요.</li>
+<li>README에 "Built on 방향판, Aside, gbrain (MIT), gstack (MIT)"라고 밝혀요.</li>
+<li>제출: 2분 이하 데모 영상(Loom/YouTube) + 저장소 URL.</li>
+</ul>
+
+<h2>8. 일정</h2>
+<table>
+<tr><th style="width:18%">시간</th><th>할 일</th></tr>
+<tr><td>~11:30</td><td>gbrain·gstack 설치, 새 org·저장소, 스펙 확정</td></tr>
+<tr><td>~13:00</td><td>의회 루프 + gbrain 기억·회상</td></tr>
+<tr><td>~14:00</td><td>Aside 실행 + 레시피 자가수리 + 방향판 기록</td></tr>
+<tr><td>~14:40</td><td>데모 화면 다듬기, README</td></tr>
+<tr><td>~15:00</td><td>영상 녹화, 제출</td></tr>
+</table>
+
+<div style="break-inside:avoid"><h2>9. 같이 정할 것</h2>
+<ol class="q">
+<li><b>이름</b>: Quorum(가칭)으로 갈지</li>
+<li><b>GitHub org 이름</b>: org는 웹에서 직접 만들어야 해요. 만들면 저장소부터 제가 할게요</li>
+<li><b>봇 모델</b>: claude CLI / codex CLI 중 어느 쪽으로 봇을 돌릴지 (둘 다 설치됨)</li>
+<li><b>승인 기준</b>: 어떤 일부터 방향판 승인 칸으로 보낼지</li>
+<li><b>데모 사이트</b>: Luma 하나로 갈지, 하나 더(Gmail·Slack 등) 넣을지</li>
+</ol></div>
+</body></html>
