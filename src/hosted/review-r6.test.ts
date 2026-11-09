@@ -39,6 +39,17 @@ describe("review round 6 fixes", () => {
     expect(s.body).toBe(long)
   }))
 
+  test("review 7: a failure report is also fully visible on the signal when the note is full", () => setup(async (g, call) => {
+    const { id } = await approved(g, call)
+    await call("PUT", "/api/ws/notes?ref=signal:" + id, { md: "n".repeat(49_000) })
+    const l = g.tasks.lease({})!
+    const long = "f".repeat(5_000) + " WHY-IT-FAILED https://example.com/why"
+    expect(g.tasks.report({ taskId: l.task.id, leaseId: l.leaseId, ok: false, text: long }).status).toBe(200)
+    const s = (await call("GET", "/api/ws/signals/" + id)).body.signal
+    expect(s.lane).toBe("decide")
+    expect(s.body).toBe(long)
+  }))
+
   test("dismissing work your Aside has not picked up cancels it", () => setup(async (g, call) => {
     const { id, taskId } = await approved(g, call)
     expect((await call("POST", "/api/ws/signals/" + id + "/reject", { why: "changed my mind" })).status).toBe(200)

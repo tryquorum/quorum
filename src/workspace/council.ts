@@ -296,7 +296,8 @@ export function finishQueued(db: Database, signalId: string, r: { ok: boolean; t
   const preview = text.slice(0, 20_000)
   const moved = r.ok
     ? moveSignal(db, signalId, ["open", "running", "resolved"], { status: "open", lane: "review", kind: "done", reason: (closed ? "Your Aside finished after you closed this" : "Your Aside ran this") + " · review the result", body: preview, meta: { taskId: r.taskId } }, now)
-    : moveSignal(db, signalId, ["open", "running", "resolved"], { status: "open", lane: "decide", kind: "error", reason: "Your Aside could not finish: " + firstLine(text), meta: { taskId: r.taskId, execError: text.slice(0, 2000) } }, now)
+    // 실패 보고도 전체를 본문에(노트가 가득 차도 이유·사실이 다 보이게)
+    : moveSignal(db, signalId, ["open", "running", "resolved"], { status: "open", lane: "decide", kind: "error", reason: "Your Aside could not finish: " + firstLine(text), body: preview, meta: { taskId: r.taskId, execError: text.slice(0, 2000) } }, now)
   if (!moved) return null
   appendNote(db, "signal:" + signalId, (r.ok ? "## Result from your Aside" : "## Your Aside could not finish") + " (" + r.executor + ", task " + r.taskId + ")\n\n" + text.slice(0, 20_000), "agent", now)
   if (cur.meta?.itemId) logItem(db, String(cur.meta.itemId), { by: "agent", text: (r.ok ? "Aside finished: " : "Aside failed: ") + cur.title }, now)
