@@ -118,7 +118,7 @@ export function Workspace() {
       { id: "review", title: "Review", hint: "what the council ran", tone: "review", rows: now.review.map((s) => ({ key: "s:" + s.id, kind: "signal", signal: s, resolve: true })), empty: "Nothing to review." },
       { id: "inbox", title: "Inbox", hint: "written down, no date yet", rows: itemRows(now.inbox, true).slice(0, 12), empty: "Inbox zero. Write something down above (press N)." , extra: now.inbox.filter(inSpace).length > 12 ? <a href="#/inbox" className="px-3 text-xs text-muted-foreground hover:text-foreground">{now.inbox.filter(inSpace).length - 12} more in Inbox →</a> : null },
     ]
-    if (route.view === "inbox") return [{ id: "inbox", title: "Inbox", hint: "no date yet — Ask the council or just do it", rows: itemRows(now.inbox, true), empty: "Inbox zero. Write something down above (press N)." }]
+    if (route.view === "inbox") return [{ id: "inbox", title: "Inbox", hint: "no date yet — send it to an agent or just do it", rows: itemRows(now.inbox, true), empty: "Inbox zero. Write something down above (press N)." }]
     if (route.view === "signals") return sigSections
     if (route.view === "goals") {
       const all = route.goal ? now.goals.filter((g) => g.goal.id === route.goal) : now.goals

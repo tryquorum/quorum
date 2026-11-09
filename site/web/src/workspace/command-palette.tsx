@@ -41,7 +41,7 @@ export function CommandPalette({ open, onOpenChange, view, onOpenItem, onOpenSig
           {raw && (
             <CommandGroup heading="Quick actions">
               <CommandItem value="action:capture" onSelect={() => choose(() => onCapture(raw))}><Feather /><span className="min-w-0 flex-1 truncate">Write down: {raw}</span></CommandItem>
-              <CommandItem value="action:ask" onSelect={() => choose(() => onAsk(raw))}><Gavel /><span className="min-w-0 flex-1 truncate">Ask the council: {raw}</span></CommandItem>
+              <CommandItem value="action:ask" onSelect={() => choose(() => onAsk(raw))}><Gavel /><span className="min-w-0 flex-1 truncate">Send to agent: {raw}</span></CommandItem>
             </CommandGroup>
           )}
           {sig.length > 0 && <CommandGroup heading="Council">{sig.map(row)}</CommandGroup>}
