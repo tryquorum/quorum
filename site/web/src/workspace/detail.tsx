@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import type { Proposal } from "@/console/stream"
-import { call, ws, type Area, type GoalView, type Item, type Note, type Signal } from "./api"
+import { ApiError, call, ws, type Area, type GoalView, type Item, type Note, type Signal } from "./api"
 import { Md } from "./md"
 import { ALERT, CHIP, DECIDE, LATE } from "./tone"
 import { SourceChip, dueLabel, isLate, whenOf } from "./rows"
@@ -40,6 +40,9 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf, returnFo
   const [data, setData] = useState<Loaded | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [md, setMd] = useState("")
+  // 노트 저장이 거절됐을 때(409 그사이 바뀜, 413 너무 김): 이유와, 다시 불러온 뒤에도 남겨 둘 내 초안
+  const [noteProblem, setNoteProblem] = useState<{ status: number; text: string } | null>(null)
+  const [draft, setDraft] = useState<string | null>(null)
   const [line, setLine] = useState("")
   const [title, setTitle] = useState("")
   const [saved, setSaved] = useState<string | null>(null)
@@ -83,6 +86,27 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf, returnFo
   const refresh = (msg?: string) => { if (msg) setSaved(msg); setTick((t) => t + 1); onChanged() }
   const run_ = async (fn: () => Promise<unknown>, msg: string) => {
     try { await fn(); refresh(msg) } catch (e) { setError(e instanceof Error ? e.message : String(e)) }
+  }
+  const saveNote = async () => {
+    if (!data) return
+    setNoteProblem(null)
+    try {
+      await ws.saveNote(ref, md, data.note?.updatedAt ?? 0)
+      setDraft(null)
+      refresh("Note saved")
+    } catch (e) {
+      const status = e instanceof ApiError ? e.status : 0
+      setNoteProblem({ status, text: status === 409 ? "The council added to this note while you were editing, so nothing was saved. Reload it, then add your change." : e instanceof Error ? e.message : String(e) })
+    }
+  }
+  /** 저장이 409 로 거절됐을 때: 최신 노트를 불러오고, 내 초안은 따로 남겨 둬요 */
+  const reloadNote = async () => {
+    if (!data) return
+    const fresh = data.kind === "item" ? await ws.item(data.item.id).then((r) => ({ kind: "item" as const, ...r })) : await ws.signal(data.signal.id).then((r) => ({ kind: "signal" as const, ...r }))
+    setDraft(md)
+    setData(fresh)
+    setMd(fresh.note?.md ?? "")
+    setNoteProblem(null)
   }
   const send = async () => {
     if (!data || sending) return
@@ -179,12 +203,25 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf, returnFo
                   <Button type="submit" size="sm" variant="secondary" disabled={!line.trim()}>Add</Button>
                 </form>
               )}
-              <details className="group/note" open={!data.note?.md}>
+              <details className="group/note" open={!data.note?.md || draft !== null || !!noteProblem}>
                 <summary className="cursor-pointer text-xs font-medium text-muted-foreground select-none hover:text-foreground max-md:py-3.5 [@media(pointer:coarse)]:py-3.5">Note {data.note && <span className="font-normal">· {data.note.personEdited ? "edited by you" : "written by the council"} · {when(data.note.updatedAt)}</span>}</summary>
                 <Textarea value={md} onChange={(e) => setMd(e.target.value)} placeholder="Markdown. The council only appends here; it never rewrites what you wrote." className="mt-2 min-h-28 font-mono text-xs leading-5" />
                 <div className="mt-2 flex items-center gap-2">
-                  <Button size="sm" variant="secondary" disabled={md === (data.note?.md ?? "")} onClick={() => void run_(() => ws.saveNote(ref, md), "Note saved")}>Save note</Button>
+                  <Button size="sm" variant="secondary" disabled={md === (data.note?.md ?? "")} onClick={() => void saveNote()}>Save note</Button>
+                  {data.note?.overflow ? <span className="text-2xs text-muted-foreground">{data.note.overflow} council result(s) kept separately — the note is full</span> : null}
                 </div>
+                {noteProblem && (
+                  <div role="alert" className={"mt-2 flex flex-wrap items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs " + ALERT}>
+                    <span className="min-w-0 flex-1">{noteProblem.text}</span>
+                    {noteProblem.status === 409 && <Button size="sm" variant="outline" className="rounded-full" onClick={() => void reloadNote()}>Reload the note</Button>}
+                  </div>
+                )}
+                {draft !== null && (
+                  <div className="mt-2">
+                    <p className="mb-1 text-2xs text-muted-foreground">Your unsaved draft (copy what you need into the note above)</p>
+                    <Textarea readOnly value={draft} aria-label="Your unsaved draft" className="min-h-20 font-mono text-xs leading-5" />
+                  </div>
+                )}
               </details>
               {(saved || error) && <p role="status" className={cn("text-2xs", error ? "rounded px-1.5 py-0.5 " + ALERT : "text-muted-foreground")}>{error ?? saved}</p>}
             </div>

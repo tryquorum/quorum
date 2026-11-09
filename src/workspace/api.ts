@@ -6,7 +6,7 @@ import { mkdirSync } from "node:fs"
 import { dirname } from "node:path"
 import { approveSignal, initCouncilSync, rejectSignal, resolveSignal, syncCouncil, type EngineStore, type ExecuteFn } from "./council"
 import { archiveItem, createItem, getItem, initItems, listItems, logItem, patchItem, type Item } from "./items"
-import { appendNote, getNote, initNotes, putNote } from "./notes"
+import { appendNote, getNote, initNotes, noteOverflow, NoteRejected, putNote } from "./notes"
 import { getSignal, ingestSignal, initSignals, listSignals, type Signal } from "./signals"
 import { createBoardImport, initBoardImport, readMeta, type GetJson } from "./board-import"
 
@@ -191,8 +191,14 @@ export function createWorkspace(deps: WorkspaceDeps) {
       if (!id && m === "PUT") {
         const b = await body()
         if (typeof b?.md !== "string") return err(400, "md required")
-        return json(putNote(db, ref, b.md, clock()))
+        // 자르지 않고, 그사이 바뀐 노트를 덮지 않아요(baseUpdatedAt: 화면이 연 노트의 updatedAt, 새 노트는 0)
+        const base = typeof b.baseUpdatedAt === "number" ? b.baseUpdatedAt : undefined
+        try { return json(putNote(db, ref, b.md, clock(), { baseUpdatedAt: base })) } catch (e) {
+          if (e instanceof NoteRejected) return json({ error: e.message, current: e.current }, e.status)
+          throw e
+        }
       }
+      if (id === "overflow" && m === "GET") return json(noteOverflow(db, ref))
       if (id === "append" && m === "POST") {
         const b = await body()
         if (typeof b?.md !== "string" || !b.md.trim()) return err(400, "md required")
