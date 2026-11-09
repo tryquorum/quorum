@@ -1,7 +1,7 @@
 // 항목 팝업. 출처: board/apps/web/src/components/work-view.tsx 의 배치(머리: 종류·제목·날짜·영역 → 요약·노트 → AI 실행 버튼과 실행 진행(run-view.tsx) → 사람 기록 입력·완료),
 // note-preview.tsx(노트 앞부분 미리보기). Quorum 판: 요약 아래 "gbrain remembers"(비슷한 지난 판정), 가운데 주 버튼 "Send to agent" 는
 // POST /api/runs 로 의회에 보내고 그 자리에서 gstack 네 역할(CEO·Reviewer·QA·CSO) 반박 → 판정 → Aside/Codex 실행 요약을 보여요. hold 는 여기서 Approve/Reject.
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Bot, Brain, Check, CircleAlert, ExternalLink, Gavel, Loader2, Send, Target, User, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
@@ -42,6 +42,15 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf, returnFo
   const [data, setData] = useState<Loaded | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [md, setMd] = useState("")
+  // 노트 기준(재리뷰 M2): 화면의 md 가 어느 저장본에서 출발했는지. 고치지 않은 md 는 새로 읽은 노트를 따라가고,
+  // 고친 md 는 출발한 버전을 지켜서 저장할 때 그사이 붙은 의회 글이 있으면 409 가 나요
+  const [noteBase, setNoteBase] = useState<{ md: string; version: number }>({ md: "", version: 0 })
+  const mdRef = useRef(md)
+  mdRef.current = md
+  const baseRef = useRef(noteBase)
+  baseRef.current = noteBase
+  // 팝업 안의 "Send to agent": 보낼 글을 그 자리에서 보여 주고 한 번 더 눌러야 보내요(재리뷰 L4)
+  const [sendAsk, setSendAsk] = useState<string | null>(null)
   // 노트 저장이 거절됐을 때(409 그사이 바뀜, 413 너무 김): 이유와, 다시 불러온 뒤에도 남겨 둘 내 초안
   const [noteProblem, setNoteProblem] = useState<{ status: number; text: string } | null>(null)
   const [draft, setDraft] = useState<string | null>(null)
@@ -55,7 +64,13 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf, returnFo
     if (!open) { setData(null); setError(null); return }
     let live = true
     const load = open.kind === "item" ? ws.item(open.id).then((r) => ({ kind: "item" as const, ...r })) : ws.signal(open.id).then((r) => ({ kind: "signal" as const, ...r }))
-    load.then((d) => { if (!live) return; setData(d); setError(null); setMd((cur) => (tick === 0 || cur === "" ? d.note?.md ?? "" : cur)); if (d.kind === "item") setTitle(d.item.text) })
+    load.then((d) => {
+      if (!live) return
+      setData(d); setError(null)
+      const fresh = { md: d.note?.md ?? "", version: d.note?.version ?? 0 }
+      if (tick === 0 || mdRef.current === baseRef.current.md) { setMd(fresh.md); setNoteBase(fresh) }
+      if (d.kind === "item") setTitle(d.item.text)
+    })
       .catch((e: unknown) => { if (live) setError(e instanceof Error ? e.message : String(e)) })
     return () => { live = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -94,7 +109,8 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf, returnFo
     if (!data) return
     setNoteProblem(null)
     try {
-      await ws.saveNote(ref, md, data.note?.updatedAt ?? 0)
+      const saved = await ws.saveNote(ref, md, noteBase.version)
+      setNoteBase({ md: saved.md, version: saved.version ?? 0 })
       setDraft(null)
       refresh("Note saved")
     } catch (e) {
@@ -109,10 +125,12 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf, returnFo
     setDraft(md)
     setData(fresh)
     setMd(fresh.note?.md ?? "")
+    setNoteBase({ md: fresh.note?.md ?? "", version: fresh.note?.version ?? 0 })
     setNoteProblem(null)
   }
   const send = async () => {
     if (!data || sending) return
+    setSendAsk(null)
     setSending(true)
     setError(null)
     try {
@@ -180,11 +198,21 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf, returnFo
             {/* 가운데: 에이전트에게 보내기 + 진행 */}
             <div className="flex flex-col gap-3 border-b bg-muted/20 p-5">
               <div className="flex flex-wrap items-center gap-2">
-                <Button onClick={() => void send()} disabled={sending || (data.kind === "item" && data.item.done)} className="h-9 rounded-full px-4">
+                <Button onClick={() => setSendAsk(requestFor(data, goal))} disabled={sending || sendAsk !== null || (data.kind === "item" && data.item.done)} className="h-9 rounded-full px-4">
                   {sending ? <Loader2 className="animate-spin" /> : <Send />}{runId ? "Send to agent again" : "Send to agent"}
                 </Button>
                 <span className="text-2xs leading-4 text-muted-foreground">gstack CEO · Reviewer · QA · CSO argue it, Aside or Codex runs only what passes, gbrain remembers the verdict.</span>
               </div>
+              {sendAsk !== null && (
+                <div data-send-confirm className="flex flex-col gap-2 rounded-xl border p-3">
+                  <p className="text-xs text-muted-foreground">The council's bots read and argue this on Aside (a paid session). Nothing runs on Aside or Codex until you approve a proposal. It sends:</p>
+                  <pre className="max-h-48 overflow-auto rounded-lg bg-muted/40 p-2.5 font-mono text-2xs leading-4 whitespace-pre-wrap break-words">{sendAsk}</pre>
+                  <div className="flex gap-2">
+                    <Button size="sm" autoFocus className="rounded-full" onClick={() => void send()}><Send />Send to agent</Button>
+                    <Button size="sm" variant="outline" className="rounded-full" onClick={() => setSendAsk(null)}>Cancel</Button>
+                  </div>
+                </div>
+              )}
               {run && <RunPanel run={run} signals={runSignals} act={act} onDone={() => refresh()} />}
               {/* 이 사건의 제안 카드가 위 진행에 이미 있으면 거기 Approve/Reject 하나만 둬요(같은 버튼이 두 번 나오지 않게) */}
               {data.kind === "signal" && (() => {
@@ -219,7 +247,7 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf, returnFo
                 <summary className="cursor-pointer text-xs font-medium text-muted-foreground select-none hover:text-foreground max-md:py-3.5 [@media(pointer:coarse)]:py-3.5">Note {data.note && <span className="font-normal">· {data.note.personEdited ? "edited by you" : "written by the council"} · {when(data.note.updatedAt)}</span>}</summary>
                 <Textarea value={md} onChange={(e) => setMd(e.target.value)} placeholder="Markdown. The council only appends here; it never rewrites what you wrote." className="mt-2 min-h-28 font-mono text-xs leading-5" />
                 <div className="mt-2 flex items-center gap-2">
-                  <Button size="sm" variant="secondary" disabled={md === (data.note?.md ?? "")} onClick={() => void saveNote()}>Save note</Button>
+                  <Button size="sm" variant="secondary" disabled={md === noteBase.md} onClick={() => void saveNote()}>Save note</Button>
                   {data.note?.overflow ? <span className="text-2xs text-muted-foreground">{data.note.overflow} council result(s) kept separately — the note is full</span> : null}
                 </div>
                 {noteProblem && (
@@ -327,13 +355,14 @@ function ProposalCard({ p, signal, act, onDone }: { p: Proposal; signal: Signal 
   const [fail, setFail] = useState<string | null>(null)
   // 승인하면 실행기에 보낼 글 그대로(리뷰 지적 6). 서버가 같은 글의 지문을 확인해요
   const [preview, setPreview] = useState<{ text: string; hash: string } | null>(null)
+  const [previewTick, setPreviewTick] = useState(0)
   useEffect(() => {
     if (!waiting || !signal) { setPreview(null); return }
     let live = true
-    ws.signal(signal.id).then((r) => { if (live && r.approvalPreview && r.previewHash) setPreview({ text: r.approvalPreview, hash: r.previewHash }) }).catch(() => {})
+    ws.signal(signal.id).then((r) => { if (live) setPreview(r.approvalPreview && r.previewHash ? { text: r.approvalPreview, hash: r.previewHash } : null) }).catch(() => {})
     return () => { live = false }
-  }, [waiting, signal?.id, signal?.updated_at])
-  const go = async (fn: () => Promise<ActResult>) => { setBusy(true); setFail(null); try { const r = await fn(); if (r === true) onDone(); else setFail(r) } finally { setBusy(false) } }
+  }, [waiting, signal?.id, signal?.updated_at, previewTick])
+  const go = async (fn: () => Promise<ActResult>) => { setBusy(true); setFail(null); try { const r = await fn(); if (r === true) onDone(); else { setFail(r); setPreviewTick((t) => t + 1) } } finally { setBusy(false) } }
   const after = signal && signal.meta?.decidedBy ? (signal.status === "running" ? "approved · running" : signal.meta.decision === "reject" ? "rejected by you" : "approved by you") : null
   return (
     <div className="rounded-xl border bg-background/60 p-3">

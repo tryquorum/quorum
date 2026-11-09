@@ -124,12 +124,12 @@ export function Workspace() {
   const [confirm, setConfirm] = useState<Confirm>(null)
   const confirmApprove = useCallback(async (s: Signal) => {
     const ex = String(s.meta?.executor ?? "")
-    if (!["aside", "codex"].includes(ex)) { void actions.approve(s); return }
+    if (!["aside", "codex", "board"].includes(ex)) { void actions.approve(s); return }
     try {
       const r = await ws.signal(s.id)
       if (!r.approvalPreview || !r.previewHash) { setToast({ tone: "error", text: "This is no longer waiting for approval" }); return }
       const hash = r.previewHash
-      setConfirm({ title: (s.kind === "error" ? "Retry" : "Approve") + " on " + ex + "?", lead: "This starts " + ex + " now and can't be undone — it may cost money or act on sites you're signed in to. It sends exactly:", detail: r.approvalPreview, confirm: s.kind === "error" ? "Retry on " + ex : "Approve and run", run: () => void actions.approve(s, hash) })
+      setConfirm({ title: (s.kind === "error" ? "Retry" : "Approve") + " on " + ex + "?", lead: ex === "board" ? "This writes to Direction Board now. It sends exactly:" : "This starts " + ex + " now and can't be undone — it may cost money or act on sites you're signed in to. It sends exactly:", detail: r.approvalPreview, confirm: s.kind === "error" ? "Retry on " + ex : "Approve and run", run: () => void actions.approve(s, hash) })
     } catch (e) { setToast({ tone: "error", text: "Couldn't load the task: " + (e instanceof Error ? e.message : String(e)) }) }
   }, [actions])
   const confirmSend = useCallback((text: string, run: () => void) => {
@@ -209,7 +209,7 @@ export function Workspace() {
     return (
       <div key={r.key} data-row={r.key} className="contents">
         {r.kind === "item" ? (
-          <ItemRow item={r.item} area={areaOf(r.item)} selected={sel === r.key} busy={b} onSelect={() => setSel(r.key)} onOpen={() => openRow(r)} onDone={() => void actions.done(r.item)} onAsk={r.ask ? () => void actions.ask(r.item) : undefined} />
+          <ItemRow item={r.item} area={areaOf(r.item)} selected={sel === r.key} busy={b} onSelect={() => setSel(r.key)} onOpen={() => openRow(r)} onDone={() => void actions.done(r.item)} onAsk={r.ask ? () => { const it = r.item; confirmSend(it.raw ?? it.text, () => void actions.ask(it)) } : undefined} />
         ) : (
           <SignalRow s={r.signal} selected={sel === r.key} busy={b} onSelect={() => setSel(r.key)} onOpen={() => openRow(r)}
             onApprove={r.decide ? () => void confirmApprove(r.signal) : undefined} onReject={r.decide ? () => void actions.reject(r.signal) : undefined}
