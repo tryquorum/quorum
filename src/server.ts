@@ -14,6 +14,8 @@ import { BoardClient } from "./executors/board"
 import { ASIDE_BIN } from "./executors/aside"
 import { CODEX_BIN } from "./executors/codex"
 import { GBRAIN_BIN, searchMemory } from "./executors/gbrain"
+import { createWorkspace } from "./workspace/api"
+import { engineExecute } from "./workspace/council"
 
 export const VERSION = "0.1.0"
 const json = (data: unknown, status = 200) =>
@@ -36,6 +38,8 @@ export type AppDeps = {
   recipes: () => Promise<RecipesModule | null>
   /** QUORUM_MCP_PROPOSE=1 일 때만 MCP 로 의회를 열 수 있어요 */
   mcpPropose?: boolean
+  /** Workspace(/api/ws/*). src/workspace/api.ts */
+  workspace?: (req: Request, parts: string[]) => Promise<Response>
 }
 
 export async function liveHealth(board: BoardClient): Promise<Health> {
@@ -53,7 +57,7 @@ function cached<T>(fn: () => Promise<T>, ms: number): () => Promise<T> {
 }
 
 async function serveStatic(siteRoot: string, pathname: string): Promise<Response> {
-  const rel = pathname === "/" ? "index.html" : pathname === "/app" ? "app.html" : pathname.slice(1)
+  const rel = pathname === "/" ? "index.html" : pathname === "/app" ? "app.html" : pathname === "/w" ? "workspace.html" : pathname.slice(1)
   const full = normalize(join(siteRoot, rel))
   if (!full.startsWith(siteRoot)) return new Response("forbidden", { status: 403 })
   const file = Bun.file(full)
@@ -109,6 +113,7 @@ export function createApp(d: AppDeps): (req: Request) => Promise<Response> {
       return mcpHandler({ store: d.store, start: (request) => d.runs.start(request).runId, memory: d.memory, allowPropose: !!d.mcpPropose, version: VERSION }, req)
     }
     if (parts[0] !== "api") return serveStatic(d.siteRoot, url.pathname)
+    if (parts[1] === "ws" && d.workspace) return d.workspace(req, parts)
 
     if (parts[1] === "health" && m === "GET") return json({ ok: true, version: VERSION, executors: await d.health() })
 
@@ -177,6 +182,8 @@ if (import.meta.main) {
   if (interrupted.length) console.log("[quorum] closed " + interrupted.length + " interrupted run(s)")
   const board = new BoardClient()
   const runs = new RunManager(store, liveDeps(stateDir, board))
+  const engineDeps = liveDeps(stateDir, board)
+  const workspace = createWorkspace({ path: join(stateDir, "workspace.db"), engine: store, execute: engineExecute(runs, (id) => engineDeps(id).executors) })
   const app = createApp({
     store,
     runs,
@@ -185,6 +192,7 @@ if (import.meta.main) {
     memory: (q) => searchMemory(q, 10).then((hits) => hits.map((h) => ({ slug: h.slug, title: h.title, snippet: h.snippet, score: h.score }))),
     recipes: loadRecipes,
     mcpPropose: process.env.QUORUM_MCP_PROPOSE === "1",
+    workspace: workspace.handle,
   })
   Bun.serve({ port: PORT, hostname: process.env.QUORUM_HOST || "127.0.0.1", idleTimeout: 255, fetch: app })
   console.log("quorum on http://localhost:" + PORT + " (board write " + (board.writeEnabled ? "on" : "off") + ")")
