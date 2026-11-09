@@ -1,0 +1,61 @@
+{
+  "id": "luma-blasts",
+  "site": "luma.com",
+  "intent": "Luma 행사 공지 읽기",
+  "version": 1,
+  "vars": [
+    "eventApiId",
+    "slug"
+  ],
+  "request": {
+    "method": "GET",
+    "url": "https://api2.luma.com/event/get-posts?event_api_id={{eventApiId}}",
+    "headers": {
+      "cookie": "{{env.LUMA_COOKIE}}"
+    }
+  },
+  "parse": {
+    "path": "entries|blasts|posts",
+    "pick": {
+      "id": "api_id|blast_id|id",
+      "message": "message|content_md|text|body",
+      "created_at": "created_at|sent_at"
+    },
+    "markdown": [
+      "message"
+    ]
+  },
+  "verify": {
+    "schema": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id"
+        ]
+      }
+    },
+    "nonEmpty": true
+  },
+  "discover": {
+    "http": {
+      "candidates": [
+        {
+          "request": {
+            "method": "GET",
+            "url": "https://api2.luma.com/event/get-blasts?event_api_id={{eventApiId}}",
+            "headers": {
+              "cookie": "{{env.LUMA_COOKIE}}"
+            }
+          },
+          "note": "2026-11-09 실제 사례: get-posts 404, get-blasts 가 정답(로그인 필요)"
+        }
+      ]
+    },
+    "aside": {
+      "startUrl": "https://luma.com/{{slug}}",
+      "match": "api2.luma.com/event/"
+    }
+  }
+}
