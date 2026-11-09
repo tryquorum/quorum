@@ -18,6 +18,8 @@ import { GoalHeader, groupByWhen, ListFilters, Roadmap, useListState, useSignalS
 import { SyncButton, WsSidebar, useStored, type View } from "./ws-sidebar"
 import { hashFor, parseHash, type Route } from "./route"
 const TITLES: Record<View, string> = { now: "Now", inbox: "Inbox", goals: "Goals", signals: "Signals", list: "All tasks" }
+/** 줄의 제목 버튼(완료 버튼이 아닌 것). 키보드 고르기와 팝업을 닫은 뒤 포커스가 돌아갈 자리 */
+const rowTitle = (key: string) => document.querySelector<HTMLElement>('[data-row="' + key + '"] button[title]:not([title^="Done"])')
 
 /** 데이터: /api/ws/now 5초, 항목 전체 10초, 메타 30초. 실패해도 마지막 내용은 남기고 다시 해요(board useBoard 규칙) */
 function useWorkspaceData(withDone: boolean) {
@@ -98,7 +100,8 @@ export function Workspace() {
   useEffect(() => { if (!toast) return; const t = window.setTimeout(() => setToast(null), 4000); return () => window.clearTimeout(t) }, [toast])
 
   const actions = useMemo(() => ({
-    done: (i: Item) => act("i:" + i.id, "Done: " + i.text.split("\n")[0], () => ws.done(i.id)),
+    // board task-row 처럼 동그라미는 양쪽으로: 끝낸 일을 누르면 다시 열어요
+    done: (i: Item) => i.done ? act("i:" + i.id, "Reopened: " + i.text.split("\n")[0], () => ws.patch(i.id, { done: false })) : act("i:" + i.id, "Done: " + i.text.split("\n")[0], () => ws.done(i.id)),
     ask: (i: Item) => act("i:" + i.id, "Sent to the council", () => ws.ask(i)),
     approve: (s: Signal) => act("s:" + s.id, "Approved — running on " + (s.meta?.executor ?? "executor"), () => ws.approve(s.id)),
     reject: (s: Signal) => act("s:" + s.id, "Rejected", () => ws.reject(s.id)),
@@ -140,7 +143,8 @@ export function Workspace() {
     const i = flat.findIndex((r) => r.key === sel)
     const next = flat[Math.max(0, Math.min(flat.length - 1, i < 0 ? 0 : i + d))]
     setSel(next.key)
-    requestAnimationFrame(() => document.querySelector('[data-row="' + next.key + '"]')?.scrollIntoView({ block: "nearest" }))
+    // 고른 줄의 제목 버튼으로 실제 포커스도 옮겨요(화면 읽기 도구가 따라오고, 팝업을 닫으면 여기로 돌아와요)
+    requestAnimationFrame(() => { const t = rowTitle(next.key); t?.focus({ preventScroll: true }); t?.scrollIntoView({ block: "nearest" }) })
   }, [flat, sel])
 
   // 단축키 디스패처 하나(board shortcut-dispatch.tsx 처럼 창에 한 번만)
@@ -160,7 +164,7 @@ export function Workspace() {
         case "row.next": move(1); break
         case "row.prev": move(-1); break
         case "row.open": if (s) openRow(s); break
-        case "row.done": if (s?.kind === "item" && !s.item.done) void actions.done(s.item); else if (s?.kind === "signal" && s.resolve) void actions.resolve(s.signal); break
+        case "row.done": if (s?.kind === "item") void actions.done(s.item); else if (s?.kind === "signal" && s.resolve) void actions.resolve(s.signal); break
         case "row.approve": if (s?.kind === "signal" && s.decide) void actions.approve(s.signal); break
         case "row.reject": if (s?.kind === "signal" && s.decide) void actions.reject(s.signal); break
         case "row.ask": if (s?.kind === "item" && s.ask && !s.item.runId) void actions.ask(s.item); break
@@ -255,7 +259,7 @@ export function Workspace() {
         </SidebarInset>
       </SidebarProvider>
 
-      <Detail open={open} onClose={() => { setOpen(null); lastFocus.current?.focus?.() }} onChanged={() => void data.reload()}
+      <Detail open={open} onClose={() => setOpen(null)} returnFocus={() => ((sel && rowTitle(sel)) || lastFocus.current)?.focus?.()} onChanged={() => void data.reload()}
         act={{ approve: actions.approve, reject: actions.reject, resolve: actions.resolve, done: actions.done, ask: actions.ask }}
         areaOf={areaOf} goalOf={(id) => now?.goals.find((g) => g.goal.id === id) ?? null} />
       <CommandPalette open={palette} onOpenChange={setPalette} view={now}

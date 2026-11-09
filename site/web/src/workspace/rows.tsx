@@ -48,7 +48,7 @@ export function ItemRow({ item, area, selected, busy, onSelect, onOpen, onDone, 
   return (
     <Row selected={selected} onSelect={onSelect}>
       {/* 터치에서는 누르는 자리를 44px 로 넓히고 동그라미는 그대로(board task-row 의 coarse min-h-11 규칙) */}
-      <button type="button" onClick={onDone} disabled={busy || item.done} aria-label={(item.done ? "Done: " : "Mark done: ") + item.text} title="Done (E)"
+      <button type="button" onClick={onDone} disabled={busy} aria-pressed={item.done} aria-label={(item.done ? "Reopen: " : "Mark done: ") + item.text} title={item.done ? "Done (E)·reopen" : "Done (E)"}
         className="group/done mt-0.5 grid size-[18px] shrink-0 place-items-center disabled:opacity-60 max-md:-m-[13px] max-md:size-11 [@media(pointer:coarse)]:-m-[13px] [@media(pointer:coarse)]:size-11">
         <span className={cn("grid size-[18px] place-items-center rounded-full border border-foreground/30 text-transparent transition-colors group-hover/done:border-foreground group-hover/done:text-foreground", item.done && "border-foreground bg-foreground text-background")}>
           <Check className="size-3" strokeWidth={3} />
@@ -98,13 +98,13 @@ export function SignalRow({ s, selected, busy, onSelect, onOpen, onApprove, onRe
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
         {onApprove && (
-          <Button type="button" size="xs" className="rounded-full max-sm:w-11" onClick={onApprove} disabled={busy} title="Approve (A)">
-            <Check /><span className="max-sm:sr-only">Approve</span>
+          <Button type="button" size="xs" className="rounded-full max-sm:w-11" onClick={onApprove} disabled={busy} title={failed ? "Retry (A)" : "Approve (A)"}>
+            <Check /><span className="max-sm:sr-only">{failed ? "Retry" : "Approve"}</span>
           </Button>
         )}
         {onReject && (
-          <Button type="button" variant="outline" size="xs" className="rounded-full max-sm:w-11" onClick={onReject} disabled={busy} title="Reject (X)">
-            <X /><span className="max-sm:sr-only">Reject</span>
+          <Button type="button" variant="outline" size="xs" className="rounded-full max-sm:w-11" onClick={onReject} disabled={busy} title={failed ? "Dismiss (X)" : "Reject (X)"}>
+            <X /><span className="max-sm:sr-only">{failed ? "Dismiss" : "Reject"}</span>
           </Button>
         )}
         {onResolve && (
