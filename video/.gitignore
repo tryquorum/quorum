@@ -1,0 +1,10 @@
+*.vid2cap/
+out/
+cache/
+.vid2/
+*.mp4
+!out/.keep
+tmp/
+media/
+refs/x-yc-launch.txt
+*.capture.log
