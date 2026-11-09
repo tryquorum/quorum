@@ -1,207 +1,229 @@
-import { ArrowRight, Brain, Gavel, History, Terminal, Users, Wrench, LayoutDashboard } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Brand, QuorumMark } from "@/components/wordmark"
-import { Reveal } from "@/components/reveal"
-import { APP } from "@/lib/base"
-import { cn } from "@/lib/utils"
-import { HeroSession } from "./hero-session"
-import { Numbers } from "./numbers"
+import { ArrowRight } from "lucide-react"
+import { Brand } from "@/components/wordmark"
+import { APP, STATIC, asset } from "@/lib/base"
+import { SEOUL_STATS } from "@/lib/seoul"
+import { WorkspaceHero } from "./workspace-hero"
 import { Argument } from "./argument"
 import { Healing } from "./healing"
-import { Architecture } from "./architecture"
-import { Logo, LogoStrip, type LogoKey } from "./logos"
+import { Logo, type LogoKey } from "./logos"
+import "./landing.css"
 
+// Layout, type scale, hairline sections and the hero capture that runs off the right edge follow
+// trygoat.ai (goat/apps/marketing: Home.astro, site.css, DESIGN.md). Colors are Direction Board's tokens (index.css).
 const REPO = "https://github.com/tryquorum/quorum"
-const WORKSPACE = "https://quorum.lidgeai.com"
+/** Same domain on the Quorum server (/w sits behind Cloudflare Access); the GitHub Pages copy links to the live one. */
+const WORKSPACE = STATIC ? "https://quorum.lidgeai.com/w" : asset("w")
+/** The submission video slot. The recorded cut is temporary and will be replaced by the final edit. */
+const DEMO = { src: asset("media/quorum-demo.mp4"), poster: asset("media/quorum-demo-poster.jpg"), seconds: 61 }
 
-function Nav() {
+const btn = "inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 text-base font-medium transition-colors"
+const primary = btn + " bg-primary text-primary-foreground hover:bg-primary/90"
+const quiet = btn + " lp-ring bg-card text-foreground hover:bg-muted"
+const textLink = "lp-text-link inline-flex min-h-11 items-center gap-1.5 font-semibold text-foreground underline-offset-4 hover:underline"
+
+function Header() {
   return (
-    <header className="sticky top-3 z-40 mx-auto mt-3 w-[min(100%-1.5rem,64rem)]">
-      <nav className="flex items-center gap-2 rounded-full border bg-background/70 py-2 pr-2 pl-5 shadow-lg shadow-black/30 backdrop-blur-xl">
+    <header className="sticky top-3 z-40 px-3">
+      <div className="lp-ring mx-auto flex min-h-14 max-w-[720px] items-center justify-between gap-4 rounded-full bg-card/85 py-1.5 pr-1.5 pl-5 backdrop-blur-md">
         <Brand />
-        <div className="ml-auto hidden items-center gap-1 text-sm text-muted-foreground md:flex">
-          <a href="#argument" className="rounded-full px-3 py-1.5 transition-colors hover:text-foreground">The argument</a>
-          <a href="#how" className="rounded-full px-3 py-1.5 transition-colors hover:text-foreground">How it works</a>
-          <a href="#self-healing" className="rounded-full px-3 py-1.5 transition-colors hover:text-foreground">Self-healing APIs</a>
-          <a href={REPO} className="rounded-full px-3 py-1.5 transition-colors hover:text-foreground">GitHub</a>
-        </div>
-        <Button asChild size="lg" className="ml-auto rounded-full px-4 md:ml-2">
-          <a href={APP}>Open the console</a>
-        </Button>
-      </nav>
+        <nav aria-label="Main">
+          <ul className="flex items-center gap-0.5">
+            <li className="max-sm:hidden"><a className="lp-nav" href="#how">How it works</a></li>
+            <li className="max-md:hidden"><a className="lp-nav" href="#record">The record</a></li>
+            <li className="max-md:hidden"><a className="lp-nav" href="#recipes">Recipes</a></li>
+            <li className="max-sm:hidden"><a className="lp-nav" href={REPO}>GitHub</a></li>
+            <li><a className="lp-nav ml-1 rounded-full bg-primary px-4 text-primary-foreground hover:bg-primary/90" href={WORKSPACE}>Open workspace</a></li>
+          </ul>
+        </nav>
+      </div>
     </header>
   )
 }
 
 function Hero() {
   return (
-    <section className="relative px-5 pt-14 pb-16 sm:pt-20">
-      <div className="glow-hero pointer-events-none absolute inset-0 -z-10" />
-      <div className="dot-field pointer-events-none absolute inset-0 -z-10" />
-      <div className="mx-auto flex max-w-5xl flex-col items-center text-center">
-        <a href="#argument" className="mb-7 inline-flex items-center gap-2 rounded-full border bg-card/70 py-1 pr-3 pl-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-cut/15 px-2 py-0.5 font-mono text-2xs font-semibold tracking-wider text-cut uppercase"><span className="size-1.5 rounded-full bg-cut" />live</span>
-          Watch today's real council run, recorded in Seoul
-          <ArrowRight className="size-3.5" />
+    <section aria-labelledby="hero-title" className="pt-[clamp(56px,9vw,112px)]">
+      <div className="lp-container flex flex-col items-center text-center">
+        <a href="#record" className="lp-ring mb-7 inline-flex items-center gap-2 rounded-full bg-card py-1 pr-3.5 pl-1 text-sm transition-colors hover:bg-muted">
+          <span className="shrink-0 rounded-full bg-primary px-2 py-0.5 text-xs font-medium whitespace-nowrap text-primary-foreground">Live run</span>
+          Recorded at c0mpiled-17 Seoul<span className="max-sm:hidden">, 11:31 KST</span> <ArrowRight className="size-3.5" />
         </a>
-        <h1 className="display text-[clamp(2.6rem,8.5vw,6.75rem)] text-balance">
-          An agent parliament that only does what you need.
-        </h1>
-        <p className="mt-6 max-w-2xl text-lg leading-relaxed text-pretty text-muted-foreground sm:text-xl">
-          Bots propose work. A CEO, reviewer, QA and CSO argue it down. Only what survives runs: browser work in
-          Aside, code in Codex. gbrain remembers every verdict, so the next similar request is decided at once.
+        <h1 id="hero-title" className="lp-h1">Your board, where agents argue before they act.</h1>
+        <p className="lp-lede mx-auto mt-7 max-w-[62ch]">
+          Write down what you need, the way you would on Direction Board. Click it, read the summary, and send it to an agent.
+          gstack's CEO, reviewer, QA and CSO argue it first, Aside or Codex runs only what survives, and gbrain remembers the verdict.
         </p>
-        <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row">
-          <Button asChild className="h-12 rounded-full px-6 text-base shadow-[0_0_40px_-8px] shadow-signal/50">
-            <a href={`${APP}?demo=seoul`}>Replay the Seoul run <ArrowRight /></a>
-          </Button>
-          <Button asChild variant="secondary" className="h-12 rounded-full px-6 text-base">
-            <a href={WORKSPACE}>Open your workspace</a>
-          </Button>
+        <div className="mt-9 flex flex-wrap justify-center gap-3">
+          <a className={primary} href={WORKSPACE}>Open your workspace <ArrowRight className="size-4" /></a>
+          <a className={quiet} href="#demo">Watch the {DEMO.seconds}-second run</a>
         </div>
+        <p className="mt-4 text-sm text-muted-foreground">Open source. Built in a day at c0mpiled-17 Seoul on Aside, gbrain, gstack and Direction Board.</p>
       </div>
-      <div className="mx-auto mt-14 max-w-6xl">
-        <HeroSession />
-      </div>
-      <LogoStrip />
+      <figure className="lp-container mt-[clamp(48px,6vw,80px)]">
+        <div className="lp-capture">
+          <WorkspaceHero />
+        </div>
+        <figcaption className="mt-4 text-center text-sm text-muted-foreground">
+          The workspace replaying the first live run, recorded at 11:31 KST on 9 November 2026. Click a result to see what each critic said.
+        </figcaption>
+      </figure>
     </section>
   )
 }
 
-function SectionHead({ eyebrow, title, children }: { eyebrow: string; title: string; children?: React.ReactNode }) {
+function Demo() {
   return (
-    <Reveal className="mx-auto mb-12 max-w-3xl text-center">
-      <p className="mb-3 font-mono text-xs tracking-widest text-signal uppercase">{eyebrow}</p>
-      <h2 className="display text-[clamp(2rem,5.5vw,3.75rem)] text-balance">{title}</h2>
-      {children && <p className="mt-5 text-lg leading-relaxed text-pretty text-muted-foreground">{children}</p>}
-    </Reveal>
-  )
-}
-
-const PROBLEMS = [
-  { icon: Users, title: "More agents, more noise", body: "Every agent you add proposes more tasks and pings you more often. Most of it is work nobody needs, and you are the one filtering it." },
-  { icon: History, title: "They forget yesterday's no", body: "Agents decide the same question from scratch every time. The idea you rejected yesterday comes back this morning." },
-  { icon: Wrench, title: "Unofficial APIs break quietly", body: "Automations against sites without an official API die the day a path changes. Nobody notices until the data is stale." },
-]
-
-function Problem() {
-  return (
-    <section className="px-5 py-24">
-      <SectionHead eyebrow="The problem" title="Agents are cheap. Your attention is not." />
-      <div className="mx-auto grid max-w-5xl gap-4 md:grid-cols-3">
-        {PROBLEMS.map(({ icon: Icon, title, body }, i) => (
-          <Reveal key={title} delay={i * 120} className="lift rounded-2xl border bg-card/50 p-6">
-            <Icon className="mb-5 size-5 text-muted-foreground" />
-            <h3 className="mb-2 text-lg font-semibold tracking-tight">{title}</h3>
-            <p className="leading-relaxed text-muted-foreground">{body}</p>
-          </Reveal>
-        ))}
+    <section id="demo" aria-labelledby="demo-title" className="lp-section">
+      <div className="lp-container lp-split">
+        <div>
+          <p className="lp-eyebrow">The run</p>
+          <h2 id="demo-title" className="lp-h2">One request, start to finish.</h2>
+          <p className="mt-5 text-muted-foreground">
+            A real run, unedited apart from cuts: the request goes in, the council argues, Aside reads the signed-in Luma tab, and a broken API recipe repairs itself.
+          </p>
+        </div>
+        <figure className="m-0">
+          <video className="lp-float aspect-video w-full rounded-2xl border border-[var(--lp-ring)] bg-card" controls muted playsInline preload="none" poster={DEMO.poster} src={DEMO.src}>
+            <a href={DEMO.src}>Download the demo video</a>
+          </video>
+          <figcaption className="mt-3 text-sm text-muted-foreground">{DEMO.seconds} seconds, no sound. Recorded from the console at c0mpiled-17 Seoul.</figcaption>
+        </figure>
       </div>
     </section>
   )
 }
 
-function ArgumentSection() {
-  return (
-    <section id="argument" className="scroll-mt-24 px-5 py-24">
-      <SectionHead eyebrow="The argument · live, 11:31 KST" title="Four critics. Twelve objections. One thing ran.">
-        Asked to sort out today's hackathon announcements, three bots put three tasks on the floor. Here is what the
-        critics said, word for word, and what the council decided.
-      </SectionHead>
-      <Argument />
-    </section>
-  )
-}
-
-const STEPS = [
-  { n: "01", name: "Recall", icon: Brain, tone: "text-memory", body: "gbrain looks for a past verdict on something similar. A close match skips the debate and reuses the decision with its reasons." },
-  { n: "02", name: "Propose", icon: Users, tone: "text-foreground", body: "Two or three proposer bots put candidate tasks on the floor, each with the executor that would run it and why." },
-  { n: "03", name: "Argue", icon: Gavel, tone: "text-escalate", body: "gstack roles argue every candidate: is it needed, is it a duplicate, will it work, what could go wrong." },
-  { n: "04", name: "Act & remember", icon: Terminal, tone: "text-keep", body: "Passed work runs in Aside or Codex. Anything that reaches outside waits for you on Direction Board. gbrain keeps the verdict." },
+const FLOW: { title: string; body: string; tool?: LogoKey }[] = [
+  { title: "Capture", body: "Write it down in one line, as on Direction Board. Tasks, goals and signals from your board land in the same list." },
+  { title: "Click", body: "Open any item. Nothing runs until you choose to send it." },
+  { title: "Summary", body: "The popup shows the note so far and what gbrain remembers: similar past verdicts and why they were made." },
+  { title: "Send to agent", body: "One button hands the item to the council. A close enough past verdict is reused without a new debate." },
+  { title: "gstack argues", body: "CEO asks if it is needed, Reviewer if it duplicates something, QA if it will work, CSO what could go wrong.", tool: "gstack" },
+  { title: "Aside or Codex runs it", body: "Browser work runs in your signed-in Aside, code in Codex. Anything that reaches outside waits for you.", tool: "aside" },
+  { title: "gbrain remembers", body: "The verdict and its reasons are saved, so the same question tomorrow is decided at once.", tool: "gbrain" },
 ]
 
 function How() {
   return (
-    <section id="how" className="scroll-mt-24 px-5 py-24">
-      <SectionHead eyebrow="How it works" title="Recall, propose, argue, then act.">
-        One request, one pass through the chamber. Every step is a contract event you can watch in the console.
-      </SectionHead>
-      <Reveal className="mx-auto max-w-6xl rounded-3xl border bg-card/40 p-4 sm:p-8">
-        <Architecture />
-      </Reveal>
-      <ol className="mx-auto mt-6 grid max-w-6xl gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {STEPS.map(({ n, name, icon: Icon, tone, body }, i) => (
-          <Reveal as="li" key={n} delay={i * 100} className="lift flex flex-col rounded-2xl border bg-card/50 p-6">
-            <div className="mb-5 flex items-center justify-between">
-              <span className="num text-sm text-muted-foreground">{n}</span>
-              <Icon className={cn("size-5", tone)} />
-            </div>
-            <h3 className="mb-2 text-xl font-semibold tracking-tight">{name}</h3>
-            <p className="leading-relaxed text-muted-foreground">{body}</p>
-          </Reveal>
-        ))}
-      </ol>
+    <section id="how" aria-labelledby="how-title" className="lp-section">
+      <div className="lp-container lp-split">
+        <div>
+          <p className="lp-eyebrow">How it works</p>
+          <h2 id="how-title" className="lp-h2">From a line on your board to work that ran.</h2>
+          <p className="mt-5 text-muted-foreground">
+            Quorum keeps Direction Board's habit of seeing everything in one place, then puts a council between you and the agents.
+            Every step is an event you can open in the console.
+          </p>
+        </div>
+        <ol className="lp-steps">
+          {FLOW.map((s) => (
+            <li key={s.title}>
+              <h3 className="flex items-center gap-2.5 text-lg font-semibold tracking-tight">{s.title}{s.tool && <Logo name={s.tool} size="sm" />}</h3>
+              <p className="mt-1.5 text-muted-foreground">{s.body}</p>
+            </li>
+          ))}
+        </ol>
+      </div>
     </section>
   )
 }
 
-function SelfHealing() {
+function Record() {
+  const secs = Math.round(SEOUL_STATS.durationMs / 1000)
+  const facts = [
+    { v: SEOUL_STATS.proposals, k: "proposals" },
+    { v: SEOUL_STATS.critiques, k: "critiques" },
+    { v: SEOUL_STATS.pass, k: "passed" },
+    { v: SEOUL_STATS.hold, k: "held for a person" },
+    { v: SEOUL_STATS.reject, k: "rejected" },
+    { v: Math.floor(secs / 60) + "m " + (secs % 60) + "s", k: "end to end" },
+  ]
   return (
-    <section id="self-healing" className="scroll-mt-24 px-5 py-24">
-      <SectionHead eyebrow="Self-maintaining APIs" title="When a site moves, the recipe follows.">
-        A recipe is a site, an intent, an endpoint, a parse rule and a check. When Luma retired event/get-posts, the recipe
-        broke loudly, Aside found the new path in a signed-in tab, and only a version that passed the check was saved.
-      </SectionHead>
-      <div className="mx-auto grid max-w-6xl gap-4 lg:grid-cols-[1.35fr_1fr]">
-        <Reveal><Healing /></Reveal>
-        <div className="flex flex-col gap-4">
-          {[
-            { k: "Detect", v: "A 404, a schema mismatch, or an empty result fails the recipe's check. Nothing breaks silently." },
-            { k: "Re-explore", v: "Aside opens the real page in your signed-in browser and records the requests it makes." },
-            { k: "Validate", v: "A candidate becomes v2 only if it passes the same check. No check, no repair." },
-            { k: "Remember", v: "gbrain keeps each version and the reason the old one broke, so the next break starts from history." },
-          ].map(({ k, v }, i) => (
-            <Reveal key={k} delay={i * 110} className="lift rounded-2xl border bg-card/50 p-5">
-              <p className="mb-1 font-semibold">{k}</p>
-              <p className="leading-relaxed text-muted-foreground">{v}</p>
-            </Reveal>
-          ))}
+    <section id="record" aria-labelledby="record-title" className="lp-section">
+      <div className="lp-container">
+        <div className="lp-split">
+          <div>
+            <p className="lp-eyebrow">The record</p>
+          <h2 id="record-title" className="lp-h2">The record from Seoul.</h2>
+            <p className="mt-5 text-muted-foreground">
+              Asked to sort out the day's hackathon announcements, three bots put three tasks on the floor. These are the critics' words from that run,
+              translated from the engine's Korean, and what the council decided.
+            </p>
+            {STATIC && <a className={textLink + " mt-3"} href={APP + "?demo=seoul"}>Replay it in the console</a>}
+          </div>
+          <dl className="grid grid-cols-2 gap-x-10 sm:grid-cols-3">
+            {facts.map((f) => (
+              <div key={f.k} className="border-t py-4">
+                <dd className="num text-3xl font-semibold tracking-tight">{f.v}</dd>
+                <dt className="mt-1 text-sm text-muted-foreground">{f.k}</dt>
+              </div>
+            ))}
+          </dl>
         </div>
+        <div className="mt-12"><Argument /></div>
       </div>
-      <Reveal className="mx-auto mt-6 max-w-6xl rounded-2xl border border-dashed px-5 py-4 text-sm text-muted-foreground">
-        <span className="font-mono text-2xs tracking-widest text-escalate uppercase">From the live run · QA, seq 11</span>
-        <p className="mt-1 text-foreground/90">“Read-only and every item cites a source. Announcements come from get-blasts.”</p>
-      </Reveal>
+    </section>
+  )
+}
+
+const REPAIR = [
+  { k: "Detect", v: "A 404, a schema mismatch or an empty result fails the recipe's check. Nothing breaks silently." },
+  { k: "Re-explore", v: "Aside opens the real page in your signed-in browser and records the requests it makes." },
+  { k: "Validate", v: "A candidate becomes the next version only if it passes the same check." },
+  { k: "Remember", v: "gbrain keeps each version and why the old one broke." },
+]
+
+function Recipes() {
+  return (
+    <section id="recipes" aria-labelledby="recipes-title" className="lp-section">
+      <div className="lp-container lp-split">
+        <div>
+          <p className="lp-eyebrow">Self-maintaining APIs</p>
+          <h2 id="recipes-title" className="lp-h2">APIs that fix themselves.</h2>
+          <p className="mt-5 text-muted-foreground">
+            A recipe is a site, an intent, an endpoint, a parse rule and a check. When Luma retired event/get-posts, the recipe failed loudly,
+            Aside found the new path in a signed-in tab, and only a version that passed the check was saved.
+          </p>
+          <dl className="mt-8 grid gap-x-10 sm:grid-cols-2">
+            {REPAIR.map(({ k, v }) => (
+              <div key={k} className="border-t pt-4 pb-5">
+                <dt className="font-semibold">{k}</dt>
+                <dd className="mt-1.5 text-muted-foreground">{v}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+        <Healing />
+      </div>
     </section>
   )
 }
 
 const BUILT_ON: { name: string; logo?: LogoKey; role: string; href: string }[] = [
+  { name: "Direction Board", role: "The board Quorum grew from: one place for what you must do, what agents are doing and what waits on you.", href: REPO },
+  { name: "gstack", logo: "gstack", role: "The roles that argue: CEO, reviewer, QA and CSO. MIT.", href: "https://github.com/garrytan/gstack" },
+  { name: "gbrain", logo: "gbrain", role: "Remembers verdicts, reasons and recipe versions, and recalls similar cases. MIT.", href: "https://github.com/garrytan/gbrain" },
   { name: "Aside", logo: "aside", role: "Runs browser work in your signed-in browser and re-explores broken recipes.", href: "https://aside.com" },
   { name: "Codex CLI", logo: "codex", role: "Runs passed coding work in a sandbox folder per run.", href: "https://github.com/openai/codex" },
-  { name: "gbrain", logo: "gbrain", role: "Remembers verdicts, reasons and recipe versions, and recalls similar cases. MIT.", href: "https://github.com/garrytan/gbrain" },
-  { name: "gstack", logo: "gstack", role: "The roles that argue: CEO, reviewer, QA and CSO. MIT.", href: "https://github.com/garrytan/gstack" },
-  { name: "Direction Board", role: "Where people see results, approve held work and read why each call was made.", href: REPO },
 ]
 
 function BuiltOn() {
   return (
-    <section id="built-on" className="scroll-mt-24 px-5 py-24">
-      <SectionHead eyebrow="Built on" title="Five real tools around one parliament.">
-        Quorum is the parliament in the middle. Every tool around it is real and called over its own CLI or HTTP API.
-      </SectionHead>
-      <div className="mx-auto grid max-w-6xl gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        {BUILT_ON.map(({ name, logo, role, href }, i) => (
-          <Reveal key={name} delay={i * 90}>
-            <a href={href} className="lift group block h-full rounded-2xl border bg-card/50 p-6 hover:bg-card">
-              <div className="mb-6 flex h-9 items-center">
-                {logo ? <Logo name={logo} /> : <span className="inline-flex items-center gap-2 text-lg font-semibold tracking-tight"><LayoutDashboard className="size-6 text-muted-foreground transition-colors group-hover:text-signal" />Direction Board</span>}
-              </div>
-              <p className="mb-2 text-sm font-medium text-muted-foreground">{name}</p>
-              <p className="leading-relaxed text-muted-foreground">{role}</p>
-            </a>
-          </Reveal>
-        ))}
+    <section id="built-on" aria-labelledby="built-title" className="lp-section">
+      <div className="lp-container">
+        <p className="lp-eyebrow">Built on</p>
+          <h2 id="built-title" className="lp-h2">Built on real tools.</h2>
+        <p className="mt-5 text-muted-foreground">Quorum is the council in the middle. Everything around it is a real tool, called over its own CLI or HTTP API.</p>
+        <ul className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          {BUILT_ON.map((b) => (
+            <li key={b.name} className="lp-ring rounded-2xl bg-card p-5 transition-shadow hover:shadow-lg">
+              <a href={b.href} className="group block rounded-md">
+                <span className="flex h-9 items-center">{b.logo ? <Logo name={b.logo} /> : <span className="text-lg font-semibold tracking-tight">Direction Board</span>}</span>
+                <span className="mt-3 block text-sm text-muted-foreground group-hover:text-foreground">{b.role}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
       </div>
     </section>
   )
@@ -209,44 +231,38 @@ function BuiltOn() {
 
 function Cta() {
   return (
-    <section className="px-5 pt-12 pb-28">
-      <Reveal className="relative mx-auto max-w-5xl overflow-hidden rounded-3xl border bg-card/60 px-6 py-16 text-center">
-        <div className="glow-hero pointer-events-none absolute inset-0" />
-        <div className="dot-field pointer-events-none absolute inset-0" />
-        <QuorumMark className="relative mx-auto mb-6 size-12 text-foreground" />
-        <h2 className="display relative text-[clamp(2rem,5vw,3.5rem)] text-balance">Bring a request. Leave with a verdict.</h2>
-        <p className="relative mx-auto mt-5 max-w-xl text-lg text-muted-foreground">
-          Type what you need, watch the council argue it out, and see exactly what ran and why.
-        </p>
-        <div className="relative mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Button asChild className="h-12 rounded-full px-6 text-base"><a href={WORKSPACE}>Open your workspace <ArrowRight /></a></Button>
-          <Button asChild variant="secondary" className="h-12 rounded-full px-6 text-base"><a href={`${APP}?demo=seoul`}>Replay the Seoul run</a></Button>
+    <section aria-labelledby="cta-title" className="lp-section">
+      <div className="lp-container flex flex-col items-center py-[clamp(24px,5vw,64px)] text-center">
+        <h2 id="cta-title" className="lp-h1 max-w-[16ch] text-[clamp(2.25rem,1rem+4.6vw,4.5rem)]">Bring a request. Leave with a verdict.</h2>
+        <p className="mx-auto mt-6 text-muted-foreground">Your workspace runs your own council after sign-in. The source, the recorded run and this page are public.</p>
+        <div className="mt-9 flex flex-wrap justify-center gap-3">
+          <a className={primary} href={WORKSPACE}>Open your workspace <ArrowRight className="size-4" /></a>
+          <a className={quiet} href={REPO}>Source on GitHub</a>
         </div>
-        <p className="relative mt-5 text-sm text-muted-foreground">The workspace runs your own council after sign-in. This page and the replay are a public demo.</p>
-      </Reveal>
+      </div>
     </section>
   )
 }
 
 export function Landing() {
   return (
-    <div className="grain min-h-dvh overflow-x-clip">
-      <Nav />
-      <main>
+    <div className="lp min-h-dvh overflow-x-clip">
+      <a href="#main" className="lp-skip">Skip to content</a>
+      <Header />
+      <main id="main">
         <Hero />
-        <Numbers />
-        <ArgumentSection />
-        <Problem />
+        <Demo />
         <How />
-        <SelfHealing />
+        <Record />
+        <Recipes />
         <BuiltOn />
         <Cta />
       </main>
-      <footer className="border-t px-5 py-10 text-sm text-muted-foreground">
-        <div className="mx-auto flex max-w-5xl flex-col gap-4 sm:flex-row sm:items-center">
-          <Brand />
-          <p>c0mpiled-17 Seoul · 2026-11-09. Built on Aside, gbrain (MIT), gstack (MIT) and Direction Board.</p>
-          <a href={REPO} className="transition-colors hover:text-foreground sm:ml-auto">Source on GitHub</a>
+      <footer className="border-t">
+        <div className="lp-container flex flex-wrap items-center justify-between gap-x-8 gap-y-2 pt-6 pb-10 text-sm text-muted-foreground">
+          <span className="flex items-center gap-3"><Brand />c0mpiled-17 Seoul · 2026-11-09</span>
+          <span>Built on Aside, gbrain (MIT), gstack (MIT) and Direction Board.</span>
+          <a href={REPO} className="inline-flex min-h-11 items-center hover:text-foreground hover:underline">Source on GitHub</a>
         </div>
       </footer>
     </div>
