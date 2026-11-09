@@ -1,0 +1,165 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Quorum — an agent parliament that only does what you need">
+  <title>Quorum — an agent parliament that only does what you need</title>
+  <defs>
+    <pattern id="dotgrid" width="14" height="14" patternUnits="userSpaceOnUse">
+      <circle cx="7" cy="7" r="1" fill="#ffffff" opacity="0.12"/>
+    </pattern>
+    <radialGradient id="chamberglow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#d9f99d" stop-opacity="0.05"/>
+      <stop offset="0.6" stop-color="#d9f99d" stop-opacity="0.018"/>
+      <stop offset="1" stop-color="#d9f99d" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="rostrum" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#d9f99d" stop-opacity="0.26"/>
+      <stop offset="1" stop-color="#d9f99d" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="#08080a"/>
+  <rect width="1200" height="630" fill="url(#dotgrid)"/>
+
+  <ellipse cx="960" cy="430" rx="300" ry="255" fill="url(#chamberglow)"/>
+
+  <text x="72" y="176" font-family="Geist Mono, ui-monospace, Menlo, monospace" font-size="13" font-weight="500" letter-spacing="3.5" fill="#d9f99d">QUORUM</text>
+
+  <g font-family="Geist, Helvetica Neue, Arial, sans-serif" font-size="70" font-weight="700" letter-spacing="-2.0" fill="#ffffff">
+    <text x="72" y="262">An agent parliament</text>
+    <text x="72" y="340">that only does what</text>
+    <text x="72" y="418">you need.</text>
+  </g>
+
+  <text x="72" y="476" font-family="Geist, Helvetica Neue, Arial, sans-serif" font-size="19" font-weight="400" fill="#a1a1a1">Bots propose. gstack roles argue. Only what survives runs.</text>
+
+  <g>
+    <circle cx="840.0" cy="430.0" r="5.4" fill="#34d399"/>
+    <circle cx="820.0" cy="430.0" r="5.4" fill="#34d399"/>
+    <circle cx="800.0" cy="430.0" r="5.4" fill="#34d399"/>
+    <circle cx="780.0" cy="430.0" r="5.4" fill="#34d399"/>
+    <circle cx="760.0" cy="430.0" r="5.4" fill="#34d399"/>
+    <circle cx="761.2" cy="408.4" r="5.4" fill="#34d399"/>
+    <circle cx="781.3" cy="408.3" r="5.4" fill="#34d399"/>
+    <circle cx="801.5" cy="408.2" r="5.4" fill="#34d399"/>
+    <circle cx="821.7" cy="408.1" r="5.4" fill="#34d399"/>
+    <circle cx="842.0" cy="408.0" r="5.4" fill="#34d399"/>
+    <circle cx="764.7" cy="387.0" r="5.4" fill="#34d399"/>
+    <circle cx="785.2" cy="386.9" r="5.4" fill="#34d399"/>
+    <circle cx="805.9" cy="386.8" r="5.4" fill="#34d399"/>
+    <circle cx="826.9" cy="386.7" r="5.4" fill="#34d399"/>
+    <circle cx="770.5" cy="366.1" r="5.4" fill="#34d399"/>
+    <circle cx="791.7" cy="366.2" r="5.4" fill="#34d399"/>
+    <circle cx="848.1" cy="386.7" r="5.4" fill="#34d399"/>
+    <circle cx="813.2" cy="366.3" r="5.4" fill="#34d399"/>
+    <circle cx="778.5" cy="346.0" r="5.4" fill="#34d399"/>
+    <circle cx="835.3" cy="366.4" r="5.4" fill="#34d399"/>
+    <circle cx="800.6" cy="346.3" r="5.4" fill="#34d399"/>
+    <circle cx="788.6" cy="326.9" r="5.4" fill="#34d399"/>
+    <circle cx="823.3" cy="346.9" r="5.4" fill="#34d399"/>
+    <circle cx="858.0" cy="366.8" r="5.4" fill="#34d399"/>
+    <circle cx="811.9" cy="327.7" r="5.4" fill="#34d399"/>
+    <circle cx="846.7" cy="347.7" r="5.4" fill="#34d399"/>
+    <circle cx="800.8" cy="309.0" r="5.4" fill="#34d399"/>
+    <circle cx="835.9" cy="329.0" r="5.4" fill="#34d399"/>
+    <circle cx="825.3" cy="310.6" r="5.4" fill="#34d399"/>
+    <circle cx="871.3" cy="349.2" r="5.4" fill="#34d399"/>
+    <circle cx="814.8" cy="292.5" r="5.4" fill="#34d399"/>
+    <circle cx="861.0" cy="331.0" r="5.4" fill="#34d399"/>
+    <circle cx="850.8" cy="313.1" r="5.4" fill="#34d399"/>
+    <circle cx="840.6" cy="295.3" r="5.4" fill="#34d399"/>
+    <circle cx="830.5" cy="277.6" r="5.4" fill="#34d399"/>
+    <circle cx="887.7" cy="334.2" r="5.4" fill="#34d399"/>
+    <circle cx="877.7" cy="316.7" r="5.4" fill="#34d399"/>
+    <circle cx="867.7" cy="299.3" r="5.4" fill="#34d399"/>
+    <circle cx="857.7" cy="281.9" r="5.4" fill="#34d399"/>
+    <circle cx="847.8" cy="264.5" r="5.4" fill="#34d399"/>
+    <circle cx="866.3" cy="253.3" r="5.4" fill="#34d399"/>
+    <circle cx="876.3" cy="270.6" r="5.4" fill="#34d399"/>
+    <circle cx="886.4" cy="287.9" r="5.4" fill="#34d399"/>
+    <circle cx="896.4" cy="305.3" r="5.4" fill="#34d399"/>
+    <circle cx="906.5" cy="322.6" r="5.4" fill="#34d399"/>
+    <circle cx="886.0" cy="244.2" r="5.4" fill="#34d399"/>
+    <circle cx="896.2" cy="261.7" r="5.4" fill="#34d399"/>
+    <circle cx="906.4" cy="279.2" r="5.4" fill="#34d399"/>
+    <circle cx="916.7" cy="296.9" r="5.4" fill="#34d399"/>
+    <circle cx="927.2" cy="314.6" r="5.4" fill="#34d399"/>
+    <circle cx="906.5" cy="237.3" r="5.4" fill="#34d399"/>
+    <circle cx="916.9" cy="255.2" r="5.4" fill="#34d399"/>
+    <circle cx="927.4" cy="273.3" r="5.4" fill="#34d399"/>
+    <circle cx="927.6" cy="232.6" r="5.4" fill="#34d399"/>
+    <circle cx="938.1" cy="291.7" r="5.4" fill="#fbbf24"/>
+    <circle cx="938.3" cy="251.3" r="5.4" fill="#fbbf24"/>
+    <circle cx="948.9" cy="310.5" r="5.4" fill="#fbbf24"/>
+    <circle cx="949.1" cy="270.4" r="5.4" fill="#fbbf24"/>
+    <circle cx="949.2" cy="230.3" r="5.4" fill="#fbbf24"/>
+    <circle cx="960.0" cy="290.0" r="5.4" fill="#fbbf24"/>
+    <circle cx="960.0" cy="250.0" r="5.4" fill="#fbbf24"/>
+    <circle cx="970.8" cy="230.3" r="5.4" fill="#fbbf24"/>
+    <circle cx="970.9" cy="270.4" r="5.4" fill="#fbbf24"/>
+    <circle cx="971.1" cy="310.5" r="5.4" fill="#fbbf24"/>
+    <circle cx="981.7" cy="251.3" r="5.4" fill="#fbbf24"/>
+    <circle cx="981.9" cy="291.7" r="5.4" fill="#fbbf24"/>
+    <circle cx="992.4" cy="232.6" r="5.4" fill="#fbbf24"/>
+    <circle cx="992.6" cy="273.3" r="5.4" fill="#fbbf24"/>
+    <circle cx="1003.1" cy="255.2" r="5.4" fill="#fbbf24"/>
+    <circle cx="1013.5" cy="237.3" r="5.4" fill="#fbbf24"/>
+    <circle cx="992.8" cy="314.6" r="5.4" fill="#fbbf24"/>
+    <circle cx="1003.3" cy="296.9" r="5.4" fill="#fbbf24"/>
+    <circle cx="1013.6" cy="279.2" r="5.4" fill="#fbbf24"/>
+    <circle cx="1023.8" cy="261.7" r="5.4" fill="#fbbf24"/>
+    <circle cx="1034.0" cy="244.2" r="5.4" fill="#fbbf24"/>
+    <circle cx="1013.5" cy="322.6" r="5.4" fill="#fbbf24"/>
+    <circle cx="1023.6" cy="305.3" r="5.4" fill="#fbbf24"/>
+    <circle cx="1033.6" cy="287.9" r="5.4" fill="#fbbf24"/>
+    <circle cx="1043.7" cy="270.6" r="5.4" fill="#ff6467"/>
+    <circle cx="1053.7" cy="253.3" r="5.4" fill="#ff6467"/>
+    <circle cx="1072.2" cy="264.5" r="5.4" fill="#ff6467"/>
+    <circle cx="1062.3" cy="281.9" r="5.4" fill="#ff6467"/>
+    <circle cx="1052.3" cy="299.3" r="5.4" fill="#ff6467"/>
+    <circle cx="1042.3" cy="316.7" r="5.4" fill="#ff6467"/>
+    <circle cx="1032.3" cy="334.2" r="5.4" fill="#ff6467"/>
+    <circle cx="1089.5" cy="277.6" r="5.4" fill="#ff6467"/>
+    <circle cx="1079.4" cy="295.3" r="5.4" fill="#ff6467"/>
+    <circle cx="1069.2" cy="313.1" r="5.4" fill="#ff6467"/>
+    <circle cx="1059.0" cy="331.0" r="5.4" fill="#ff6467"/>
+    <circle cx="1105.2" cy="292.5" r="5.4" fill="#ff6467"/>
+    <circle cx="1048.7" cy="349.2" r="5.4" fill="#ff6467"/>
+    <circle cx="1094.7" cy="310.6" r="5.4" fill="#ff6467"/>
+    <circle cx="1084.1" cy="329.0" r="5.4" fill="#ff6467"/>
+    <circle cx="1119.2" cy="309.0" r="5.4" fill="#ff6467"/>
+    <circle cx="1073.3" cy="347.7" r="5.4" fill="#ff6467"/>
+    <circle cx="1108.1" cy="327.7" r="5.4" fill="#ff6467"/>
+    <circle cx="1062.0" cy="366.8" r="5.4" fill="#ff6467"/>
+    <circle cx="1096.7" cy="346.9" r="5.4" fill="#ff6467"/>
+    <circle cx="1131.4" cy="326.9" r="5.4" fill="#ff6467"/>
+    <circle cx="1119.4" cy="346.3" r="5.4" fill="#ff6467"/>
+    <circle cx="1084.7" cy="366.4" r="5.4" fill="#ff6467"/>
+    <circle cx="1141.5" cy="346.0" r="5.4" fill="#ff6467"/>
+    <circle cx="1106.8" cy="366.3" r="5.4" fill="#ff6467"/>
+    <circle cx="1071.9" cy="386.7" r="5.4" fill="#ff6467"/>
+    <circle cx="1128.3" cy="366.2" r="5.4" fill="#ff6467"/>
+    <circle cx="1149.5" cy="366.1" r="5.4" fill="#ff6467"/>
+    <circle cx="1093.1" cy="386.7" r="5.4" fill="#ff6467"/>
+    <circle cx="1114.1" cy="386.8" r="5.4" fill="#ff6467"/>
+    <circle cx="1134.8" cy="386.9" r="5.4" fill="#ff6467"/>
+    <circle cx="1155.3" cy="387.0" r="5.4" fill="#ff6467"/>
+    <circle cx="1078.0" cy="408.0" r="5.4" fill="#ff6467"/>
+    <circle cx="1098.3" cy="408.1" r="5.4" fill="#ff6467"/>
+    <circle cx="1118.5" cy="408.2" r="5.4" fill="#ff6467"/>
+    <circle cx="1138.7" cy="408.3" r="5.4" fill="#ff6467"/>
+    <circle cx="1158.8" cy="408.4" r="5.4" fill="#ff6467"/>
+    <circle cx="1080.0" cy="430.0" r="5.4" fill="#ff6467"/>
+    <circle cx="1100.0" cy="430.0" r="5.4" fill="#ff6467"/>
+    <circle cx="1120.0" cy="430.0" r="5.4" fill="#ff6467"/>
+    <circle cx="1140.0" cy="430.0" r="5.4" fill="#ff6467"/>
+    <circle cx="1160.0" cy="430.0" r="5.4" fill="#ff6467"/>
+    <circle cx="960" cy="430" r="30" fill="url(#rostrum)"/>
+    <circle cx="960" cy="430" r="12" fill="none" stroke="#d9f99d" stroke-opacity="0.28" stroke-width="1"/>
+    <circle cx="960" cy="430" r="7" fill="#d9f99d"/>
+  </g>
+
+  <g>
+    <rect x="824.3" y="488" width="271.5" height="38" rx="19.0" fill="#ffffff0a" stroke="#ffffff1a" stroke-width="1"/>
+    <text x="960" y="512.5" text-anchor="middle" font-family="Geist Mono, ui-monospace, Menlo, monospace" font-size="13" font-weight="500" letter-spacing="2.0" fill="#e8e8e8">PASS 1 · HOLD 1 · REJECT 1</text>
+  </g>
+
+  <text x="72" y="584" font-family="Geist Mono, ui-monospace, Menlo, monospace" font-size="12" font-weight="400" letter-spacing="0.4" fill="#a1a1a1">c0mpiled-17 Seoul · recorded live 2026-11-09</text>
+</svg>

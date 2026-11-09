@@ -31,11 +31,11 @@ export function Panel({ title, icon: Icon, children, className, aside }: { title
   )
 }
 
-export function ProposalCard({ p }: { p: Proposal }) {
+export function ProposalCard({ p, captions }: { p: Proposal; captions?: Record<number, string> }) {
   const reused = !!p.verdict?.reusedFrom
   const Icon = p.executor ? EXEC_ICON[p.executor] : CircleAlert
   return (
-    <article className={cn("row-in rounded-2xl border bg-card/70 p-4 sm:p-5", reused && "glow-memory", p.verdict?.decision === "reject" && "opacity-80")}>
+    <article key={p.verdict ? "decided" : "open"} className={cn("row-in rounded-2xl border bg-card/70 p-4 sm:p-5 transition-opacity duration-500", reused && "glow-memory", p.verdict && "verdict-pulse", p.verdict?.decision === "reject" && "opacity-75")}>
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <p className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-2xs text-muted-foreground">
@@ -43,6 +43,7 @@ export function ProposalCard({ p }: { p: Proposal }) {
             {p.executor && <span className="inline-flex items-center gap-1 rounded-full border px-1.5 py-px"><Icon className="size-3" />{p.executor}</span>}
           </p>
           <h3 className="text-base leading-snug font-semibold tracking-tight text-balance">{p.title}</h3>
+          {captions?.[p.seq] && <p className="mt-0.5 text-sm text-muted-foreground italic">{captions[p.seq]}</p>}
           {p.why && <p className="mt-1 text-sm text-muted-foreground">{p.why}</p>}
         </div>
         {p.verdict ? (
@@ -58,7 +59,10 @@ export function ProposalCard({ p }: { p: Proposal }) {
             <li key={c.seq} className="row-in flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-sm">
               <span className="w-16 shrink-0 font-mono text-2xs text-muted-foreground uppercase">{c.role ? ROLE_LABEL[c.role] : c.actor}</span>
               {c.stance && <span className={cn("rounded-full px-1.5 py-px font-mono text-2xs font-medium", STANCE_TONE[c.stance])}>{c.stance}</span>}
-              <span className="min-w-0 flex-1 text-foreground/85">{c.reason}</span>
+              <span className="min-w-0 flex-1 text-foreground/85">
+                {c.reason}
+                {captions?.[c.seq] && <span className="mt-0.5 block text-[13px] text-muted-foreground italic">{captions[c.seq]}</span>}
+              </span>
             </li>
           ))}
         </ul>
@@ -72,6 +76,7 @@ export function ProposalCard({ p }: { p: Proposal }) {
             </p>
           )}
           <p className="text-foreground/85">{p.verdict.reason}</p>
+          {captions?.[p.verdict.seq] && <p className="text-[13px] text-muted-foreground italic">{captions[p.verdict.seq]}</p>}
         </div>
       )}
 
@@ -93,11 +98,11 @@ export function RecallPanel({ view }: { view: RunView }) {
         <ul className="flex flex-col gap-3">
           {hits.map((h) => (
             <li key={h.id} className="text-sm">
-              <div className="mb-1 flex items-center gap-2 font-mono text-2xs text-muted-foreground">
-                <span className={cn((h.score ?? 0) >= 0.85 && "text-memory")}>{h.id}</span>
-                {h.decision && <span>· {h.decision}</span>}
-                {h.score !== undefined && <span className="ml-auto num">{h.score.toFixed(2)}</span>}
+              <div className="mb-1 flex items-baseline gap-2 font-mono text-2xs text-muted-foreground">
+                <span className={cn("min-w-0 truncate", (h.score ?? 0) >= 0.85 && "text-memory")} title={h.id}>{h.id}</span>
+                {h.score !== undefined && <span className="ml-auto shrink-0 num">{h.score.toFixed(2)}</span>}
               </div>
+              {h.decision && <p className="mb-1 text-2xs text-muted-foreground">{h.decision}</p>}
               {h.score !== undefined && (
                 <div className="mb-1.5 h-1 overflow-hidden rounded-full bg-muted">
                   <div className={cn("h-full rounded-full", h.score >= 0.85 ? "bg-memory" : "bg-foreground/30")} style={{ width: `${Math.round(h.score * 100)}%` }} />
