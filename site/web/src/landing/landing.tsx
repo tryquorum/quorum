@@ -1,3 +1,4 @@
+import { useEffect } from "react"
 import { ArrowRight } from "lucide-react"
 import { Brand } from "@/components/wordmark"
 import { APP, STATIC, asset } from "@/lib/base"
@@ -6,6 +7,9 @@ import { WorkspaceHero } from "./workspace-hero"
 import { Argument } from "./argument"
 import { Healing } from "./healing"
 import { Logo, type LogoKey } from "./logos"
+import { PixelSea } from "./pixel-sea"
+import { CountUp, Rise, useScrollStep } from "./motion"
+import { cn } from "@/lib/utils"
 import "./landing.css"
 
 // Layout, type scale, hairline sections and the hero capture that runs off the right edge follow
@@ -42,14 +46,16 @@ function Header() {
 
 function Hero() {
   return (
-    <section aria-labelledby="hero-title" className="pt-[clamp(56px,9vw,112px)]">
-      <div className="lp-container flex flex-col items-center text-center">
+    <section aria-labelledby="hero-title" className="relative">
+      <div className="relative">
+      <PixelSea className="absolute inset-x-0 -top-24 h-[calc(100%+376px)] w-full" seaPx={252} />
+      <div className="lp-container relative flex flex-col items-center pt-[clamp(48px,8vw,96px)] text-center">
         <a href="#record" className="lp-ring mb-7 inline-flex items-center gap-2 rounded-full bg-card py-1 pr-3.5 pl-1 text-sm transition-colors hover:bg-muted">
           <span className="shrink-0 rounded-full bg-primary px-2 py-0.5 text-xs font-medium whitespace-nowrap text-primary-foreground">Live run</span>
           <span>Recorded at c0mpiled-17 Seoul<span className="max-sm:hidden">, 11:31 KST</span></span> <ArrowRight className="size-3.5" />
         </a>
         <h1 id="hero-title" className="lp-h1">Your board, where agents argue before they act.</h1>
-        <p className="lp-lede mx-auto mt-7 max-w-[62ch]">
+        <p className="lp-lede lp-onscene mx-auto mt-6 max-w-[60ch]">
           Write down what you need, the way you would on Direction Board. Click it, read the summary, and send it to an agent.
           gstack's CEO, reviewer, QA and CSO argue it first, Aside or Codex runs only what survives, and gbrain remembers the verdict.
         </p>
@@ -57,9 +63,10 @@ function Hero() {
           <a className={primary} href={WORKSPACE}>Open your workspace <ArrowRight className="size-4" /></a>
           <a className={quiet} href="#demo">Watch the {DEMO.seconds}-second run</a>
         </div>
-        <p className="mt-4 text-sm text-muted-foreground">Open source. Built in a day at c0mpiled-17 Seoul on Aside, gbrain, gstack and Direction Board.</p>
+        <p className="lp-onscene mt-4 text-sm">Open source. Built in a day at c0mpiled-17 Seoul on Aside, gbrain, gstack and Direction Board.</p>
       </div>
-      <figure className="lp-container mt-[clamp(48px,6vw,80px)]">
+      </div>
+      <figure className="lp-container relative mt-[clamp(96px,11vw,150px)]">
         <div className="lp-capture">
           <WorkspaceHero />
         </div>
@@ -104,20 +111,25 @@ const FLOW: { title: string; body: string; tool?: LogoKey }[] = [
 ]
 
 function How() {
+  const { listRef, active } = useScrollStep(FLOW.length)
   return (
     <section id="how" aria-labelledby="how-title" className="lp-section">
       <div className="lp-container lp-split">
-        <div>
+        <div className="self-start lg:sticky lg:top-28">
           <p className="lp-eyebrow">How it works</p>
           <h2 id="how-title" className="lp-h2">From a line on your board to work that ran.</h2>
           <p className="mt-5 text-muted-foreground">
             Quorum keeps Direction Board's habit of seeing everything in one place, then puts a council between you and the agents.
             Every step is an event you can open in the console.
           </p>
+          <div className="mt-8 flex items-center gap-3" aria-hidden>
+            <div className="h-1 flex-1 overflow-hidden rounded-full bg-foreground/10"><div className="h-full rounded-full bg-foreground transition-[width] duration-300" style={{ width: ((active + 1) / FLOW.length) * 100 + "%" }} /></div>
+            <span className="num text-xs text-muted-foreground">{String(Math.max(0, active + 1)).padStart(2, "0")} / {String(FLOW.length).padStart(2, "0")}</span>
+          </div>
         </div>
-        <ol className="lp-steps">
-          {FLOW.map((s) => (
-            <li key={s.title}>
+        <ol ref={listRef} className="lp-steps">
+          {FLOW.map((s, i) => (
+            <li key={s.title} className={cn("lp-step", i <= active && "is-on", i === active && "is-now")}>
               <h3 className="flex items-center gap-2.5 text-lg font-semibold tracking-tight">{s.title}{s.tool && <Logo name={s.tool} size="sm" />}</h3>
               <p className="mt-1.5 text-muted-foreground">{s.body}</p>
             </li>
@@ -130,13 +142,13 @@ function How() {
 
 function Record() {
   const secs = Math.round(SEOUL_STATS.durationMs / 1000)
-  const facts = [
+  const facts: { v: number; k: string; f?: (n: number) => string }[] = [
     { v: SEOUL_STATS.proposals, k: "proposals" },
     { v: SEOUL_STATS.critiques, k: "critiques" },
     { v: SEOUL_STATS.pass, k: "passed" },
     { v: SEOUL_STATS.hold, k: "held for a person" },
     { v: SEOUL_STATS.reject, k: "rejected" },
-    { v: Math.floor(secs / 60) + "m " + (secs % 60) + "s", k: "end to end" },
+    { v: secs, k: "end to end", f: (n) => Math.floor(n / 60) + "m " + (n % 60) + "s" },
   ]
   return (
     <section id="record" aria-labelledby="record-title" className="lp-section">
@@ -154,13 +166,13 @@ function Record() {
           <dl className="grid grid-cols-2 gap-x-10 sm:grid-cols-3">
             {facts.map((f) => (
               <div key={f.k} className="border-t py-4">
-                <dd className="num text-3xl font-semibold tracking-tight">{f.v}</dd>
+                <dd className="num text-3xl font-semibold tracking-tight"><CountUp value={f.v} format={f.f} /></dd>
                 <dt className="mt-1 text-sm text-muted-foreground">{f.k}</dt>
               </div>
             ))}
           </dl>
         </div>
-        <div className="mt-12"><Argument /></div>
+        <Rise className="mt-12"><Argument /></Rise>
       </div>
     </section>
   )
@@ -233,7 +245,7 @@ function Cta() {
   return (
     <section aria-labelledby="cta-title" className="lp-section">
       <div className="lp-container flex flex-col items-center py-[clamp(24px,5vw,64px)] text-center">
-        <h2 id="cta-title" className="lp-h1 max-w-[16ch] text-[clamp(2.25rem,1rem+4.6vw,4.5rem)]">Bring a request. Leave with a verdict.</h2>
+        <h2 id="cta-title" className="lp-h1 max-w-[18ch] text-[clamp(2rem,1rem+2.4vw,3.25rem)]">Bring a request. Leave with a verdict.</h2>
         <p className="mx-auto mt-6 text-muted-foreground">Your workspace runs your own council after sign-in. The source, the recorded run and this page are public.</p>
         <div className="mt-9 flex flex-wrap justify-center gap-3">
           <a className={primary} href={WORKSPACE}>Open your workspace <ArrowRight className="size-4" /></a>
@@ -244,7 +256,19 @@ function Cta() {
   )
 }
 
+/** Short entrance for every block below the hero: added from script, so nothing is hidden without it. */
+function useSectionRise() {
+  useEffect(() => {
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches || typeof IntersectionObserver === "undefined") return
+    const els = Array.from(document.querySelectorAll<HTMLElement>(".lp-section > .lp-container > *, .lp-section .lp-split > *"))
+    const io = new IntersectionObserver((entries) => entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("is-in"); io.unobserve(e.target) } }), { threshold: 0.12, rootMargin: "0px 0px -6% 0px" })
+    els.forEach((el) => { if (el.getBoundingClientRect().top > window.innerHeight) { el.classList.add("lp-rise"); io.observe(el) } })
+    return () => io.disconnect()
+  }, [])
+}
+
 export function Landing() {
+  useSectionRise()
   return (
     <div className="lp min-h-dvh overflow-x-clip">
       <a href="#main" className="lp-skip">Skip to content</a>
