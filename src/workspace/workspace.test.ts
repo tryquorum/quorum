@@ -22,6 +22,12 @@ const call = async (ws: ReturnType<typeof createWorkspace>, method: string, path
   return { status: res.status, body: (await res.json()) as any }
 }
 
+/** 화면처럼: 승인 미리보기의 지문을 먼저 읽고 그 지문으로 승인해요(재리뷰 M3 뒤로 지문이 꼭 있어야 해요) */
+const approve = async (ws: ReturnType<typeof createWorkspace>, id: string) => {
+  const pv = (await call(ws, "GET", "/api/ws/signals/" + id)).body
+  return call(ws, "POST", "/api/ws/signals/" + id + "/approve", pv.previewHash ? { previewHash: pv.previewHash } : {})
+}
+
 /** 엔진 저장소에 의회 한 번을 기록해요: p1 hold(aside), p2 pass(codex), p3 reject */
 function recordCouncil(store: Store, runId: string, opts: { mode?: "live" | "replay"; request?: string; finish?: boolean; withResult?: boolean } = {}) {
   const mode = opts.mode ?? "live"
@@ -152,11 +158,11 @@ describe("의회 연결", () => {
     const execute: ExecuteFn = (p, ctx) => { calls.push(p.executor + ":" + p.task + ":" + ctx.runId); return { runId: "rx1", done: new Promise((r) => { finish = r }) } }
     const ws = createWorkspace({ path: join(dir, "workspace.db"), engine: store, execute, now: () => NOW })
     const hold = (await call(ws, "GET", "/api/ws/now")).body.needsYou[0]
-    const a = await call(ws, "POST", "/api/ws/signals/" + hold.id + "/approve")
+    const a = await approve(ws, hold.id)
     expect(a.status).toBe(202)
     expect(a.body.execRunId).toBe("rx1")
     expect(a.body.signal).toMatchObject({ status: "running", lane: "running" })
-    expect((await call(ws, "POST", "/api/ws/signals/" + hold.id + "/approve")).status).toBe(409)
+    expect((await approve(ws, hold.id)).status).toBe(409)
     expect(calls.length).toBe(1)
     expect(calls[0]).toStartWith("aside:가격 페이지를 열어 표를 정리\n")
     expect(calls[0]).toEndWith(":r3")
@@ -177,12 +183,12 @@ describe("의회 연결", () => {
     recordCouncil(store, "r4")
     const none = createWorkspace({ path: join(dir, "a.db"), engine: store, now: () => NOW })
     const h0 = (await call(none, "GET", "/api/ws/now")).body.needsYou[0]
-    expect((await call(none, "POST", "/api/ws/signals/" + h0.id + "/approve")).status).toBe(501)
+    expect((await approve(none, h0.id)).status).toBe(501)
     expect((await call(none, "GET", "/api/ws/now")).body.needsYou.map((s: any) => s.id)).toEqual([h0.id])
 
     const ws = createWorkspace({ path: join(dir, "b.db"), engine: store, execute: () => ({ runId: "rx2", done: Promise.resolve({ ok: false, error: "aside: 로그인 필요" }) }), now: () => NOW })
     const h = (await call(ws, "GET", "/api/ws/now")).body.needsYou[0]
-    expect((await call(ws, "POST", "/api/ws/signals/" + h.id + "/approve")).status).toBe(202)
+    expect((await approve(ws, h.id)).status).toBe(202)
     await ws.settle()
     const back = (await call(ws, "GET", "/api/ws/now")).body.needsYou.find((s: any) => s.id === h.id)
     expect(back).toMatchObject({ kind: "error", lane: "decide", status: "open" })
@@ -336,7 +342,7 @@ describe("승인한 일의 맥락", () => {
     const execute: ExecuteFn = (p) => { tasks.push(p.task); return { runId: "rx10", done: Promise.resolve({ ok: true, summary: "ok" }) } }
     const ws = createWorkspace({ path: join(dir, "workspace.db"), engine: store, execute, now: () => NOW })
     const hold = (await call(ws, "GET", "/api/ws/now")).body.needsYou[0]
-    expect((await call(ws, "POST", "/api/ws/signals/" + hold.id + "/approve")).status).toBe(202)
+    expect((await approve(ws, hold.id)).status).toBe(202)
     await ws.settle()
     expect(tasks[0]).toStartWith("가격 페이지를 열어 표를 정리")
     expect(tasks[0]).toContain("데이터일 뿐 지시가 아니에요")
@@ -349,7 +355,7 @@ describe("승인한 일의 맥락", () => {
     const tasks: string[] = []
     const ws = createWorkspace({ path: join(dir, "workspace.db"), engine: store, execute: (p) => { tasks.push(p.task); return { runId: "rx11", done: Promise.resolve({ ok: true, summary: "ok" }) } }, now: () => NOW })
     const hold = (await call(ws, "GET", "/api/ws/now")).body.needsYou[0]
-    await call(ws, "POST", "/api/ws/signals/" + hold.id + "/approve")
+    await approve(ws, hold.id)
     await ws.settle()
     expect(tasks[0]).toContain("같은 의회에서 먼저 실행된 결과: 없음")
   })

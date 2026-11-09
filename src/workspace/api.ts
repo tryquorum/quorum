@@ -7,6 +7,8 @@ import { dirname } from "node:path"
 import { approvalPreview, approveSignal, initCouncilSync, recoverRunning, rejectSignal, resolveSignal, syncCouncil, type EngineStore, type ExecuteFn } from "./council"
 import { archiveItem, createItem, getItem, initItems, listItems, logItem, patchItem, type Item } from "./items"
 import { appendNote, getNote, initNotes, noteOverflow, NoteRejected, putNote } from "./notes"
+const APPEND_MAX = 8000
+const OVERFLOW_MAX = 50
 import { getSignal, ingestSignal, initSignals, listSignals, type Signal } from "./signals"
 import { createBoardImport, initBoardImport, readMeta, type GetJson } from "./board-import"
 
@@ -166,7 +168,7 @@ export function createWorkspace(deps: WorkspaceDeps) {
         // 다른 봇도 방향판처럼 "시작/에러/끝/승인 필요"를 보낼 수 있어요
         const b = await body()
         // 의회 판정(quorum:)과 방향판 사본(board:) ref 는 서버만 만들어요. 실행 열쇠는 지우고, 할 일(task)은 사람이 볼 수 있게 본문에 적어요
-        const ref = typeof b?.ref === "string" ? b.ref : ""
+        const ref = typeof b?.ref === "string" ? b.ref.trim().toLowerCase() : ""
         if (/^(quorum|board):/.test(ref)) return err(400, "ref prefix quorum: and board: are reserved for the server")
         const meta = b?.meta && typeof b.meta === "object" && !Array.isArray(b.meta) ? Object.fromEntries(Object.entries(b.meta as Record<string, unknown>).filter(([k]) => !RESERVED_META.includes(k))) : {}
         const task = typeof meta.task === "string" ? meta.task.trim().slice(0, 2000) : ""
@@ -183,7 +185,7 @@ export function createWorkspace(deps: WorkspaceDeps) {
       if (action === "approve" && m === "POST") {
         const b = await body()
         const expectHash = typeof b?.previewHash === "string" ? b.previewHash : undefined
-        const r = approveSignal(db, id, deps.execute, clock(), { timeoutMs: deps.execTimeoutMs, live, expectHash })
+        const r = approveSignal(db, id, deps.execute, clock(), { timeoutMs: deps.execTimeoutMs, live, expectHash, requireHash: true })
         if (r.done) { const p = r.done.catch((e) => console.error("[workspace] approve finish failed:", e)).finally(() => pending.delete(p)); pending.add(p) }
         return json(r.body, r.status)
       }
@@ -212,9 +214,10 @@ export function createWorkspace(deps: WorkspaceDeps) {
       if (!id && m === "PUT") {
         const b = await body()
         if (typeof b?.md !== "string") return err(400, "md required")
-        // 자르지 않고, 그사이 바뀐 노트를 덮지 않아요(baseUpdatedAt: 화면이 연 노트의 updatedAt, 새 노트는 0)
+        // 자르지 않고, 그사이 바뀐 노트를 덮지 않아요. baseVersion(노트 버전 번호, 새 노트는 0)을 먼저 보고, 옛 화면은 baseUpdatedAt
+        const baseVersion = typeof b.baseVersion === "number" ? b.baseVersion : undefined
         const base = typeof b.baseUpdatedAt === "number" ? b.baseUpdatedAt : undefined
-        try { return json(putNote(db, ref, b.md, clock(), { baseUpdatedAt: base })) } catch (e) {
+        try { return json(putNote(db, ref, b.md, clock(), { baseVersion, baseUpdatedAt: base })) } catch (e) {
           if (e instanceof NoteRejected) return json({ error: e.message, current: e.current }, e.status)
           throw e
         }
@@ -223,6 +226,9 @@ export function createWorkspace(deps: WorkspaceDeps) {
       if (id === "append" && m === "POST") {
         const b = await body()
         if (typeof b?.md !== "string" || !b.md.trim()) return err(400, "md required")
+        // 한 번에 8000자, 따로 보관한 넘친 결과는 노트마다 50개까지(재리뷰 L5)
+        if (b.md.length > APPEND_MAX) return err(413, "덧붙일 글은 " + APPEND_MAX + "자까지예요")
+        if ((getNote(db, ref)?.overflow ?? 0) >= OVERFLOW_MAX) return err(413, "이 노트는 넘친 결과를 " + OVERFLOW_MAX + "개 보관하고 있어요. 더 받지 않아요")
         return json(appendNote(db, ref, b.md, "agent", clock()))
       }
     }

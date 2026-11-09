@@ -5,8 +5,8 @@
 import type { Database } from "bun:sqlite"
 
 export const NOTE_MAX = 50_000
-export type Note = { ref: string; md: string; by: string; updatedAt: number; personEdited: boolean; overflow?: number }
-type Row = { ref: string; md: string; by: string; updated_at: number; person_edited: number }
+export type Note = { ref: string; md: string; by: string; updatedAt: number; personEdited: boolean; version: number; overflow?: number }
+type Row = { ref: string; md: string; by: string; updated_at: number; person_edited: number; version: number }
 
 /** 노트 저장 거절. status 413(너무 김) 또는 409(그사이 바뀜) */
 export class NoteRejected extends Error {
@@ -19,8 +19,11 @@ export function initNotes(db: Database) {
   db.exec(`CREATE TABLE IF NOT EXISTS notes(ref TEXT PRIMARY KEY, md TEXT NOT NULL, by TEXT NOT NULL, updated_at INTEGER NOT NULL, person_edited INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS note_overflow(id INTEGER PRIMARY KEY AUTOINCREMENT, ref TEXT NOT NULL, by TEXT NOT NULL, at INTEGER NOT NULL, md TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS note_overflow_ref ON note_overflow(ref, id);`)
+  // 버전 번호: 쓸 때마다 하나씩 올라요. 같은 밀리초에 두 번 쓰여도 구분돼요(재리뷰 L7)
+  const cols = new Set((db.query("PRAGMA table_info(notes)").all() as { name: string }[]).map((c) => c.name))
+  if (!cols.has("version")) db.exec("ALTER TABLE notes ADD COLUMN version INTEGER NOT NULL DEFAULT 0")
 }
-const pub = (r: Row, overflow: number): Note => ({ ref: r.ref, md: r.md, by: r.by, updatedAt: r.updated_at, personEdited: !!r.person_edited, ...(overflow ? { overflow } : {}) })
+const pub = (r: Row, overflow: number): Note => ({ ref: r.ref, md: r.md, by: r.by, updatedAt: r.updated_at, personEdited: !!r.person_edited, version: r.version ?? 0, ...(overflow ? { overflow } : {}) })
 
 export function getNote(db: Database, ref: string): Note | null {
   const r = db.query("SELECT * FROM notes WHERE ref=?").get(ref) as Row | null
@@ -38,37 +41,37 @@ export function noteOverflow(db: Database, ref: string): { by: string; at: numbe
  * 사람이 쓴 노트 저장(통째로). person_edited 를 켜요. 자르지 않아요: NOTE_MAX 를 넘으면 NoteRejected(413).
  * opts.baseUpdatedAt 을 주면 저장된 노트의 updatedAt 과 같을 때만 저장해요(아니면 NoteRejected(409), 그사이 의회가 붙인 글을 지키려고)
  */
-export function putNote(db: Database, ref: string, md: string, now = Date.now(), opts: { baseUpdatedAt?: number } = {}): Note {
+export function putNote(db: Database, ref: string, md: string, now = Date.now(), opts: { baseUpdatedAt?: number; baseVersion?: number } = {}): Note {
   return db.transaction(() => {
     const cur = getNote(db, ref)
     if (md.length > NOTE_MAX) throw new NoteRejected(413, "노트가 너무 길어요(" + md.length + "자, 최대 " + NOTE_MAX + "자). 자르지 않고 저장하지 않았어요", cur)
-    if (opts.baseUpdatedAt !== undefined && (cur?.updatedAt ?? 0) !== opts.baseUpdatedAt) throw new NoteRejected(409, "그사이 노트가 바뀌었어요(의회 결과가 붙었을 수 있어요). 다시 불러온 뒤 저장해 주세요", cur)
-    db.query("INSERT INTO notes(ref,md,by,updated_at,person_edited) VALUES (?,?,?,?,1) ON CONFLICT(ref) DO UPDATE SET md=excluded.md, by=excluded.by, updated_at=excluded.updated_at, person_edited=1")
+    const changed = opts.baseVersion !== undefined ? (cur?.version ?? 0) !== opts.baseVersion : opts.baseUpdatedAt !== undefined && (cur?.updatedAt ?? 0) !== opts.baseUpdatedAt
+    if (changed) throw new NoteRejected(409, "그사이 노트가 바뀌었어요(의회 결과가 붙었을 수 있어요). 다시 불러온 뒤 저장해 주세요", cur)
+    db.query("INSERT INTO notes(ref,md,by,updated_at,person_edited,version) VALUES (?,?,?,?,1,1) ON CONFLICT(ref) DO UPDATE SET md=excluded.md, by=excluded.by, updated_at=excluded.updated_at, person_edited=1, version=notes.version+1")
       .run(ref, md, "person", now)
     return getNote(db, ref)!
   })()
 }
 
+/** 넘친 결과 안내 한 줄. 노트 끝에 하나만 두고 개수만 고쳐 써요(재리뷰 L5) */
+const POINTER = /\n*\(노트가 가득 차서 [^\n]*따로 보관했어요\)\s*$/
+
 /**
  * 에이전트·의회가 덧붙이기. 기존 글(사람 글 포함)은 그대로 두고 끝에 더해요.
- * 더하면 NOTE_MAX 를 넘을 때는 노트를 자르지 않고, 덧붙일 글을 note_overflow 에 보관한 뒤 (들어가면) 노트 끝에 한 줄로 알려요
+ * 더하면 NOTE_MAX 를 넘을 때는 노트를 자르지 않고, 덧붙일 글을 note_overflow 에 보관한 뒤 (들어가면) 노트 끝 한 줄로 알려요
  */
 export function appendNote(db: Database, ref: string, md: string, by: string, now = Date.now()): Note {
   return db.transaction(() => {
     const cur = getNote(db, ref)
     const add = md.trim()
     const next = (cur?.md ? cur.md.trimEnd() + "\n\n" : "") + add
-    if (next.length <= NOTE_MAX) {
-      db.query("INSERT INTO notes(ref,md,by,updated_at,person_edited) VALUES (?,?,?,?,0) ON CONFLICT(ref) DO UPDATE SET md=excluded.md, updated_at=excluded.updated_at")
-        .run(ref, next, by, now)
-      return getNote(db, ref)!
-    }
+    const write = (text: string) => db.query("INSERT INTO notes(ref,md,by,updated_at,person_edited,version) VALUES (?,?,?,?,0,1) ON CONFLICT(ref) DO UPDATE SET md=excluded.md, updated_at=excluded.updated_at, version=notes.version+1").run(ref, text, by, now)
+    if (next.length <= NOTE_MAX) { write(next); return getNote(db, ref)! }
     db.query("INSERT INTO note_overflow(ref,by,at,md) VALUES (?,?,?,?)").run(ref, by, now, add)
-    const pointer = "\n\n(노트가 가득 차서 " + by + " 의 결과 " + add.length + "자를 따로 보관했어요)"
-    const base = cur?.md ?? ""
-    const md2 = base.trimEnd().length + pointer.length <= NOTE_MAX ? base.trimEnd() + pointer : base
-    db.query("INSERT INTO notes(ref,md,by,updated_at,person_edited) VALUES (?,?,?,?,0) ON CONFLICT(ref) DO UPDATE SET md=excluded.md, updated_at=excluded.updated_at")
-      .run(ref, md2, by, now)
+    const count = (db.query("SELECT COUNT(*) n FROM note_overflow WHERE ref=?").get(ref) as { n: number }).n
+    const base = (cur?.md ?? "").replace(POINTER, "").trimEnd()
+    const pointer = "\n\n(노트가 가득 차서 의회·에이전트 결과 " + count + "개를 따로 보관했어요)"
+    write(base.length + pointer.length <= NOTE_MAX ? base + pointer : cur?.md ?? "")
     return getNote(db, ref)!
   })()
 }
