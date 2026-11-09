@@ -1,0 +1,1726 @@
+{
+ "$schema": "https://raw.githubusercontent.com/lidge-ai/vid2-gen/main/schema/timeline.v1.json",
+ "version": 1,
+ "output": {
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "background": "#08080A"
+ },
+ "beat": {
+  "bpm": 112
+ },
+ "sources": {
+  "gstackLogo": {
+   "type": "image",
+   "path": "media/logos/credit-gstack.png"
+  },
+  "gbrainLogo": {
+   "type": "image",
+   "path": "media/logos/gbrain-mark.png"
+  },
+  "sc_hook": {
+   "type": "video",
+   "path": "media/sc-hook.mp4",
+   "muted": true
+  },
+  "sc_boatmen": {
+   "type": "video",
+   "path": "media/sc-boatmen.mp4",
+   "muted": true
+  },
+  "sc_fleet": {
+   "type": "video",
+   "path": "media/sc-fleet.mp4",
+   "muted": true
+  },
+  "sc_spin": {
+   "type": "video",
+   "path": "media/sc-spin.mp4",
+   "muted": true
+  },
+  "sc_rocks": {
+   "type": "video",
+   "path": "media/sc-rocks.mp4",
+   "muted": true
+  },
+  "sc_mountain": {
+   "type": "video",
+   "path": "media/sc-mountain.mp4",
+   "muted": true
+  },
+  "sc_buried": {
+   "type": "video",
+   "path": "media/sc-buried.mp4",
+   "muted": true
+  },
+  "sc_judgment": {
+   "type": "video",
+   "path": "media/sc-judgment.mp4",
+   "muted": true
+  },
+  "sc_converge": {
+   "type": "video",
+   "path": "media/sc-converge.mp4",
+   "muted": true
+  },
+  "sc_mcp": {
+   "type": "video",
+   "path": "media/sc-mcp.mp4",
+   "muted": true
+  },
+  "sc_built": {
+   "type": "video",
+   "path": "media/sc-built.mp4",
+   "muted": true
+  },
+  "sc_cta": {
+   "type": "video",
+   "path": "media/sc-cta.mp4",
+   "muted": true
+  }
+ },
+ "scenes": [
+  {
+   "id": "hook",
+   "duration": "4.3s",
+   "background": "#08080A",
+   "layers": [
+    {
+     "type": "media",
+     "source": "sc_hook",
+     "fit": "cover"
+    },
+    {
+     "type": "kinetic",
+     "x": 960,
+     "align": "center",
+     "letterSpacing": 0,
+     "enter": {
+      "style": "rise",
+      "stagger": "0.12s",
+      "duration": "0.4s"
+     },
+     "exit": {
+      "style": "fade",
+      "duration": "0.2s"
+     },
+     "y": 260,
+     "size": 116,
+     "maxWidth": 1500,
+     "gap": 0.2,
+     "font": "serif",
+     "weight": "regular",
+     "color": "#F4ECD2",
+     "states": [
+      {
+       "at": "0.7s",
+       "tokens": [
+        {
+         "text": "Too"
+        },
+        {
+         "text": "many"
+        },
+        {
+         "text": "cooks"
+        },
+        {
+         "text": "spoil"
+        },
+        {
+         "text": "the"
+        },
+        {
+         "text": "broth.",
+         "color": "#D9F99D"
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "notes": "beat 1: night pixel sea, empty, moon"
+  },
+  {
+   "id": "boatmen",
+   "duration": "5s",
+   "background": "#08080A",
+   "layers": [
+    {
+     "type": "media",
+     "source": "sc_boatmen",
+     "fit": "cover"
+    },
+    {
+     "type": "kinetic",
+     "x": 960,
+     "align": "center",
+     "letterSpacing": 0,
+     "enter": {
+      "style": "rise",
+      "stagger": "0.12s",
+      "duration": "0.4s"
+     },
+     "exit": {
+      "style": "fade",
+      "duration": "0.2s"
+     },
+     "y": 215,
+     "size": 84,
+     "maxWidth": 1500,
+     "gap": 0.2,
+     "font": "serif",
+     "weight": "regular",
+     "color": "#F4ECD2",
+     "states": [
+      {
+       "at": "0.2s",
+       "tokens": [
+        {
+         "text": "Too"
+        },
+        {
+         "text": "many"
+        },
+        {
+         "text": "boatmen"
+        },
+        {
+         "text": "steer"
+        },
+        {
+         "text": "the"
+        },
+        {
+         "text": "ship"
+        },
+        {
+         "text": "up"
+        },
+        {
+         "text": "a"
+        },
+        {
+         "text": "mountain."
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "notes": "beat 2: one boat on the moon path"
+  },
+  {
+   "id": "fleet",
+   "duration": "5.9s",
+   "background": "#08080A",
+   "layers": [
+    {
+     "type": "media",
+     "source": "sc_fleet",
+     "fit": "cover"
+    },
+    {
+     "type": "kinetic",
+     "x": 960,
+     "align": "center",
+     "letterSpacing": -1,
+     "enter": {
+      "style": "rise",
+      "stagger": "0.09s",
+      "duration": "0.4s"
+     },
+     "exit": {
+      "style": "fade",
+      "duration": "0.2s"
+     },
+     "y": 200,
+     "size": 64,
+     "maxWidth": 1500,
+     "gap": 0.26,
+     "font": "sans",
+     "weight": "semibold",
+     "color": "#FAFAFA",
+     "states": [
+      {
+       "at": "0.2s",
+       "tokens": [
+        {
+         "text": "Now"
+        },
+        {
+         "text": "everyone"
+        },
+        {
+         "text": "has"
+        },
+        {
+         "text": "agents."
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "notes": "beat 3: boats multiply 1→14, each tagged by an agent (Codex, Claude Code, Cursor, Grok Bot, Muse, Pickle, your scripts); HUD age"
+  },
+  {
+   "id": "spin",
+   "duration": "3.2s",
+   "background": "#08080A",
+   "layers": [
+    {
+     "type": "media",
+     "source": "sc_spin",
+     "fit": "cover"
+    },
+    {
+     "type": "kinetic",
+     "x": 960,
+     "align": "center",
+     "letterSpacing": -1,
+     "enter": {
+      "style": "rise",
+      "stagger": "0.09s",
+      "duration": "0.4s"
+     },
+     "exit": {
+      "style": "fade",
+      "duration": "0.2s"
+     },
+     "y": 200,
+     "size": 64,
+     "maxWidth": 1500,
+     "gap": 0.26,
+     "font": "sans",
+     "weight": "semibold",
+     "color": "#FAFAFA",
+     "states": [
+      {
+       "at": "0.2s",
+       "tokens": [
+        {
+         "text": "Some"
+        },
+        {
+         "text": "spin"
+        },
+        {
+         "text": "in"
+        },
+        {
+         "text": "circles."
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "notes": "beat 4: boats orbit in place; red mono labels SAME TASK · 4TH TIME, RE-PROPOSED WHAT YOU REJECTED"
+  },
+  {
+   "id": "rocks",
+   "duration": "3.2s",
+   "background": "#08080A",
+   "layers": [
+    {
+     "type": "media",
+     "source": "sc_rocks",
+     "fit": "cover"
+    },
+    {
+     "type": "kinetic",
+     "x": 960,
+     "align": "center",
+     "letterSpacing": -1,
+     "enter": {
+      "style": "rise",
+      "stagger": "0.09s",
+      "duration": "0.4s"
+     },
+     "exit": {
+      "style": "fade",
+      "duration": "0.2s"
+     },
+     "y": 200,
+     "size": 64,
+     "maxWidth": 1500,
+     "gap": 0.26,
+     "font": "sans",
+     "weight": "semibold",
+     "color": "#FAFAFA",
+     "states": [
+      {
+       "at": "0.2s",
+       "tokens": [
+        {
+         "text": "Some"
+        },
+        {
+         "text": "row"
+        },
+        {
+         "text": "onto"
+        },
+        {
+         "text": "the"
+        },
+        {
+         "text": "rocks."
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "notes": "beat 5: a boat runs at a reef; SENT THE EMAIL, PAID THE INVOICE, POSTED IT PUBLICLY"
+  },
+  {
+   "id": "mountain",
+   "duration": "3.2s",
+   "background": "#08080A",
+   "layers": [
+    {
+     "type": "media",
+     "source": "sc_mountain",
+     "fit": "cover"
+    },
+    {
+     "type": "kinetic",
+     "x": 960,
+     "align": "center",
+     "letterSpacing": -1,
+     "enter": {
+      "style": "rise",
+      "stagger": "0.09s",
+      "duration": "0.4s"
+     },
+     "exit": {
+      "style": "fade",
+      "duration": "0.2s"
+     },
+     "y": 200,
+     "size": 64,
+     "maxWidth": 1500,
+     "gap": 0.26,
+     "font": "sans",
+     "weight": "semibold",
+     "color": "#FAFAFA",
+     "states": [
+      {
+       "at": "0.2s",
+       "tokens": [
+        {
+         "text": "Some"
+        },
+        {
+         "text": "sail"
+        },
+        {
+         "text": "up"
+        },
+        {
+         "text": "a"
+        },
+        {
+         "text": "mountain."
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "notes": "beat 6: boats climb the mountain; A RESULT NOBODY ASKED FOR"
+  },
+  {
+   "id": "buried",
+   "duration": "5.4s",
+   "background": "#08080A",
+   "layers": [
+    {
+     "type": "media",
+     "source": "sc_buried",
+     "fit": "cover"
+    },
+    {
+     "type": "kinetic",
+     "x": 960,
+     "align": "center",
+     "letterSpacing": -1,
+     "enter": {
+      "style": "rise",
+      "stagger": "0.09s",
+      "duration": "0.4s"
+     },
+     "exit": {
+      "style": "fade",
+      "duration": "0.2s"
+     },
+     "y": 200,
+     "size": 64,
+     "maxWidth": 1500,
+     "gap": 0.26,
+     "font": "sans",
+     "weight": "semibold",
+     "color": "#FAFAFA",
+     "states": [
+      {
+       "at": "0.2s",
+       "tokens": [
+        {
+         "text": "And"
+        },
+        {
+         "text": "the"
+        },
+        {
+         "text": "email"
+        },
+        {
+         "text": "that"
+        },
+        {
+         "text": "mattered"
+        },
+        {
+         "text": "sinks."
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "notes": "beat 7: rebuilt inbox (vector, fictional): agent noise rows pile in; \"Re: pilot pricing — can we start Monday?\" and \"Action need"
+  },
+  {
+   "id": "judgment",
+   "duration": "4.6s",
+   "background": "#08080A",
+   "layers": [
+    {
+     "type": "media",
+     "source": "sc_judgment",
+     "fit": "cover"
+    },
+    {
+     "type": "kinetic",
+     "x": 960,
+     "align": "center",
+     "letterSpacing": 0,
+     "enter": {
+      "style": "rise",
+      "stagger": "0.12s",
+      "duration": "0.4s"
+     },
+     "exit": {
+      "style": "fade",
+      "duration": "0.2s"
+     },
+     "y": 500,
+     "size": 104,
+     "maxWidth": 1300,
+     "gap": 0.2,
+     "font": "serif",
+     "weight": "regular",
+     "color": "#F4ECD2",
+     "states": [
+      {
+       "at": "0.5s",
+       "tokens": [
+        {
+         "text": "You"
+        },
+        {
+         "text": "need"
+        },
+        {
+         "text": "something"
+        },
+        {
+         "text": "that"
+        },
+        {
+         "text": "stands"
+        },
+        {
+         "text": "in"
+        },
+        {
+         "text": "for"
+        },
+        {
+         "text": "your",
+         "color": "#D9F99D",
+         "newline": true
+        },
+        {
+         "text": "judgment.",
+         "color": "#D9F99D"
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "notes": "beat 8: dark, serif, accent on \"your judgment\""
+  },
+  {
+   "id": "converge",
+   "duration": "4.4s",
+   "background": "#08080A",
+   "layers": [
+    {
+     "type": "media",
+     "source": "sc_converge",
+     "fit": "cover"
+    },
+    {
+     "type": "kinetic",
+     "x": 960,
+     "align": "center",
+     "letterSpacing": 0,
+     "enter": {
+      "style": "rise",
+      "stagger": "0.12s",
+      "duration": "0.4s"
+     },
+     "exit": {
+      "style": "fade",
+      "duration": "0.2s"
+     },
+     "y": 250,
+     "size": 120,
+     "maxWidth": 1400,
+     "gap": 0.2,
+     "font": "serif",
+     "weight": "regular",
+     "color": "#F4ECD2",
+     "states": [
+      {
+       "at": "3.3s",
+       "tokens": [
+        {
+         "text": "Meet"
+        },
+        {
+         "text": "Quorum.",
+         "color": "#D9F99D"
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "notes": "beat 9: chaos peak → pixel dissolve → agent cards slide, overlap and shrink to the centre (1.6 s in-out) → one card: quorum + on"
+  },
+  {
+   "id": "landing",
+   "duration": "3s",
+   "background": "#F3F3F4",
+   "layers": [
+    {
+     "type": "text",
+     "text": "CAPTURE PENDING · landing",
+     "x": "center",
+     "y": 560,
+     "align": "center",
+     "font": "mono",
+     "weight": "bold",
+     "size": 44,
+     "color": "#9CA3AF"
+    }
+   ],
+   "notes": "beat 10: capture: landing hero + pixel sea",
+   "transition": {
+    "type": "fadewhite",
+    "duration": "0.4s"
+   }
+  },
+  {
+   "id": "story",
+   "duration": "4.5s",
+   "background": "#F3F3F4",
+   "layers": [
+    {
+     "type": "text",
+     "text": "CAPTURE PENDING · story",
+     "x": "center",
+     "y": 560,
+     "align": "center",
+     "font": "mono",
+     "weight": "bold",
+     "size": 44,
+     "color": "#9CA3AF"
+    },
+    {
+     "type": "kinetic",
+     "x": 960,
+     "align": "center",
+     "letterSpacing": -1,
+     "enter": {
+      "style": "rise",
+      "stagger": "0.09s",
+      "duration": "0.4s"
+     },
+     "exit": {
+      "style": "fade",
+      "duration": "0.2s"
+     },
+     "y": 104,
+     "size": 52,
+     "maxWidth": 1700,
+     "gap": 0.26,
+     "font": "sans",
+     "weight": "semibold",
+     "color": "#0A0A0A",
+     "states": [
+      {
+       "at": "0.2s",
+       "tokens": [
+        {
+         "text": "Your"
+        },
+        {
+         "text": "agents"
+        },
+        {
+         "text": "propose."
+        },
+        {
+         "text": "The"
+        },
+        {
+         "text": "council"
+        },
+        {
+         "text": "argues"
+        },
+        {
+         "text": "first."
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "notes": "beat 11: capture: landing story scrub, boats → CEO REV QA CSO → one direction"
+  },
+  {
+   "id": "workspace",
+   "duration": "6s",
+   "background": "#F3F3F4",
+   "layers": [
+    {
+     "type": "text",
+     "text": "CAPTURE PENDING · workspace",
+     "x": "center",
+     "y": 560,
+     "align": "center",
+     "font": "mono",
+     "weight": "bold",
+     "size": 44,
+     "color": "#9CA3AF"
+    },
+    {
+     "type": "kinetic",
+     "x": 960,
+     "align": "center",
+     "letterSpacing": -1,
+     "enter": {
+      "style": "rise",
+      "stagger": "0.09s",
+      "duration": "0.4s"
+     },
+     "exit": {
+      "style": "fade",
+      "duration": "0.2s"
+     },
+     "y": 104,
+     "size": 52,
+     "maxWidth": 1700,
+     "gap": 0.26,
+     "font": "sans",
+     "weight": "semibold",
+     "color": "#0A0A0A",
+     "states": [
+      {
+       "at": "0.2s",
+       "tokens": [
+        {
+         "text": "Pick"
+        },
+        {
+         "text": "a"
+        },
+        {
+         "text": "line"
+        },
+        {
+         "text": "on"
+        },
+        {
+         "text": "your"
+        },
+        {
+         "text": "board."
+        },
+        {
+         "text": "Send"
+        },
+        {
+         "text": "it"
+        },
+        {
+         "text": "to"
+        },
+        {
+         "text": "the"
+        },
+        {
+         "text": "council."
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "notes": "beat 12: capture /w: click a line → summary popup with \"gbrain remembers\" → Send to agent"
+  },
+  {
+   "id": "council",
+   "duration": "7s",
+   "background": "#F3F3F4",
+   "layers": [
+    {
+     "type": "text",
+     "text": "CAPTURE PENDING · council",
+     "x": "center",
+     "y": 560,
+     "align": "center",
+     "font": "mono",
+     "weight": "bold",
+     "size": 44,
+     "color": "#9CA3AF"
+    },
+    {
+     "type": "stage",
+     "start": "0s",
+     "end": "7s",
+     "nodes": [
+      {
+       "kind": "rect",
+       "key": "bg",
+       "x": 1480,
+       "y": 250,
+       "width": 520,
+       "height": 176,
+       "radius": 22,
+       "fill": "#0F1117F2",
+       "stroke": "#FFFFFF22",
+       "strokeWidth": 1.5,
+       "opacity": 0
+      },
+      {
+       "kind": "image",
+       "key": "logo",
+       "source": "gstackLogo",
+       "x": 1280,
+       "y": 210,
+       "width": 56,
+       "height": 56,
+       "radius": 12,
+       "opacity": 0
+      },
+      {
+       "kind": "text",
+       "key": "title",
+       "text": "gstack",
+       "font": "sans",
+       "weight": "bold",
+       "size": 40,
+       "color": "#FAFAFA",
+       "x": 1330,
+       "y": 210,
+       "anchorX": 0,
+       "opacity": 0
+      },
+      {
+       "kind": "text",
+       "key": "r0",
+       "text": "CEO",
+       "font": "mono",
+       "weight": "bold",
+       "size": 26,
+       "color": "#6B6F7C",
+       "x": 1270,
+       "y": 286,
+       "anchorX": 0,
+       "opacity": 0
+      },
+      {
+       "kind": "text",
+       "key": "r1",
+       "text": "Reviewer",
+       "font": "mono",
+       "weight": "bold",
+       "size": 26,
+       "color": "#6B6F7C",
+       "x": 1362,
+       "y": 286,
+       "anchorX": 0,
+       "opacity": 0
+      },
+      {
+       "kind": "text",
+       "key": "r2",
+       "text": "QA",
+       "font": "mono",
+       "weight": "bold",
+       "size": 26,
+       "color": "#6B6F7C",
+       "x": 1518,
+       "y": 286,
+       "anchorX": 0,
+       "opacity": 0
+      },
+      {
+       "kind": "text",
+       "key": "r3",
+       "text": "CSO",
+       "font": "mono",
+       "weight": "bold",
+       "size": 26,
+       "color": "#6B6F7C",
+       "x": 1584,
+       "y": 286,
+       "anchorX": 0,
+       "opacity": 0
+      }
+     ],
+     "tracks": [
+      {
+       "node": "bg",
+       "prop": "opacity",
+       "keys": [
+        {
+         "at": "0.3s",
+         "value": 0
+        },
+        {
+         "at": "0.6s",
+         "value": 1,
+         "ease": "out"
+        }
+       ]
+      },
+      {
+       "node": "logo",
+       "prop": "opacity",
+       "keys": [
+        {
+         "at": "0.3s",
+         "value": 0
+        },
+        {
+         "at": "0.6s",
+         "value": 1,
+         "ease": "out"
+        }
+       ]
+      },
+      {
+       "node": "title",
+       "prop": "opacity",
+       "keys": [
+        {
+         "at": "0.3s",
+         "value": 0
+        },
+        {
+         "at": "0.6s",
+         "value": 1,
+         "ease": "out"
+        }
+       ]
+      },
+      {
+       "node": "bg",
+       "prop": "scale",
+       "keys": [
+        {
+         "at": "0.3s",
+         "value": 0.94
+        },
+        {
+         "at": "0.6s",
+         "value": 1,
+         "ease": "spring"
+        }
+       ]
+      },
+      {
+       "node": "r0",
+       "prop": "opacity",
+       "keys": [
+        {
+         "at": "0.6s",
+         "value": 0
+        },
+        {
+         "at": "0.8s",
+         "value": 1
+        }
+       ]
+      },
+      {
+       "node": "r0",
+       "prop": "color",
+       "keys": [
+        {
+         "at": "1.00s",
+         "value": "#6B6F7C"
+        },
+        {
+         "at": "1.25s",
+         "value": "#D9F99D",
+         "ease": "out"
+        }
+       ]
+      },
+      {
+       "node": "r1",
+       "prop": "opacity",
+       "keys": [
+        {
+         "at": "0.6s",
+         "value": 0
+        },
+        {
+         "at": "0.8s",
+         "value": 1
+        }
+       ]
+      },
+      {
+       "node": "r1",
+       "prop": "color",
+       "keys": [
+        {
+         "at": "2.10s",
+         "value": "#6B6F7C"
+        },
+        {
+         "at": "2.35s",
+         "value": "#D9F99D",
+         "ease": "out"
+        }
+       ]
+      },
+      {
+       "node": "r2",
+       "prop": "opacity",
+       "keys": [
+        {
+         "at": "0.6s",
+         "value": 0
+        },
+        {
+         "at": "0.8s",
+         "value": 1
+        }
+       ]
+      },
+      {
+       "node": "r2",
+       "prop": "color",
+       "keys": [
+        {
+         "at": "3.20s",
+         "value": "#6B6F7C"
+        },
+        {
+         "at": "3.45s",
+         "value": "#D9F99D",
+         "ease": "out"
+        }
+       ]
+      },
+      {
+       "node": "r3",
+       "prop": "opacity",
+       "keys": [
+        {
+         "at": "0.6s",
+         "value": 0
+        },
+        {
+         "at": "0.8s",
+         "value": 1
+        }
+       ]
+      },
+      {
+       "node": "r3",
+       "prop": "color",
+       "keys": [
+        {
+         "at": "4.30s",
+         "value": "#6B6F7C"
+        },
+        {
+         "at": "4.55s",
+         "value": "#D9F99D",
+         "ease": "out"
+        }
+       ]
+      }
+     ],
+     "events": [
+      {
+       "at": "0.6s",
+       "kind": "token"
+      }
+     ]
+    },
+    {
+     "type": "kinetic",
+     "x": 960,
+     "align": "center",
+     "letterSpacing": -1,
+     "enter": {
+      "style": "rise",
+      "stagger": "0.09s",
+      "duration": "0.4s"
+     },
+     "exit": {
+      "style": "fade",
+      "duration": "0.2s"
+     },
+     "y": 104,
+     "size": 52,
+     "maxWidth": 1700,
+     "gap": 0.26,
+     "font": "sans",
+     "weight": "semibold",
+     "color": "#0A0A0A",
+     "states": [
+      {
+       "at": "0.2s",
+       "tokens": [
+        {
+         "text": "gstack's"
+        },
+        {
+         "text": "CEO,"
+        },
+        {
+         "text": "Reviewer,"
+        },
+        {
+         "text": "QA"
+        },
+        {
+         "text": "and"
+        },
+        {
+         "text": "CSO"
+        },
+        {
+         "text": "question"
+        },
+        {
+         "text": "every"
+        },
+        {
+         "text": "proposal."
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "notes": "beat 13: capture: CEO · Reviewer · QA · CSO critiques → pass / hold / reject; gstack logo badge + four role chips light as each c"
+  },
+  {
+   "id": "execute",
+   "duration": "4.5s",
+   "background": "#F3F3F4",
+   "layers": [
+    {
+     "type": "text",
+     "text": "CAPTURE PENDING · execute",
+     "x": "center",
+     "y": 560,
+     "align": "center",
+     "font": "mono",
+     "weight": "bold",
+     "size": 44,
+     "color": "#9CA3AF"
+    },
+    {
+     "type": "kinetic",
+     "x": 960,
+     "align": "center",
+     "letterSpacing": -1,
+     "enter": {
+      "style": "rise",
+      "stagger": "0.09s",
+      "duration": "0.4s"
+     },
+     "exit": {
+      "style": "fade",
+      "duration": "0.2s"
+     },
+     "y": 104,
+     "size": 52,
+     "maxWidth": 1700,
+     "gap": 0.26,
+     "font": "sans",
+     "weight": "semibold",
+     "color": "#0A0A0A",
+     "states": [
+      {
+       "at": "0.2s",
+       "tokens": [
+        {
+         "text": "Only"
+        },
+        {
+         "text": "what"
+        },
+        {
+         "text": "passes"
+        },
+        {
+         "text": "runs."
+        },
+        {
+         "text": "Risky"
+        },
+        {
+         "text": "sends"
+        },
+        {
+         "text": "wait"
+        },
+        {
+         "text": "for"
+        },
+        {
+         "text": "you."
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "notes": "beat 14: capture: passed work runs in Aside; the send is held"
+  },
+  {
+   "id": "reuse",
+   "duration": "5s",
+   "background": "#F3F3F4",
+   "layers": [
+    {
+     "type": "text",
+     "text": "CAPTURE PENDING · reuse",
+     "x": "center",
+     "y": 560,
+     "align": "center",
+     "font": "mono",
+     "weight": "bold",
+     "size": 44,
+     "color": "#9CA3AF"
+    },
+    {
+     "type": "stage",
+     "start": "0s",
+     "end": "5s",
+     "nodes": [
+      {
+       "kind": "rect",
+       "key": "bg",
+       "x": 1480,
+       "y": 250,
+       "width": 520,
+       "height": 150,
+       "radius": 22,
+       "fill": "#0F1117F2",
+       "stroke": "#FFFFFF22",
+       "strokeWidth": 1.5,
+       "opacity": 0
+      },
+      {
+       "kind": "image",
+       "key": "logo",
+       "source": "gbrainLogo",
+       "x": 1280,
+       "y": 210,
+       "width": 56,
+       "height": 56,
+       "radius": 12,
+       "opacity": 0
+      },
+      {
+       "kind": "text",
+       "key": "title",
+       "text": "gbrain",
+       "font": "sans",
+       "weight": "bold",
+       "size": 40,
+       "color": "#FAFAFA",
+       "x": 1330,
+       "y": 210,
+       "anchorX": 0,
+       "opacity": 0
+      },
+      {
+       "kind": "text",
+       "key": "l1",
+       "text": "recalled quorum/verdicts/<run>",
+       "font": "mono",
+       "weight": "regular",
+       "size": 22,
+       "color": "#C9CBD3",
+       "x": 1270,
+       "y": 272,
+       "anchorX": 0,
+       "opacity": 0
+      },
+      {
+       "kind": "text",
+       "key": "l2",
+       "text": "first run — s  →  reused — s",
+       "font": "mono",
+       "weight": "bold",
+       "size": 24,
+       "color": "#D9F99D",
+       "x": 1270,
+       "y": 306,
+       "anchorX": 0,
+       "opacity": 0
+      }
+     ],
+     "tracks": [
+      {
+       "node": "bg",
+       "prop": "opacity",
+       "keys": [
+        {
+         "at": "0.3s",
+         "value": 0
+        },
+        {
+         "at": "0.6s",
+         "value": 1,
+         "ease": "out"
+        }
+       ]
+      },
+      {
+       "node": "logo",
+       "prop": "opacity",
+       "keys": [
+        {
+         "at": "0.3s",
+         "value": 0
+        },
+        {
+         "at": "0.6s",
+         "value": 1,
+         "ease": "out"
+        }
+       ]
+      },
+      {
+       "node": "title",
+       "prop": "opacity",
+       "keys": [
+        {
+         "at": "0.3s",
+         "value": 0
+        },
+        {
+         "at": "0.6s",
+         "value": 1,
+         "ease": "out"
+        }
+       ]
+      },
+      {
+       "node": "bg",
+       "prop": "scale",
+       "keys": [
+        {
+         "at": "0.3s",
+         "value": 0.94
+        },
+        {
+         "at": "0.6s",
+         "value": 1,
+         "ease": "spring"
+        }
+       ]
+      },
+      {
+       "node": "l1",
+       "prop": "opacity",
+       "keys": [
+        {
+         "at": "0.9s",
+         "value": 0
+        },
+        {
+         "at": "1.2s",
+         "value": 1
+        }
+       ]
+      },
+      {
+       "node": "l2",
+       "prop": "opacity",
+       "keys": [
+        {
+         "at": "1.6s",
+         "value": 0
+        },
+        {
+         "at": "1.9s",
+         "value": 1
+        }
+       ]
+      }
+     ],
+     "events": [
+      {
+       "at": "0.6s",
+       "kind": "token"
+      }
+     ]
+    },
+    {
+     "type": "kinetic",
+     "x": 960,
+     "align": "center",
+     "letterSpacing": -1,
+     "enter": {
+      "style": "rise",
+      "stagger": "0.09s",
+      "duration": "0.4s"
+     },
+     "exit": {
+      "style": "fade",
+      "duration": "0.2s"
+     },
+     "y": 104,
+     "size": 52,
+     "maxWidth": 1700,
+     "gap": 0.26,
+     "font": "sans",
+     "weight": "semibold",
+     "color": "#0A0A0A",
+     "states": [
+      {
+       "at": "0.2s",
+       "tokens": [
+        {
+         "text": "gbrain"
+        },
+        {
+         "text": "remembers"
+        },
+        {
+         "text": "your"
+        },
+        {
+         "text": "call,"
+        },
+        {
+         "text": "and"
+        },
+        {
+         "text": "reuses"
+        },
+        {
+         "text": "it."
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "notes": "beat 15: capture: same request → verdicts reused from gbrain; gbrain logo badge, the recalled verdict page id (quorum/verdicts/<r"
+  },
+  {
+   "id": "heal",
+   "duration": "3.8s",
+   "background": "#F3F3F4",
+   "layers": [
+    {
+     "type": "text",
+     "text": "CAPTURE PENDING · heal",
+     "x": "center",
+     "y": 560,
+     "align": "center",
+     "font": "mono",
+     "weight": "bold",
+     "size": 44,
+     "color": "#9CA3AF"
+    },
+    {
+     "type": "kinetic",
+     "x": 960,
+     "align": "center",
+     "letterSpacing": -1,
+     "enter": {
+      "style": "rise",
+      "stagger": "0.09s",
+      "duration": "0.4s"
+     },
+     "exit": {
+      "style": "fade",
+      "duration": "0.2s"
+     },
+     "y": 104,
+     "size": 52,
+     "maxWidth": 1700,
+     "gap": 0.26,
+     "font": "sans",
+     "weight": "semibold",
+     "color": "#0A0A0A",
+     "states": [
+      {
+       "at": "0.2s",
+       "tokens": [
+        {
+         "text": "APIs"
+        },
+        {
+         "text": "that"
+        },
+        {
+         "text": "break"
+        },
+        {
+         "text": "get"
+        },
+        {
+         "text": "repaired:"
+        },
+        {
+         "text": "recipe"
+        },
+        {
+         "text": "v3."
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "notes": "beat 16: terminal capture: recipe v2 404 → Aside → v3 PASS"
+  },
+  {
+   "id": "mcp",
+   "duration": "3.6s",
+   "background": "#08080A",
+   "layers": [
+    {
+     "type": "media",
+     "source": "sc_mcp",
+     "fit": "cover"
+    },
+    {
+     "type": "kinetic",
+     "x": 960,
+     "align": "center",
+     "letterSpacing": -1,
+     "enter": {
+      "style": "rise",
+      "stagger": "0.09s",
+      "duration": "0.4s"
+     },
+     "exit": {
+      "style": "fade",
+      "duration": "0.2s"
+     },
+     "y": 200,
+     "size": 64,
+     "maxWidth": 1500,
+     "gap": 0.26,
+     "font": "sans",
+     "weight": "semibold",
+     "color": "#FAFAFA",
+     "states": [
+      {
+       "at": "0.2s",
+       "tokens": [
+        {
+         "text": "Bring"
+        },
+        {
+         "text": "your"
+        },
+        {
+         "text": "own"
+        },
+        {
+         "text": "agents"
+        },
+        {
+         "text": "—"
+        },
+        {
+         "text": "over"
+        },
+        {
+         "text": "MCP."
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "notes": "beat 17: rebuilt: agent chips → quorum_propose over MCP",
+   "transition": {
+    "type": "fade",
+    "duration": "0.3s"
+   }
+  },
+  {
+   "id": "built",
+   "duration": "4.2s",
+   "background": "#08080A",
+   "layers": [
+    {
+     "type": "media",
+     "source": "sc_built",
+     "fit": "cover"
+    },
+    {
+     "type": "kinetic",
+     "x": 960,
+     "align": "center",
+     "letterSpacing": -1,
+     "enter": {
+      "style": "rise",
+      "stagger": "0.09s",
+      "duration": "0.4s"
+     },
+     "exit": {
+      "style": "fade",
+      "duration": "0.2s"
+     },
+     "y": 330,
+     "size": 56,
+     "maxWidth": 1600,
+     "gap": 0.26,
+     "font": "sans",
+     "weight": "semibold",
+     "color": "#FAFAFA",
+     "states": [
+      {
+       "at": "0.2s",
+       "tokens": [
+        {
+         "text": "Built"
+        },
+        {
+         "text": "on"
+        },
+        {
+         "text": "Aside,"
+        },
+        {
+         "text": "gbrain,"
+        },
+        {
+         "text": "gstack,"
+        },
+        {
+         "text": "Direction"
+        },
+        {
+         "text": "Board,"
+        },
+        {
+         "text": "Codex."
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "notes": "beat 18: logos: Aside · gbrain · gstack · Direction Board · Codex"
+  },
+  {
+   "id": "cta",
+   "duration": "4.5s",
+   "background": "#08080A",
+   "layers": [
+    {
+     "type": "media",
+     "source": "sc_cta",
+     "fit": "cover"
+    }
+   ],
+   "notes": "beat 19: wordmark, one boat sails the moon path"
+  }
+ ],
+ "audio": {
+  "music": {
+   "synth": {
+    "preset": "launch",
+    "key": "Am",
+    "sections": [
+     {
+      "at": 0,
+      "energy": "intro"
+     },
+     {
+      "at": 9.3,
+      "energy": "build"
+     },
+     {
+      "at": 30.2,
+      "energy": "break"
+     },
+     {
+      "at": 38.1,
+      "energy": "drop"
+     },
+     {
+      "at": 76.6,
+      "energy": "outro"
+     }
+    ]
+   },
+   "volume": 0.75,
+   "fadeOut": "1.5s"
+  },
+  "autoCues": true,
+  "cues": [
+   {
+    "at": 19.9,
+    "sfx": "preset:impact",
+    "volume": 0.6
+   },
+   {
+    "at": 30.7,
+    "sfx": "preset:shimmer",
+    "volume": 0.5
+   },
+   {
+    "at": 36.75,
+    "sfx": "preset:riser",
+    "anchor": "start",
+    "volume": 0.6
+   },
+   {
+    "at": 38.1,
+    "sfx": "preset:impact"
+   }
+  ]
+ }
+}
