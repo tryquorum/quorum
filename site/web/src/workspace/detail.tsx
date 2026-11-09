@@ -220,7 +220,7 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf, returnFo
                 <Textarea value={md} onChange={(e) => setMd(e.target.value)} placeholder="Markdown. The council only appends here; it never rewrites what you wrote." className="mt-2 min-h-28 font-mono text-xs leading-5" />
                 <div className="mt-2 flex items-center gap-2">
                   <Button size="sm" variant="secondary" disabled={md === (data.note?.md ?? "")} onClick={() => void saveNote()}>Save note</Button>
-                  {data.note?.overflow ? <span className="text-2xs text-muted-foreground">{data.note.overflow} council result(s) kept separately — the note is full</span> : null}
+                  {data.note?.overflow ? <OverflowReader noteRef={ref} count={data.note.overflow} /> : null}
                 </div>
                 {noteProblem && (
                   <div role="alert" className={"mt-2 flex flex-wrap items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs " + ALERT}>
@@ -403,6 +403,21 @@ function SignalActions({ s, act, onDone, onFail, inCard, preview }: { s: Signal;
           {label === "Reject" || label === "Dismiss" ? <X /> : <Check />}{label}
         </Button>
       ))}
+    </div>
+  )
+}
+
+/** 노트가 가득 차서 따로 보관한 결과를 끝까지 읽어요(받았다고 한 결과는 언제나 볼 수 있어야 해요) */
+function OverflowReader({ noteRef, count }: { noteRef: string; count: number }) {
+  const [rows, setRows] = useState<{ by: string; at: number; md: string }[] | null>(null)
+  const [problem, setProblem] = useState<string | null>(null)
+  return (
+    <div className="min-w-0 flex-1">
+      <button type="button" className="text-2xs text-muted-foreground underline hover:text-foreground max-md:min-h-11" onClick={() => { if (rows) { setRows(null); return } ws.noteOverflow(noteRef).then(setRows).catch((e) => setProblem(e instanceof Error ? e.message : String(e))) }}>
+        {rows ? "Hide" : "Read"} {count} result(s) kept separately — the note is full
+      </button>
+      {problem && <p className={"mt-1 rounded px-1.5 py-0.5 text-2xs " + ALERT}>{problem}</p>}
+      {rows && <ol className="mt-2 flex flex-col gap-2">{rows.map((r, i) => <li key={i} className="rounded-lg bg-muted/40 p-2.5 text-xs leading-5"><p className="mb-1 font-mono text-2xs text-muted-foreground">{r.by} · {when(r.at)}</p><Md text={r.md} /></li>)}</ol>}
     </div>
   )
 }

@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { Check, Copy, X } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { ws, type Health, type McpToken } from "./api"
+import { ws, type Health, type McpToken, type TaskFull, type TaskRow } from "./api"
 import { ALERT, CHIP } from "./tone"
 
 export const ASIDE_PROMPT = "Work through my Quorum tasks: call quorum_next_task with waitSeconds 20, do each task exactly as it says, report it with quorum_report_result, and stop when it returns no task twice in a row. Never send, pay, submit or post anything."
@@ -108,6 +108,48 @@ export function ConnectCard({ health, onDismiss }: { health: Health; onDismiss: 
           </ul>
         </div>
       )}
+      <TaskLog />
     </section>
+  )
+}
+
+/** 작업 기록: 내 대기열의 모든 일. 열면 Aside 가 받은 글 전체와 보고한 원문(의견 포함)을 그대로 보여 줘요 */
+function TaskLog() {
+  const [rows, setRows] = useState<TaskRow[] | null>(null)
+  const [openId, setOpenId] = useState<string | null>(null)
+  const [full, setFull] = useState<TaskFull | null>(null)
+  const [problem, setProblem] = useState<string | null>(null)
+  const load = useCallback(() => ws.tasks().then((r) => setRows(r.tasks)).catch((e) => setProblem(e instanceof Error ? e.message : String(e))), [])
+  const open = (id: string) => {
+    if (openId === id) { setOpenId(null); setFull(null); return }
+    setOpenId(id); setFull(null)
+    ws.task(id).then(setFull).catch((e) => setProblem(e instanceof Error ? e.message : String(e)))
+  }
+  return (
+    <details className="mt-3 border-t pt-3" onToggle={(e) => { if ((e.target as HTMLDetailsElement).open) void load() }}>
+      <summary className="cursor-pointer text-2xs font-medium tracking-wide text-muted-foreground uppercase select-none hover:text-foreground max-md:py-3">Task log · everything sent to your Aside and everything it reported</summary>
+      {problem && <p role="alert" className={"mt-2 rounded-xl px-3 py-2 text-xs " + ALERT}>{problem}</p>}
+      {rows && !rows.length && <p className="mt-2 text-xs text-muted-foreground">Nothing yet. Send something to the council first.</p>}
+      {rows && rows.length > 0 && (
+        <ul className="mt-2 flex flex-col">
+          {rows.map((t) => (
+            <li key={t.id} className="border-b py-1 last:border-0">
+              <button type="button" onClick={() => open(t.id)} className="flex w-full items-center gap-2 text-left text-xs hover:text-foreground max-md:min-h-11" aria-expanded={openId === t.id}>
+                <span className={cn("shrink-0 rounded px-1 font-mono text-2xs", CHIP)}>{t.kind}</span>
+                <span className="min-w-0 flex-1 truncate">{t.title}</span>
+                <span className={cn("shrink-0 font-mono text-2xs", t.status === "failed" ? "text-red-400" : "text-muted-foreground")}>{t.status}</span>
+                <span className="shrink-0 text-2xs text-muted-foreground">{new Date(t.updatedAt).toLocaleTimeString()}</span>
+              </button>
+              {openId === t.id && (full ? (
+                <div className="mt-1.5 grid gap-2">
+                  <div><p className="text-2xs text-muted-foreground">Sent to your Aside</p><pre className="max-h-60 overflow-auto rounded-lg bg-muted/40 p-2.5 font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-words">{full.prompt}</pre></div>
+                  <div><p className="text-2xs text-muted-foreground">Reported by your Aside {full.result ? "(" + full.result.length + " characters)" : ""}</p><pre className="max-h-60 overflow-auto rounded-lg bg-muted/40 p-2.5 font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-words">{full.result ?? "(no report " + (full.status === "cancelled" ? "— you closed it before it was picked up" : "yet") + ")"}</pre></div>
+                </div>
+              ) : <p className="mt-1 text-2xs text-muted-foreground">Loading…</p>)}
+            </li>
+          ))}
+        </ul>
+      )}
+    </details>
   )
 }

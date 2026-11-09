@@ -183,6 +183,21 @@ export function makeGuestTenant(c: GuestConfig): GuestTenant {
     },
   }
 
-  const t = tenantFrom({ email: c.email, role: "guest", store, runs, workspace: ws.handle, memory: memory.search, recipes: async () => null, health, start, mcpPropose: true, queue: queueTools })
+  /**
+   * 작업 기록(/api/ws/tasks): 이 사람 대기열의 모든 일 — 보낸 글 전체와 에이전트가 보고한 원문(의견 포함), 상태.
+   * 사건 본문이 재시도로 바뀌거나 노트가 가득 차도, 에이전트에게 받았다고 한 것은 여기서 언제나 끝까지 읽을 수 있어요
+   */
+  const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } })
+  const handle = async (req: Request, parts: string[], me?: string | null): Promise<Response> => {
+    if (parts[2] === "tasks") {
+      if (req.method !== "GET") return json({ error: "method not allowed" }, 405)
+      if (parts[3]) { const t = q().get(parts[3]); return t ? json(t) : json({ error: "task not found" }, 404) }
+      const limit = Math.max(1, Math.min(200, Number(new URL(req.url).searchParams.get("limit")) || 100))
+      const tasks = q().recent(limit).map((t) => ({ id: t.id, kind: t.kind, title: t.title, status: t.status, createdAt: t.createdAt, updatedAt: t.updatedAt, resultChars: t.result?.length ?? 0, resultPreview: (t.result ?? "").slice(0, 200) }))
+      return json({ tasks, counts: q().counts() })
+    }
+    return ws.handle(req, parts, me)
+  }
+  const t = tenantFrom({ email: c.email, role: "guest", store, runs, workspace: handle, memory: memory.search, recipes: async () => null, health, start, mcpPropose: true, queue: queueTools })
   return { ...t, tasks, settle: () => ws.settle() }
 }

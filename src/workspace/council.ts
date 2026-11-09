@@ -220,7 +220,7 @@ export function approveSignal(db: Database, id: string, execute: ExecuteFn | und
     let queued: { taskId: string; prompt: string }
     try {
       // 다시 승인(실패 뒤 재시도)도 새 일이 되도록 ref 에 시각을 붙여요. 대기열 결과는 ref 의 사건 id 로 돌아와요
-      queued = hosted.enqueue({ signalId: id, ref: "approve:" + id + ":" + now, executor: m.executor, title: cur.title, prompt, request: String(m.request || cur.title), runId: String(m.runId), proposalId: String(m.proposalId) })
+      queued = hosted.enqueue({ signalId: id, ref: "approve:" + id + ":" + now + ":" + crypto.randomUUID().slice(0, 8), executor: m.executor, title: cur.title, prompt, request: String(m.request || cur.title), runId: String(m.runId), proposalId: String(m.proposalId) })
     } catch (e) {
       moveSignal(db, id, ["running"], { status: "open", lane: "decide", kind: "error", reason: "Could not queue this for your Aside: " + firstLine(msg(e)), meta: { execError: msg(e) } }, Date.now())
       return { status: 400, body: { error: "Could not queue this for your Aside: " + msg(e) } }

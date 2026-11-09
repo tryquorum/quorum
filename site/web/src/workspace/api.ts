@@ -23,6 +23,9 @@ export type HealthDetail = { ok: boolean; hint?: string; reason?: string | null;
 export type Health = { ok: boolean; version?: string; mode?: "hosted"; executors?: Partial<Record<"aside" | "codex" | "gbrain" | "board", boolean>>; details?: Partial<Record<string, HealthDetail>> }
 /** 연결 토큰(src/hosted/tokens.ts). 원문(secret)은 만들 때 응답에만 있어요 */
 export type McpToken = { id: string; name: string; prefix: string; createdAt: number; lastUsedAt: number | null; revokedAt: number | null }
+/** 호스팅 작업 기록(src/hosted/guest.ts /api/ws/tasks): 보낸 글 전체와 에이전트가 보고한 원문 */
+export type TaskRow = { id: string; kind: "opinion" | "browser" | "code"; title: string; status: string; createdAt: number; updatedAt: number; resultChars: number; resultPreview: string }
+export type TaskFull = TaskRow & { prompt: string; result: string | null; executor: string | null; runId: string | null }
 export type NowView = {
   today: string; needsYou: Signal[]; running: Signal[]; dueToday: Item[]; goals: GoalView[]; review: Signal[]; inbox: Item[]; later: Item[]
   counts: { needsYou: number; dueToday: number; review: number; inbox: number; running: number; goals: number }
@@ -66,6 +69,10 @@ export const ws = {
   tokens: () => call<{ tokens: McpToken[] }>("/api/mcp-tokens"),
   makeToken: (name: string) => call<{ token: McpToken; secret: string }>("/api/mcp-tokens", { method: "POST", body: { name } }),
   revokeToken: (id: string) => call<{ token: McpToken }>("/api/mcp-tokens/" + id, { method: "DELETE" }),
+  tasks: () => call<{ tasks: TaskRow[]; counts: Record<string, number> }>("/api/ws/tasks"),
+  task: (id: string) => call<TaskFull>("/api/ws/tasks/" + id),
+  /** 노트가 가득 차서 따로 보관한 의회·에이전트 결과 전체 */
+  noteOverflow: (ref: string) => call<{ by: string; at: number; md: string }[]>("/api/ws/notes/overflow?ref=" + encodeURIComponent(ref)),
   now: () => call<NowView>("/api/ws/now"),
   meta: () => call<Meta>("/api/ws/meta"),
   items: (done: boolean) => call<Item[]>("/api/ws/items" + (done ? "?done=1" : "")),
