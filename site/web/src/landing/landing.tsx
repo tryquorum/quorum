@@ -1,4 +1,4 @@
-import { ArrowRight, Brain, Globe, Gavel, History, ShieldAlert, Terminal, Users, Wrench, LayoutDashboard } from "lucide-react"
+import { ArrowRight, Brain, Gavel, History, Terminal, Users, Wrench, LayoutDashboard } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Brand, QuorumMark } from "@/components/wordmark"
 import { Reveal } from "@/components/reveal"
@@ -9,8 +9,10 @@ import { Numbers } from "./numbers"
 import { Argument } from "./argument"
 import { Healing } from "./healing"
 import { Architecture } from "./architecture"
+import { Logo, LogoStrip, type LogoKey } from "./logos"
 
 const REPO = "https://github.com/tryquorum/quorum"
+const WORKSPACE = "https://quorum.lidgeai.com"
 
 function Nav() {
   return (
@@ -54,13 +56,14 @@ function Hero() {
             <a href={`${APP}?demo=seoul`}>Replay the Seoul run <ArrowRight /></a>
           </Button>
           <Button asChild variant="secondary" className="h-12 rounded-full px-6 text-base">
-            <a href={APP}>Convene the council</a>
+            <a href={WORKSPACE}>Open your workspace</a>
           </Button>
         </div>
       </div>
       <div className="mx-auto mt-14 max-w-6xl">
         <HeroSession />
       </div>
+      <LogoStrip />
     </section>
   )
 }
@@ -173,25 +176,28 @@ function SelfHealing() {
   )
 }
 
-const BUILT_ON = [
-  { name: "Aside", role: "Runs browser work in your signed-in browser and re-explores broken recipes.", href: "https://aside.com", icon: Globe },
-  { name: "gbrain", role: "Remembers verdicts, reasons and recipe versions, and recalls similar cases. MIT.", href: "https://github.com/garrytan/gbrain", icon: Brain },
-  { name: "gstack", role: "The roles that argue: CEO, reviewer, QA and CSO. MIT.", href: "https://github.com/garrytan/gstack", icon: ShieldAlert },
-  { name: "Direction Board", role: "Where people see results, approve held work and read why each call was made.", href: REPO, icon: LayoutDashboard },
+const BUILT_ON: { name: string; logo?: LogoKey; role: string; href: string }[] = [
+  { name: "Aside", logo: "aside", role: "Runs browser work in your signed-in browser and re-explores broken recipes.", href: "https://aside.com" },
+  { name: "Codex CLI", logo: "codex", role: "Runs passed coding work in a sandbox folder per run.", href: "https://github.com/openai/codex" },
+  { name: "gbrain", logo: "gbrain", role: "Remembers verdicts, reasons and recipe versions, and recalls similar cases. MIT.", href: "https://github.com/garrytan/gbrain" },
+  { name: "gstack", logo: "gstack", role: "The roles that argue: CEO, reviewer, QA and CSO. MIT.", href: "https://github.com/garrytan/gstack" },
+  { name: "Direction Board", role: "Where people see results, approve held work and read why each call was made.", href: REPO },
 ]
 
 function BuiltOn() {
   return (
     <section id="built-on" className="scroll-mt-24 px-5 py-24">
-      <SectionHead eyebrow="Built on" title="Aside · gbrain · gstack · Direction Board">
-        Quorum is the parliament in the middle. Code runs through Codex CLI; everything else is a tool you can already use.
+      <SectionHead eyebrow="Built on" title="Five real tools around one parliament.">
+        Quorum is the parliament in the middle. Every tool around it is real and called over its own CLI or HTTP API.
       </SectionHead>
-      <div className="mx-auto grid max-w-5xl gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {BUILT_ON.map(({ name, role, href, icon: Icon }, i) => (
+      <div className="mx-auto grid max-w-6xl gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        {BUILT_ON.map(({ name, logo, role, href }, i) => (
           <Reveal key={name} delay={i * 90}>
             <a href={href} className="lift group block h-full rounded-2xl border bg-card/50 p-6 hover:bg-card">
-              <Icon className="mb-6 size-5 text-muted-foreground transition-colors group-hover:text-signal" />
-              <p className="mb-2 text-lg font-semibold tracking-tight">{name}</p>
+              <div className="mb-6 flex h-9 items-center">
+                {logo ? <Logo name={logo} /> : <span className="inline-flex items-center gap-2 text-lg font-semibold tracking-tight"><LayoutDashboard className="size-6 text-muted-foreground transition-colors group-hover:text-signal" />Direction Board</span>}
+              </div>
+              <p className="mb-2 text-sm font-medium text-muted-foreground">{name}</p>
               <p className="leading-relaxed text-muted-foreground">{role}</p>
             </a>
           </Reveal>
@@ -213,9 +219,10 @@ function Cta() {
           Type what you need, watch the council argue it out, and see exactly what ran and why.
         </p>
         <div className="relative mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Button asChild className="h-12 rounded-full px-6 text-base"><a href={APP}>Open the console <ArrowRight /></a></Button>
+          <Button asChild className="h-12 rounded-full px-6 text-base"><a href={WORKSPACE}>Open your workspace <ArrowRight /></a></Button>
           <Button asChild variant="secondary" className="h-12 rounded-full px-6 text-base"><a href={`${APP}?demo=seoul`}>Replay the Seoul run</a></Button>
         </div>
+        <p className="relative mt-5 text-sm text-muted-foreground">The workspace runs your own council after sign-in. This page and the replay are a public demo.</p>
       </Reveal>
     </section>
   )

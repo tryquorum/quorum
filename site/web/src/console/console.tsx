@@ -13,6 +13,7 @@ import { applyEvent, emptyRun, FIXTURES, followRun, playFixture, runRecipe, star
 import { EventLog, OutcomePanel, Panel, ProposalCard, RecallPanel, RecipePanel } from "./panels"
 import { RunList } from "./run-list"
 import { RecipesPanel } from "./recipes"
+import { EN, SEOUL_RUN_ID } from "@/lib/seoul"
 
 const EXAMPLES = [
   "오늘 c0mpiled-17 Seoul 행사 Luma 공지에서 내가 지금 해야 할 일만 정리해 줘",
@@ -257,7 +258,7 @@ export function Console() {
                 </p>
               </div>
             ) : (
-              proposals.map((p) => <ProposalCard key={p.id} p={p} />)
+              proposals.map((p) => <ProposalCard key={p.id} p={p} captions={view.runId === SEOUL_RUN_ID ? EN : undefined} />)
             )}
             {view.errors.map((e) => (
               <div key={e.seq} role="alert" className="rounded-lg bg-destructive/5 px-4 py-3 text-sm">

@@ -217,8 +217,8 @@
 .md th{background:var(--muted);font-weight:600}
 .md strong{font-weight:600}
 .md ul.contains-task-list{list-style:none;padding-left:.2em}
-.md li.task-list-item{display:flex;gap:.5em;align-items:baseline}
-.md li.task-list-item input{accent-color:var(--signal)}
+.md li.task-list-item{list-style:none}
+.md li.task-list-item input{accent-color:var(--signal);margin-right:.5em;vertical-align:-1px}
 
 /* ===== Quorum cycle 2: reveal, grain, glow, flip, pulse ===== */
 .reveal { opacity: 0; transform: translateY(18px); transition: opacity 700ms var(--ease-standard), transform 700ms var(--ease-standard); }
