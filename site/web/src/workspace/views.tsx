@@ -61,7 +61,7 @@ export function GoalHeader({ g, focus }: { g: GoalView; focus?: boolean }) {
       </div>
       <div className="flex items-center gap-2">
         <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-foreground/10"><div className="h-full rounded-full bg-foreground transition-[width]" style={{ width: pct + "%" }} /></div>
-        <span className="num font-mono text-2xs text-muted-foreground">{g.done}/{g.total} · {pct}%</span>
+        <span className="num font-mono text-2xs text-muted-foreground">{g.total ? g.done + "/" + g.total + " · " + pct + "%" : "no tasks yet"}</span>
       </div>
     </div>
   )

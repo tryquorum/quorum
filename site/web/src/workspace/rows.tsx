@@ -47,24 +47,27 @@ export function ItemRow({ item, area, selected, busy, onSelect, onOpen, onDone, 
   const lastAuto = [...item.log].reverse().find((l) => l.by === "agent")
   return (
     <Row selected={selected} onSelect={onSelect}>
+      {/* 터치에서는 누르는 자리를 44px 로 넓히고 동그라미는 그대로(board task-row 의 coarse min-h-11 규칙) */}
       <button type="button" onClick={onDone} disabled={busy || item.done} aria-label={(item.done ? "Done: " : "Mark done: ") + item.text} title="Done (E)"
-        className={cn("mt-0.5 grid size-[18px] shrink-0 place-items-center rounded-full border border-foreground/30 text-transparent transition-colors hover:border-foreground hover:text-foreground disabled:opacity-60 max-md:size-6", item.done && "border-foreground bg-foreground text-background")}>
-        <Check className="size-3" strokeWidth={3} />
+        className="group/done mt-0.5 grid size-[18px] shrink-0 place-items-center disabled:opacity-60 max-md:-m-[13px] max-md:size-11 [@media(pointer:coarse)]:-m-[13px] [@media(pointer:coarse)]:size-11">
+        <span className={cn("grid size-[18px] place-items-center rounded-full border border-foreground/30 text-transparent transition-colors group-hover/done:border-foreground group-hover/done:text-foreground", item.done && "border-foreground bg-foreground text-background")}>
+          <Check className="size-3" strokeWidth={3} />
+        </span>
       </button>
       <div className="min-w-0 flex-1">
-        <button type="button" onClick={onOpen} className={cn("block w-full truncate text-left text-sm leading-5 hover:underline", item.done && "text-muted-foreground line-through")} title={item.raw ?? item.text}>{item.text.split("\n")[0]}</button>
+        <button type="button" onClick={onOpen} className={cn("block w-full truncate text-left text-sm leading-5 hover:underline max-md:-my-3 max-md:py-3 [@media(pointer:coarse)]:-my-3 [@media(pointer:coarse)]:py-3", item.done && "text-muted-foreground line-through")} title={item.raw ?? item.text}>{item.text.split("\n")[0]}</button>
         {(item.runId || lastAuto || item.source === "direction-board" || area) && (
           <p className="mt-0.5 flex items-center gap-1.5 truncate text-2xs text-muted-foreground">
             {area && <span className="inline-flex shrink-0 items-center gap-1"><span className="size-1.5 rounded-full" style={{ background: area.color }} aria-hidden />{area.name}</span>}
             <SourceChip item={item} />
-            {item.runId && <a href={"/app"} className="inline-flex items-center gap-1 font-mono text-muted-foreground hover:text-foreground hover:underline"><Gavel className="size-3" />{item.runId}</a>}
+            {item.runId && <span className="inline-flex items-center gap-1 font-mono text-muted-foreground"><Gavel className="size-3" />{item.runId}</span>}
             {lastAuto && <span className="truncate">{lastAuto.text}</span>}
           </p>
         )}
       </div>
       {when && <span className={cn("mt-0.5 shrink-0 num font-mono text-2xs text-muted-foreground", late && LATE)}>{dueLabel(when)}</span>}
       {onAsk && !item.runId && !item.done && (
-        <Button type="button" variant="outline" size="xs" className="shrink-0 rounded-full max-sm:px-1.5" onClick={onAsk} disabled={busy} title="Ask the council (Q)" aria-label={"Ask the council: " + item.text}>
+        <Button type="button" variant="outline" size="xs" className="shrink-0 rounded-full max-sm:w-11 max-sm:px-1.5" onClick={onAsk} disabled={busy} title="Ask the council (Q)" aria-label={"Ask the council: " + item.text}>
           <Gavel /><span className="max-sm:hidden">Ask the council</span>
         </Button>
       )}
@@ -86,7 +89,7 @@ export function SignalRow({ s, selected, busy, onSelect, onOpen, onApprove, onRe
         {failed ? <CircleAlert className="size-4" /> : running ? <Loader2 className="size-4 animate-spin" /> : tone === "review" ? <MessageSquareText className="size-4" /> : <Gavel className="size-4" />}
       </span>
       <div className="min-w-0 flex-1">
-        <button type="button" onClick={onOpen} className="block w-full truncate text-left text-sm leading-5 hover:underline" title={s.title}>{s.title}</button>
+        <button type="button" onClick={onOpen} className="block w-full truncate text-left text-sm leading-5 hover:underline max-md:-my-3 max-md:py-3 [@media(pointer:coarse)]:-my-3 [@media(pointer:coarse)]:py-3" title={s.title}>{s.title}</button>
         <p className="mt-0.5 line-clamp-2 text-2xs leading-4 text-muted-foreground">
           <SourceChip item={s} className="mr-1.5 inline" />
           {exec && <span className="mr-1.5 rounded bg-muted px-1 font-mono">{EXEC[exec] ?? exec}</span>}
@@ -95,17 +98,17 @@ export function SignalRow({ s, selected, busy, onSelect, onOpen, onApprove, onRe
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
         {onApprove && (
-          <Button type="button" size="xs" className="rounded-full" onClick={onApprove} disabled={busy} title="Approve (A)">
+          <Button type="button" size="xs" className="rounded-full max-sm:w-11" onClick={onApprove} disabled={busy} title="Approve (A)">
             <Check /><span className="max-sm:sr-only">Approve</span>
           </Button>
         )}
         {onReject && (
-          <Button type="button" variant="outline" size="xs" className="rounded-full" onClick={onReject} disabled={busy} title="Reject (X)">
+          <Button type="button" variant="outline" size="xs" className="rounded-full max-sm:w-11" onClick={onReject} disabled={busy} title="Reject (X)">
             <X /><span className="max-sm:sr-only">Reject</span>
           </Button>
         )}
         {onResolve && (
-          <Button type="button" variant="outline" size="xs" className="rounded-full" onClick={onResolve} disabled={busy} title={s.lane === "review" ? "Mark reviewed (E)" : "Mark handled here (E)"}>
+          <Button type="button" variant="outline" size="xs" className="rounded-full max-sm:w-11" onClick={onResolve} disabled={busy} title={s.lane === "review" ? "Mark reviewed (E)" : "Mark handled here (E)"}>
             <Check /><span className="max-sm:sr-only">{s.lane === "review" ? "Reviewed" : "Handled"}</span>
           </Button>
         )}
