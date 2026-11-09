@@ -99,7 +99,13 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf }: {
   return (
     <Dialog open={!!open} onOpenChange={(o) => { if (!o) onClose() }}>
       <DialogContent className="max-h-[90svh] grid-cols-[minmax(0,1fr)] gap-0 overflow-x-hidden overflow-y-auto p-0 sm:max-w-2xl max-sm:inset-0 max-sm:h-dvh max-sm:max-h-none max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-none">
-        {!data && <div className="p-5"><DialogTitle className="text-sm text-muted-foreground">{error ? "Couldn't open" : "Loading…"}</DialogTitle>{error && <p role="alert" className={"mt-2 rounded-lg px-2.5 py-1.5 text-sm " + ALERT}>{error}</p>}</div>}
+        {!data && (
+          <div className="flex flex-col gap-3 p-5">
+            <DialogTitle className="text-sm text-muted-foreground">{error ? "Couldn't open this" : "Loading…"}</DialogTitle>
+            {error && <p role="alert" className={"rounded-lg px-2.5 py-1.5 text-sm " + ALERT}>{/not found/.test(error) ? "This item is gone or was not copied yet. It may have been deleted in Direction Board." : error}</p>}
+            {error && <Button variant="outline" size="sm" className="self-start rounded-full" onClick={onClose}>Back to the list</Button>}
+          </div>
+        )}
         {data && head && (
           <>
             {/* 머리 + 요약 */}

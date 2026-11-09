@@ -22,7 +22,7 @@ export const whenOf = (i: Item) => i.due ?? i.remindAt ?? null
 export function SourceChip({ item, className }: { item: { source?: string; meta?: Record<string, any> }; className?: string }) {
   const from = item.source === "direction-board" || item.meta?.from === "direction-board"
   if (!from) return null
-  return <span title="from Direction Board — read-only copy; changes stay in Quorum" className={cn("shrink-0 rounded border border-border px-1 font-mono text-[10px] leading-4 text-muted-foreground", className)}>from Direction Board</span>
+  return <span title="from Direction Board — read-only copy; changes stay in Quorum" aria-label="from Direction Board" className={cn("shrink-0 rounded border border-border px-1 font-mono text-[10px] leading-4 text-muted-foreground", className)}><span className="max-sm:hidden">from Direction Board</span><span className="sm:hidden" aria-hidden>DB</span></span>
 }
 
 type RowShell = { selected: boolean; onSelect: () => void; children: React.ReactNode; tone?: "decide" | "review" | "plain" }
