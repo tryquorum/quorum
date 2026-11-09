@@ -25,10 +25,11 @@ export function originOf(url: string): string {
 }
 
 /** 비밀처럼 보이는 질의 키: 키 이름 전체(소문자, 영숫자만)로 판정해요. country_code·keyword·design 같은 기능 파라미터는 아니에요 */
-const SECRET_NAMES = new Set(["token", "key", "apikey", "secret", "sig", "signature", "auth", "authorization", "session", "sessionid", "sid", "password", "passwd", "pwd", "cookie", "credential", "credentials", "code", "privatekey", "clientsecret"])
+const SECRET_NAMES = new Set(["token", "key", "apikey", "secret", "sig", "signature", "auth", "authorization", "session", "sessionid", "sid", "password", "passwd", "pwd", "cookie", "credential", "credentials", "code", "privatekey", "clientsecret", "appid"])
 export function isSecretKey(key: string): boolean {
   const n = key.toLowerCase().replace(/[^a-z0-9]/g, "")
-  return SECRET_NAMES.has(n) || /(token|secret|password|signature|apikey)$/.test(n)
+  // 끝이 key·keyid·token·secret·credential·signature 이거나 클라우드 서명 머리(x-amz-*, x-goog-*)면 비밀로 봐요
+  return SECRET_NAMES.has(n) || /^(xamz|xgoog)/.test(n) || /(token|secret|passw(or)?d|signature|key|keyid|credentials?)$/.test(n)
 }
 const mapQuery = (url: string, fn: (k: string, v: string) => string | null) => {
   const q = url.indexOf("?")
