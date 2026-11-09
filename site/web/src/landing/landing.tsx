@@ -16,7 +16,8 @@ import "./landing.css"
 // Colors are Direction Board tokens (index.css) and workspace tone.ts; spacing and type come from landing.css.
 const REPO = "https://github.com/tryquorum/quorum"
 /** Same domain on the Quorum server (/w sits behind Cloudflare Access); the GitHub Pages copy links to the live one. */
-const WORKSPACE = STATIC ? "https://quorum.lidgeai.com/w" : asset("w")
+// Judges cannot sign in, so every "Open workspace" opens the public demo workspace (real /w components, recorded Seoul run).
+const WORKSPACE = asset("media/workspace-demo.html")
 /** The 84.6 s submission film (video/final, cut from captures of real runs). */
 const DEMO = { src: asset("media/quorum-demo.mp4"), poster: asset("media/quorum-demo-poster.jpg"), seconds: 58 }
 
