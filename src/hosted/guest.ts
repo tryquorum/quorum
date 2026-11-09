@@ -81,9 +81,11 @@ export function makeGuestTenant(c: GuestConfig): GuestTenant {
   const timeout = c.opinionTimeoutMs ?? 15 * 60_000
   const askModel = c.model ? modelAsk(c.model) : null
   const queuedBrowser: Executor = async (p, ctx) => {
-    const t = q().enqueue({ kind: "browser", ref: "quorum:" + ctx.runId + ":" + p.proposalId, title: p.title, prompt: browserTaskPrompt(p.task, ctx.request), executor: "aside", runId: ctx.runId, proposalId: p.proposalId, request: ctx.request })
+    const prompt = browserTaskPrompt(p.task, ctx.request)
+    const t = q().enqueue({ kind: "browser", ref: "quorum:" + ctx.runId + ":" + p.proposalId, title: p.title, prompt, executor: "aside", runId: ctx.runId, proposalId: p.proposalId, request: ctx.request })
     c.hosted.audit(c.email, "task.queue", "passed " + t.id + " " + p.title.slice(0, 80))
-    return { summary: "Queued for your Aside: " + p.title, queued: true, data: { taskId: t.id } }
+    // sent: 실제로 대기열에 넣은 글. Workspace 가 사건 노트에 그대로 보여 줘요(승인 노트와 같은 원칙)
+    return { summary: "Queued for your Aside: " + p.title, queued: true, data: { taskId: t.id, sent: t.prompt } }
   }
   const deps = (runId: string): CouncilDeps => ({
     ask: c.bots === "api"

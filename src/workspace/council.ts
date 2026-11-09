@@ -90,7 +90,12 @@ function applyEvent(db: Database, run: RunSummary, e: QuorumEvent, proposals: Ma
   }
   if (e.type === "info" && d.queued === true && pid) {
     // 통과한 일이 그 사람의 대기열로 갔어요. running 칸에 "Aside 를 기다려요"로 보여요(결과는 quorum_report_result 가 Review 로)
-    ingestSignal(db, { ...base, meta: { ...meta, ...(d.taskId ? { taskId: String(d.taskId) } : {}) }, kind: "start", agent: p.executor, body: "Queued for your Aside. It picks this up through quorum_next_task and reports with quorum_report_result.", reason: "Queued · waiting for your Aside" }, now)
+    const s = ingestSignal(db, { ...base, meta: { ...meta, ...(d.taskId ? { taskId: String(d.taskId) } : {}) }, kind: "start", agent: p.executor, body: "Queued for your Aside. It picks this up through quorum_next_task and reports with quorum_report_result.", reason: "Queued · waiting for your Aside" }, now)
+    if (typeof s !== "string" && typeof d.sent === "string") {
+      const sent = d.sent.slice(0, 12_000)
+      const f = "`".repeat(Math.max(2, ...[...sent.matchAll(/`+/g)].map((x) => x[0].length)) + 1)
+      appendNote(db, "signal:" + s.id, "## Passed by the council\nQueued for your Aside (task " + String(d.taskId ?? "") + "). Exactly this text was sent:\n\n" + f + "text\n" + sent + "\n" + f, "system", now)
+    }
     return 1
   }
   return 0

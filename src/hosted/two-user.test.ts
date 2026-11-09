@@ -89,6 +89,10 @@ describe("two people on the hosted site (in-process)", () => {
     // 4) judge Workspace: 통과한 일의 결과는 Review, 결제는 Needs you
     let now = (await judge("/api/ws/now")).body
     expect(now.review.map((s: { title: string; body: string }) => [s.title, s.body])).toEqual([["Read the event page and list deadlines", "Deadlines: submit by 18:00. https://lu.ma/c0mpiled"]])
+    // 통과한 일의 노트에 실제로 보낸 글이 그대로 있어요
+    const passedNote = (await judge("/api/ws/signals/" + now.review[0].id)).body.note.md as string
+    expect(passedNote).toContain("Exactly this text was sent")
+    expect(passedNote).toContain(seen.find((s) => s.kind === "browser")!.text)
     const hold = now.needsYou.find((s: { title: string }) => s.title === "Pay the hackathon fee")
     expect(hold).toBeTruthy()
     // 5) 승인 → 서버는 실행하지 않고 judge 대기열에 넣어요 → judge Aside 가 가져가 보고
