@@ -15,12 +15,19 @@ html:not(.dark) { color-scheme: light; }
 .lp p { max-width: 66ch; text-wrap: pretty; }
 /* Text that sits on the pixel sea keeps AA: the horizon is placed below it, this only firms up the muted tone. */
 .lp-onscene { color: color-mix(in oklab, var(--foreground) 72%, var(--lp-canvas)); }
-.lp-rise { opacity: 0; transform: translateY(10px); transition: opacity 350ms var(--ease-standard), transform 350ms var(--ease-standard); }
-.lp-rise.is-in { opacity: 1; transform: none; }
+/* Entrances are added on top of visible content: nothing is hidden before script or the observer runs. A block gets
+   lp-rise-in only when its first pixel enters the viewport, so a full-page capture or a no-motion visit sees everything. */
+@keyframes lp-rise-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.lp-rise-in { animation: lp-rise-in 350ms var(--ease-standard) both; }
 .lp-step { opacity: 0.42; transition: opacity 250ms ease; }
 .lp-step.is-on { opacity: 1; }
 .lp-step.is-now::before { color: var(--foreground); }
-@media (prefers-reduced-motion: reduce) { .lp-rise { opacity: 1; transform: none; } .lp-step { opacity: 1; } }
+/* Agent flags sway from the mast: rotation only, so the logo itself is never skewed or stretched. */
+@keyframes lp-flag { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-4deg); } }
+@keyframes lp-flag-gust { 0%, 100% { transform: rotate(1deg); } 50% { transform: rotate(-8deg); } }
+.lp-flag { transform-origin: 0 50%; animation: lp-flag 3.4s ease-in-out infinite; }
+.group:hover .lp-flag { animation: lp-flag-gust 1.3s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .lp-rise-in { animation: none; } .lp-step { opacity: 1; } .lp-flag, .group:hover .lp-flag { animation: none; } }
 .lp-section { padding-block: clamp(72px, 10vw, 136px); }
 .lp-split { display: grid; gap: 40px; }
 @media (min-width: 900px) { .lp-split { grid-template-columns: 5fr 7fr; gap: 64px; } }
@@ -39,5 +46,7 @@ html:not(.dark) { color-scheme: light; }
 /* The workspace capture: one floating panel, the only large shadow on the page (trygoat.ai's app mock). */
 .lp-capture { overflow: hidden; border-radius: 20px; border: 1px solid var(--lp-ring); background: var(--background);
   box-shadow: 0 30px 80px -20px var(--lp-shadow), 0 4px 14px rgb(11 11 12 / 0.06); }
+/* Phones: the workspace preview runs edge to edge, so the real /w gets the full screen width it is designed for. */
+@media (max-width: 639px) { .lp-capture { margin-inline: calc(var(--lp-gutter) * -1); border-radius: 0; border-inline: 0; } }
 @media (prefers-reduced-motion: reduce) { .lp *, .lp *::before, .lp *::after { transition: none !important; } }
 }

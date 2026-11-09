@@ -5,7 +5,8 @@ import react from "@vitejs/plugin-react"
 import { defineConfig } from "vite"
 
 // Copied from board/apps/web/vite.config.ts. Quorum differences:
-// - two pages: index.html (landing, served at /) and app.html (council console, served at /app)
+// - pages: index.html (landing, /), app.html (council console, /app), workspace.html (/w) and media/workspace-demo.html
+//   (the landing's workspace preview: the real /w on recorded data, under /media/ so the public listener serves it)
 // - default build writes straight into site/ so src/server.ts serves it with no build step at runtime
 // - QUORUM_OUT (GitHub Pages) writes a clean separate folder instead; QUORUM_BASE sets the URL base
 // - vite dev (5173) proxies /api to the Quorum server (4317 or QUORUM_PORT)
@@ -24,7 +25,7 @@ export default defineConfig(({ command }) => {
     build: {
       outDir: out,
       emptyOutDir: Boolean(process.env.QUORUM_OUT),
-      rollupOptions: { input: { index: resolve(root, "index.html"), app: resolve(root, "app.html"), workspace: resolve(root, "workspace.html") } },
+      rollupOptions: { input: { index: resolve(root, "index.html"), app: resolve(root, "app.html"), workspace: resolve(root, "workspace.html"), "workspace-demo": resolve(root, "media/workspace-demo.html") } },
     },
     server: { port: 5173, proxy: { "/api": `http://127.0.0.1:${apiPort}` } },
   }

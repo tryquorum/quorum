@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react"
 import { applyEvent, emptyRun, type RunView } from "@/console/stream"
 import type { QuorumEvent } from "@/lib/contract"
+import { call, openEvents } from "./api"
 
 export function useRunWatch(runId: string | null | undefined): RunView | null {
   const [view, setView] = useState<RunView | null>(null)
   useEffect(() => {
     if (!runId) { setView(null); return }
     setView({ ...emptyRun(), runId, status: "connecting" })
-    const es = new EventSource("/api/runs/" + encodeURIComponent(runId) + "/events")
+    const es = openEvents("/api/runs/" + encodeURIComponent(runId) + "/events")
     let finished = false
     es.onmessage = (m) => {
       try { const e = JSON.parse(m.data) as QuorumEvent; setView((v) => applyEvent(v ?? emptyRun(), e)) } catch { /* 읽을 수 없는 줄은 건너뛰어요 */ }
@@ -29,8 +30,7 @@ export function useMemory(q: string): { hits: MemoryHit[] | null; error: string 
     if (!q.trim()) { setState({ hits: [], error: null }); return }
     let live = true
     setState({ hits: null, error: null })
-    fetch("/api/memory?q=" + encodeURIComponent(q.slice(0, 200)), { cache: "no-store" })
-      .then(async (r) => { const d = await r.json().catch(() => null); if (!r.ok) throw new Error(d?.error ?? "HTTP " + r.status); return d as { results: MemoryHit[] } })
+    call<{ results: MemoryHit[] }>("/api/memory?q=" + encodeURIComponent(q.slice(0, 200)))
       .then((d) => {
         if (!live) return
         const hits = (d.results || []).slice(0, 3).map((h) => {

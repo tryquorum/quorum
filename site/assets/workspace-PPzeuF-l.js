@@ -1,0 +1,1 @@
+import{a as e,c as t,p as n,u as r}from"./base-aPnPEd3j.js";import{t as i}from"./workspace-CqF03zoM.js";var a=n(r(),1),o=t(),s=e();(0,o.createRoot)(document.getElementById(`root`)).render((0,s.jsx)(a.StrictMode,{children:(0,s.jsx)(i,{})}));

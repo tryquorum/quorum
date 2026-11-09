@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
-import { useInView, useReducedMotion } from "@/components/reveal"
+import { useReducedMotion } from "@/components/reveal"
+import { useFirstSight } from "./motion"
 import { cn } from "@/lib/utils"
 
 // The luma-blasts recipe (src/recipes/defs/luma-blasts.json): v1 called event/get-posts, which now 404s.
@@ -17,18 +18,20 @@ const LINES: { tag: string; tone: string; text: string; ms: number }[] = [
 ]
 
 export function Healing() {
+  // The whole transcript shows by default; it types itself out again the first time it scrolls into view.
   const reduced = useReducedMotion()
-  const { ref, seen } = useInView<HTMLDivElement>(0.35)
-  const [n, setN] = useState(0)
+  const [n, setN] = useState(LINES.length)
+  const [play, setPlay] = useState(false)
+  const ref = useFirstSight<HTMLDivElement>(() => { if (!reduced) setPlay(true) })
   useEffect(() => {
-    if (!seen) return
-    if (reduced) { setN(LINES.length); return }
+    if (!play) return
     let i = 0
     let t: number
+    setN(0)
     const tick = () => { i++; setN(i); if (i < LINES.length) t = window.setTimeout(tick, LINES[i].ms) }
     t = window.setTimeout(tick, 300)
     return () => window.clearTimeout(t)
-  }, [seen, reduced])
+  }, [play])
   const done = n >= LINES.length
   return (
     <div ref={ref} className="dark lp-float overflow-hidden rounded-[20px] border bg-[#050506] text-foreground">

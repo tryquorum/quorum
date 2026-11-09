@@ -17,8 +17,8 @@ export function Steps({ steps }: { steps: ExecStep[] }) {
     <div className="flex flex-col gap-2">
       <details className="group/st text-xs text-muted-foreground" open={!running && !report && items.length > 0 && items.length <= 8}>
         <summary className="flex cursor-pointer list-none items-center gap-1.5 select-none hover:text-foreground">
-          {running ? <Loader2 className="size-3 animate-spin text-live" /> : <span className="text-2xs transition-transform group-open/st:rotate-90">▶</span>}
-          <span className={cn("truncate", failed ? "text-cut" : running ? "text-live" : "text-foreground/80")}>
+          {running ? <Loader2 className="size-3 animate-spin text-foreground" /> : <span className="text-2xs transition-transform group-open/st:rotate-90">▶</span>}
+          <span className={cn("truncate", failed ? "text-red-400" : running ? "text-foreground" : "text-foreground/80")}>
             <span className="font-mono">{last.actor}</span> · {running ? "running…" : last.text}
           </span>
         </summary>
@@ -31,7 +31,7 @@ export function Steps({ steps }: { steps: ExecStep[] }) {
       </details>
       {report && (
         <div className="row-in rounded-xl border bg-background/70 px-4 py-3">
-          <p className="mb-2 font-mono text-2xs tracking-wider text-live uppercase">{last.actor} report</p>
+          <p className="mb-2 font-mono text-2xs tracking-wider text-muted-foreground uppercase">{last.actor} report</p>
           <Md text={report} className="scroll-pane max-h-96 overflow-y-auto pr-2 text-[13.5px]" />
         </div>
       )}
