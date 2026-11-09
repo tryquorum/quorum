@@ -2,7 +2,7 @@
 // 검색(⌘K), 보기 메뉴와 배지, 목표 묶음(goal-sidebar.tsx 의 진행률), 오늘 묶음(5개까지, 넘치면 전체 목록), 영역(색 점·열린 일 수),
 // 접고 펼 수 있는 Section(접힘 상태 기억), 바닥의 계정·동기화 상태. 모바일은 ui/sidebar.tsx 가 그대로 시트로 열어요.
 import { useState } from "react"
-import { Check, ChevronRight, ChevronsUpDown, Gavel, Inbox, LayoutDashboard, ListTodo, Radio, RefreshCw, Search, Target, Terminal, Workflow } from "lucide-react"
+import { Check, ChevronRight, ChevronsUpDown, Gavel, Inbox, LayoutDashboard, ListTodo, Plug, Radio, RefreshCw, Search, Target, Terminal, Workflow } from "lucide-react"
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader,
   SidebarMenu, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarRail, useSidebar,
@@ -26,10 +26,12 @@ export function useStored<T>(key: string, init: T): [T, (v: T) => void] {
   return [v, (next: T) => { setV(next); try { localStorage.setItem(key, JSON.stringify(next)) } catch { /* 저장 못 해도 화면은 그대로 */ } }]
 }
 
-export function WsSidebar({ view, onView, onSearch, meta, now, items, space, onSpace, areaFilter, onArea, onOpenItem, onOpenGoal }: {
+export function WsSidebar({ view, onView, onSearch, meta, now, items, space, onSpace, areaFilter, onArea, onOpenItem, onOpenGoal, onConnections }: {
   view: View; onView: (v: View) => void; onSearch: () => void; meta: Meta | null; now: NowView | null; items: Item[]
   space: string; onSpace: (s: string) => void; areaFilter: string; onArea: (id: string) => void
   onOpenItem: (id: string) => void; onOpenGoal: (id: string) => void
+  /** 연결 카드(Aside·도구 상태, 호스팅이면 연결 토큰)를 다시 보여요 */
+  onConnections?: () => void
 }) {
   const { isMobile, setOpenMobile } = useSidebar()
   const go = (fn: () => void) => { if (isMobile) setOpenMobile(false); fn() }
@@ -185,6 +187,11 @@ export function WsSidebar({ view, onView, onSearch, meta, now, items, space, onS
           <SidebarMenuItem>
             <SidebarMenuButton asChild size="sm" className="text-muted-foreground"><a href="/app"><Terminal /><span>Council console</span></a></SidebarMenuButton>
           </SidebarMenuItem>
+          {onConnections && (
+            <SidebarMenuItem>
+              <SidebarMenuButton size="sm" className="text-muted-foreground" onClick={onConnections}><Plug /><span>Connections</span></SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
           <SidebarMenuItem>
             <div className="flex items-center gap-2 rounded-md px-2 py-1.5">
               <span className="grid size-7 shrink-0 place-items-center rounded-full bg-foreground/10 text-xs font-semibold uppercase">{meta?.me?.email?.[0] ?? "?"}</span>

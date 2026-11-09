@@ -20,7 +20,9 @@ export type Signal = {
 export type Note = { ref: string; md: string; by: string; updatedAt: number; personEdited: boolean }
 /** GET /api/health. details 는 실행기마다 꺼진 이유·설치 안내(src/server.ts liveHealth) */
 export type HealthDetail = { ok: boolean; hint?: string; reason?: string | null; account?: string | null; email?: string | null }
-export type Health = { ok: boolean; version?: string; executors?: Partial<Record<"aside" | "codex" | "gbrain" | "board", boolean>>; details?: Partial<Record<string, HealthDetail>> }
+export type Health = { ok: boolean; version?: string; mode?: "hosted"; executors?: Partial<Record<"aside" | "codex" | "gbrain" | "board", boolean>>; details?: Partial<Record<string, HealthDetail>> }
+/** 연결 토큰(src/hosted/tokens.ts). 원문(secret)은 만들 때 응답에만 있어요 */
+export type McpToken = { id: string; name: string; prefix: string; createdAt: number; lastUsedAt: number | null; revokedAt: number | null }
 export type NowView = {
   today: string; needsYou: Signal[]; running: Signal[]; dueToday: Item[]; goals: GoalView[]; review: Signal[]; inbox: Item[]; later: Item[]
   counts: { needsYou: number; dueToday: number; review: number; inbox: number; running: number; goals: number }
@@ -47,6 +49,9 @@ export async function call<T>(path: string, init: { method?: string; body?: unkn
 
 export const ws = {
   health: () => call<Health>("/api/health"),
+  tokens: () => call<{ tokens: McpToken[] }>("/api/mcp-tokens"),
+  makeToken: (name: string) => call<{ token: McpToken; secret: string }>("/api/mcp-tokens", { method: "POST", body: { name } }),
+  revokeToken: (id: string) => call<{ token: McpToken }>("/api/mcp-tokens/" + id, { method: "DELETE" }),
   now: () => call<NowView>("/api/ws/now"),
   meta: () => call<Meta>("/api/ws/meta"),
   items: (done: boolean) => call<Item[]>("/api/ws/items" + (done ? "?done=1" : "")),

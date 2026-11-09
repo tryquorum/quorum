@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils"
 import { ws, type Item, type Meta, type NowView, type Signal } from "./api"
 import type { Health } from "./api"
 import { SetupCard } from "./setup-card"
+import { ConnectCard } from "./connect-card"
 import { ALERT, DECIDE } from "./tone"
 import { CaptureBar } from "./capture-bar"
 import { CommandPalette } from "./command-palette"
@@ -83,6 +84,7 @@ export function Workspace() {
   const [setupHidden, setSetupHidden] = useStored("qw:setup-hidden", "0")
   // Aside 가 꺼져 있으면 닫아 둔 카드도 다시 보여요(의회가 돌 수 없으니까)
   const showSetup = route.view === "now" && (setupHidden !== "1" || (!!health.health && !health.health.executors?.aside))
+  const hosted = health.health?.mode === "hosted"
   const open: Open = route.open ?? null
   const setOpen = useCallback((o: Open) => {
     if (o) {
@@ -127,11 +129,11 @@ export function Workspace() {
   const actions = useMemo(() => ({
     // board task-row 처럼 동그라미는 양쪽으로: 끝낸 일을 누르면 다시 열어요
     done: (i: Item) => i.done ? act("i:" + i.id, "Reopened: " + i.text.split("\n")[0], () => ws.patch(i.id, { done: false })) : act("i:" + i.id, "Done: " + i.text.split("\n")[0], () => ws.done(i.id)),
-    ask: (i: Item) => act("i:" + i.id, "Sent to the council", () => ws.ask(i)),
-    approve: (s: Signal) => act("s:" + s.id, "Approved — running on " + (s.meta?.executor ?? "executor"), () => ws.approve(s.id)),
+    ask: (i: Item) => act("i:" + i.id, hosted ? "Sent to the council — your Aside answers it through your queue" : "Sent to the council", () => ws.ask(i)),
+    approve: (s: Signal) => act("s:" + s.id, hosted ? "Approved — queued for your Aside" : "Approved — running on " + (s.meta?.executor ?? "executor"), () => ws.approve(s.id)),
     reject: (s: Signal) => act("s:" + s.id, "Rejected", () => ws.reject(s.id)),
     resolve: (s: Signal) => act("s:" + s.id, s.lane === "review" ? "Marked reviewed" : "Marked handled", () => ws.resolve(s.id)),
-  }), [act])
+  }), [act, hosted])
 
   // 보기마다 줄 묶음. 키보드는 이 순서로 고르고 처리해요
   const sigSections = useSignalSections(signals)
@@ -223,7 +225,7 @@ export function Workspace() {
     <TooltipProvider delayDuration={300}>
       <SidebarProvider>
         <WsSidebar view={route.view} onView={goView} onSearch={() => setPalette(true)} meta={meta} now={now} items={items.filter(inSpace)}
-          space={space} onSpace={setSpace} areaFilter={area} onArea={setArea}
+          space={space} onSpace={setSpace} areaFilter={area} onArea={setArea} onConnections={() => { setSetupHidden("0"); goView("now") }}
           onOpenItem={(id) => setOpen({ kind: "item", id })} onOpenGoal={goGoal} />
         <SidebarInset className="min-w-0">
           <header className="sticky top-0 z-30 border-b bg-background/80 backdrop-blur-xl">
@@ -258,7 +260,7 @@ export function Workspace() {
             {data.error && <div role="alert" className={"mx-2 mb-3 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2 text-xs " + ALERT}><span className="min-w-0 flex-1">Can't reach the Quorum server: {data.error}. Showing the last data.</span><button type="button" onClick={() => void data.reload()} className="rounded-full border border-current px-2.5 py-0.5 max-md:h-11 max-md:px-4">Retry</button></div>}
             {imp && !imp.ok && imp.error && <div role="status" className={"mx-2 mb-3 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2 text-xs " + ALERT}><span className="min-w-0 flex-1">Direction Board import paused: {imp.error}. Your copies stay as they were.</span><button type="button" onClick={() => void ws.syncBoard().catch(() => null).then(() => Promise.all([data.reload(), data.reloadMeta()]))} className="rounded-full border border-current px-2.5 py-0.5 max-md:h-11 max-md:px-4">Retry</button></div>}
             {route.view === "goals" && now && !route.goal && <div className="mx-2 mb-4"><Roadmap goals={now.goals} onOpen={goGoal} /></div>}
-            {showSetup && <SetupCard health={health.health} error={health.error} onDismiss={() => setSetupHidden("1")} />}
+            {showSetup && (hosted && health.health ? <ConnectCard health={health.health} onDismiss={() => setSetupHidden("1")} /> : <SetupCard health={health.health} error={health.error} onDismiss={() => setSetupHidden("1")} />)}
             {route.view === "list" && <div className="mx-2"><ListFilters areas={areas} area={area} onArea={setArea} q={list.q} onQ={list.setQ} showDone={list.showDone} onShowDone={list.setShowDone} /></div>}
             {!now && !data.error && (
               // 불러오는 동안: 구조를 아는 화면이라 줄 모양 뼈대를 보여 줘요(UX-STATE-01)
