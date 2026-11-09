@@ -57,7 +57,7 @@ const realProbe: HealthProbe = { asideBin: () => Bun.file(ASIDE_BIN).exists(), a
 /** 실행기마다 쓸 수 있는지와, 꺼져 있으면 왜 그런지·어떻게 켜는지(화면의 연결 카드가 그대로 보여 줘요) */
 export async function liveHealth(board: Pick<BoardClient, "available">, probe: HealthProbe = realProbe): Promise<Health & { details: Record<string, HealthDetail> }> {
   const [bin, boardOk] = await Promise.all([probe.asideBin(), board.available().catch(() => false)])
-  const acct: AsideAccount = bin ? await probe.account() : { account: null, email: null, source: "none", reason: "Aside CLI 가 없어요(" + ASIDE_BIN + "). Aside 를 설치하고(https://aside.com) 로그인해 주세요" }
+  const acct: AsideAccount = bin ? await probe.account() : { account: null, email: null, source: "none", reason: "The Aside CLI is not at " + ASIDE_BIN + ". Install Aside from https://aside.com and sign in (or set ASIDE_BIN)" }
   const codex = probe.which(CODEX_BIN) !== null
   const gbrain = probe.which(GBRAIN_BIN) !== null
   const aside = bin && !!acct.account
@@ -180,7 +180,10 @@ export function createApp(d: AppDeps, listener: Listener = "local", pub?: Public
     if (parts[0] !== "api") return serveStatic(d.siteRoot, url.pathname)
     if (parts[1] === "ws" && d.workspace) return d.workspace(req, parts)
 
-    if (parts[1] === "health" && m === "GET") return json({ ok: true, version: VERSION, executors: await d.health() })
+    if (parts[1] === "health" && m === "GET") {
+      const { details, ...executors } = await d.health()
+      return json({ ok: true, version: VERSION, executors, ...(details ? { details } : {}) })
+    }
     if (parts[1] === "me" && parts.length === 2 && m === "GET") return json({ email: user?.email ?? null, listener })
 
     if (parts[1] === "runs") {

@@ -34,4 +34,5 @@ export type Health = {
   ok: boolean
   version?: string
   executors?: Partial<Record<"aside" | "codex" | "gbrain" | "board", boolean>>
+  details?: Partial<Record<string, { ok: boolean; hint?: string; reason?: string | null; account?: string | null; email?: string | null }>>
 }

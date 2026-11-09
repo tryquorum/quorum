@@ -6,7 +6,9 @@ import { join } from "node:path"
 import type { EventType } from "../contract"
 import { runCouncil, type CouncilDeps } from "./council"
 import { PROPOSERS, proposalPrompt } from "./roles"
-import { boardImportBase, liveHealth } from "../server"
+import { boardImportBase, createApp, liveHealth } from "../server"
+import { Store } from "./store"
+import { RunManager } from "./runs"
 import { createWorkspace, DEMO_TEXT } from "../workspace/api"
 
 type Ev = { type: EventType; actor: string; text: string; data?: Record<string, unknown> }
@@ -67,6 +69,14 @@ describe("health and Direction Board import are opt-in", () => {
     expect(none.aside).toBe(false)
     expect(none.details.aside.reason).toContain("aside login")
     expect(none.details.codex.hint).toContain("QUORUM_BOT_RUNNER")
+  })
+  test("GET /api/health keeps executors as booleans and puts the reasons in details", async () => {
+    const store = new Store(":memory:")
+    const app = createApp({ store, runs: new RunManager(store, () => ({ ask: async () => "", executors: {} })), siteRoot: "/nonexistent", memory: async () => [], recipes: async () => null,
+      health: async () => ({ aside: false, codex: false, gbrain: false, board: false, details: { aside: { ok: false, reason: "no account" } } }) }, "local")
+    const body = await (await app(new Request("http://127.0.0.1:4317/api/health", { headers: { host: "127.0.0.1:4317" } }))).json()
+    expect(body.executors).toEqual({ aside: false, codex: false, gbrain: false, board: false })
+    expect(body.details.aside.reason).toBe("no account")
   })
 })
 

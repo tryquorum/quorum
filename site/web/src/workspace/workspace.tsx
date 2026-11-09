@@ -7,6 +7,8 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from "./ui/sidebar"
 import { TooltipProvider } from "./ui/tooltip"
 import { cn } from "@/lib/utils"
 import { ws, type Item, type Meta, type NowView, type Signal } from "./api"
+import type { Health } from "./api"
+import { SetupCard } from "./setup-card"
 import { ALERT, DECIDE } from "./tone"
 import { CaptureBar } from "./capture-bar"
 import { CommandPalette } from "./command-palette"
@@ -48,6 +50,19 @@ function useWorkspaceData(withDone: boolean) {
   return { now, items, signals, meta, error, reload, reloadMeta }
 }
 
+/** 연결 상태(/api/health) 30초마다. 서버가 15초 동안 기억해 두라 자주 불러도 aside 를 매번 띄우지 않아요 */
+function useHealth() {
+  const [health, setHealth] = useState<Health | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  useEffect(() => {
+    const load = () => ws.health().then((h) => { setHealth(h); setError(null) }).catch((e) => setError(e instanceof Error ? e.message : String(e)))
+    void load()
+    const t = window.setInterval(() => { if (!document.hidden) void load() }, 30000)
+    return () => window.clearInterval(t)
+  }, [])
+  return { health, error }
+}
+
 export function Workspace() {
   const [route, setRoute] = useState<Route>(() => parseHash(location.hash))
   // 팝업은 주소에 있어요(board 의 #/w/<ref> 처럼): 열면 기록이 하나 쌓이고, 뒤로가기·Esc·닫기 모두 같은 길로 닫혀요
@@ -64,6 +79,10 @@ export function Workspace() {
   const [area, setArea] = useStored("qw:area", "all")
   const data = useWorkspaceData(list.showDone)
   const { now: nowAll, items, signals, meta } = data
+  const health = useHealth()
+  const [setupHidden, setSetupHidden] = useStored("qw:setup-hidden", "0")
+  // Aside 가 꺼져 있으면 닫아 둔 카드도 다시 보여요(의회가 돌 수 없으니까)
+  const showSetup = route.view === "now" && (setupHidden !== "1" || (!!health.health && !health.health.executors?.aside))
   const open: Open = route.open ?? null
   const setOpen = useCallback((o: Open) => {
     if (o) {
@@ -239,6 +258,7 @@ export function Workspace() {
             {data.error && <div role="alert" className={"mx-2 mb-3 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2 text-xs " + ALERT}><span className="min-w-0 flex-1">Can't reach the Quorum server: {data.error}. Showing the last data.</span><button type="button" onClick={() => void data.reload()} className="rounded-full border border-current px-2.5 py-0.5 max-md:h-11 max-md:px-4">Retry</button></div>}
             {imp && !imp.ok && imp.error && <div role="status" className={"mx-2 mb-3 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2 text-xs " + ALERT}><span className="min-w-0 flex-1">Direction Board import paused: {imp.error}. Your copies stay as they were.</span><button type="button" onClick={() => void ws.syncBoard().catch(() => null).then(() => Promise.all([data.reload(), data.reloadMeta()]))} className="rounded-full border border-current px-2.5 py-0.5 max-md:h-11 max-md:px-4">Retry</button></div>}
             {route.view === "goals" && now && !route.goal && <div className="mx-2 mb-4"><Roadmap goals={now.goals} onOpen={goGoal} /></div>}
+            {showSetup && <SetupCard health={health.health} error={health.error} onDismiss={() => setSetupHidden("1")} />}
             {route.view === "list" && <div className="mx-2"><ListFilters areas={areas} area={area} onArea={setArea} q={list.q} onQ={list.setQ} showDone={list.showDone} onShowDone={list.setShowDone} /></div>}
             {!now && !data.error && (
               // 불러오는 동안: 구조를 아는 화면이라 줄 모양 뼈대를 보여 줘요(UX-STATE-01)

@@ -13,19 +13,19 @@ export type AsideAnswer = { answer: string; sessionId: string | null; outcome: s
 /** 어떤 Aside 계정으로 돌릴지. ASIDE_ACCOUNT 가 있으면 그것, 없으면 aside account list --json 에서 로그인한 계정 */
 export type AsideAccount = { account: string | null; email: string | null; source: "env" | "detected" | "none"; reason: string | null }
 
-const SIGN_IN = "Aside 앱에서 로그인하거나 터미널에서 aside login 을 실행해 주세요"
+const SIGN_IN = "Sign in in the Aside app or run aside login in a terminal"
 const none = (reason: string): AsideAccount => ({ account: null, email: null, source: "none", reason })
 
 /** aside account list --json 결과에서 쓸 계정을 골라요: 지금 계정이 로그인돼 있으면 그것, 아니면 처음으로 로그인된 계정 */
 export function pickAsideAccount(list: unknown): AsideAccount {
   const o = list && typeof list === "object" ? (list as Record<string, unknown>) : null
-  if (!o || !Array.isArray(o.accounts)) return none("aside account list 결과를 읽지 못했어요")
+  if (!o || !Array.isArray(o.accounts)) return none("Could not read aside account list. " + SIGN_IN)
   const accounts = o.accounts.filter((a): a is Record<string, unknown> => !!a && typeof a === "object" && Number.isInteger((a as Record<string, unknown>).id))
-  if (!accounts.length) return none("Aside 계정이 없어요. " + SIGN_IN + " (aside login)")
+  if (!accounts.length) return none("No Aside account on this Mac. " + SIGN_IN)
   const signedIn = (a: Record<string, unknown>) => a.hasSession === true
   const current = accounts.find((a) => a.id === o.currentAccountId)
   const pick = current && signedIn(current) ? current : accounts.find(signedIn)
-  if (!pick) return none("로그인한 Aside 계정이 없어요. " + SIGN_IN + " (aside login)")
+  if (!pick) return none("No signed-in Aside account. " + SIGN_IN)
   return { account: "u" + String(pick.id), email: typeof pick.email === "string" && pick.email ? pick.email : null, source: "detected", reason: null }
 }
 
@@ -44,14 +44,14 @@ export async function resolveAsideAccount(opts: { env?: string; run?: ListRun; f
   let value: AsideAccount
   try {
     const r = await run()
-    if (r.code !== 0) value = none("Aside CLI 를 실행하지 못했어요(종료 코드 " + r.code + "). Aside 를 설치하고(https://aside.com) " + SIGN_IN)
+    if (r.code !== 0) value = none("Could not run the Aside CLI (exit " + r.code + "). Install Aside from https://aside.com, then " + SIGN_IN.toLowerCase())
     else {
       let parsed: unknown = null
       try { parsed = JSON.parse(r.stdout) } catch { parsed = null }
       value = pickAsideAccount(parsed)
     }
   } catch (e) {
-    value = none("Aside CLI 를 실행하지 못했어요: " + (e instanceof Error ? e.message : String(e)))
+    value = none("Could not run the Aside CLI: " + (e instanceof Error ? e.message : String(e)))
   }
   cachedAccount = { at: now, value }
   return value

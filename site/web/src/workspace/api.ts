@@ -18,6 +18,9 @@ export type Signal = {
   status: "open" | "running" | "resolved"; meta: Record<string, any>; created_at: number; updated_at: number; resolved_at: number | null
 }
 export type Note = { ref: string; md: string; by: string; updatedAt: number; personEdited: boolean }
+/** GET /api/health. details 는 실행기마다 꺼진 이유·설치 안내(src/server.ts liveHealth) */
+export type HealthDetail = { ok: boolean; hint?: string; reason?: string | null; account?: string | null; email?: string | null }
+export type Health = { ok: boolean; version?: string; executors?: Partial<Record<"aside" | "codex" | "gbrain" | "board", boolean>>; details?: Partial<Record<string, HealthDetail>> }
 export type NowView = {
   today: string; needsYou: Signal[]; running: Signal[]; dueToday: Item[]; goals: GoalView[]; review: Signal[]; inbox: Item[]; later: Item[]
   counts: { needsYou: number; dueToday: number; review: number; inbox: number; running: number; goals: number }
@@ -43,6 +46,7 @@ export async function call<T>(path: string, init: { method?: string; body?: unkn
 }
 
 export const ws = {
+  health: () => call<Health>("/api/health"),
   now: () => call<NowView>("/api/ws/now"),
   meta: () => call<Meta>("/api/ws/meta"),
   items: (done: boolean) => call<Item[]>("/api/ws/items" + (done ? "?done=1" : "")),

@@ -9,9 +9,9 @@ import { GBRAIN_BIN, recallVerdicts, rememberVerdict } from "../executors/gbrain
 import type { BoardClient } from "../executors/board"
 
 export const INSTALL_HINTS = {
-  gbrain: "gbrain 이 없어서 지난 판정을 기억하지 않아요. 켜려면: bun install -g github:garrytan/gbrain#stable (README: https://github.com/garrytan/gbrain)",
-  codex: "Codex CLI 가 없어서 코드 일은 제안하지 않아요. 켜려면: npm i -g @openai/codex && codex login. 봇 의견을 Aside 대신 codex 로 돌리려면 QUORUM_BOT_RUNNER=codex",
-  board: "방향판(Direction Board)에 닿지 않아요. 없어도 의회는 돌아요. 쓰려면 QUORUM_BOARD_URL(읽기)·QUORUM_BOARD_WRITE=1(쓰기)·QUORUM_BOARD_IMPORT_URL(Workspace 가져오기)",
+  gbrain: "gbrain is not installed, so past verdicts are not remembered. To turn it on: bun install -g github:garrytan/gbrain#stable (https://github.com/garrytan/gbrain)",
+  codex: "Codex CLI is not installed, so the bots do not propose code tasks. To turn it on: npm i -g @openai/codex && codex login. QUORUM_BOT_RUNNER=codex then runs the opinions on Codex instead of Aside",
+  board: "Direction Board is not reachable. The council runs without it. To use it: QUORUM_BOARD_URL (read), QUORUM_BOARD_WRITE=1 (write), QUORUM_BOARD_IMPORT_URL (Workspace import)",
 } as const
 
 export type LiveProbe = { which: (name: string) => string | null; boardUp?: () => Promise<boolean> }
