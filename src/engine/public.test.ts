@@ -158,7 +158,7 @@ async function spawnServer(env: Record<string, string>) {
 
 describe("server.ts listeners (spawned)", () => {
   test("opens the public listener only with ACCESS_AUD and ALLOWED_EMAILS, and enforces Access there", async () => {
-    const { local, pub } = await spawnServer({ ACCESS_AUD: "test-aud", ALLOWED_EMAILS: "jun@lidgeai.com" })
+    const { local, pub } = await spawnServer({ ACCESS_AUD: "test-aud", ALLOWED_EMAILS: "jun@lidgeai.com", QUORUM_OWNER_EMAIL: "jun@lidgeai.com" })
     expect(await (await fetch(local + "/api/me")).json()).toEqual({ email: null, listener: "local", role: "owner" })
     expect((await fetch(pub + "/api/me")).status).toBe(401)
     expect((await fetch(pub + "/w")).status).toBe(401)

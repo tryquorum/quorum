@@ -133,6 +133,12 @@ export class Store {
     return rows.map(toSummary);
   }
 
+  /** since(ISO) 이후 연 실제 의회 수(다시 틀기·Workspace 승인 실행은 빼요). 호스팅 사용자별 시간당 제한에 써요 */
+  countLiveRunsSince(since: string): number {
+    const r = this.db.query("SELECT COUNT(*) AS n FROM runs WHERE mode = 'live' AND started_at >= ? AND request NOT LIKE 'workspace approve: %'").get(since) as { n: number };
+    return r.n;
+  }
+
   getEvents(runId: string, afterSeq = -1): QuorumEvent[] {
     const rows = this.getEventsStmt.all(runId, afterSeq) as EventRow[];
     return rows.map((row) => {

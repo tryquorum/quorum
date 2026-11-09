@@ -7,7 +7,8 @@ import { CRITICS, PROPOSERS, critiquePrompt, parseBotJson, proposalPrompt, readC
 import type { MemoryRecord, Recalled, StoredDecision } from "../executors/gbrain"
 
 export type Proposal = ProposalDraft & { proposalId: string; alsoBy: string[] }
-export type ExecOutcome = { summary: string; data?: Record<string, unknown> }
+/** queued: 실행기가 일을 바로 하지 않고 그 사람의 대기열에 넣었어요(호스팅 비소유자). 결과는 나중에 Workspace 로 와요 */
+export type ExecOutcome = { summary: string; data?: Record<string, unknown>; queued?: boolean }
 export type Executor = (p: Proposal, ctx: { runId: string; request: string }) => Promise<ExecOutcome>
 export type PostResult = { posted: false; reason: string } | { posted: true; ref: string }
 
@@ -120,6 +121,7 @@ export async function runCouncil(runId: string, request: string, deps: CouncilDe
 
   // 5) 통과한 일만 실행
   const runnable = decisions.filter((d) => d.decision === "pass" && d.executor !== "none")
+  let queued = 0
   await Promise.all(runnable.map(async (d) => {
     const p = proposals.find((x) => x.proposalId === d.proposalId)
     const ex = deps.executors[d.executor as "aside" | "codex" | "board"]
@@ -127,7 +129,9 @@ export async function runCouncil(runId: string, request: string, deps: CouncilDe
     emit("execute.start", d.executor, d.title, { proposalId: d.proposalId, executor: d.executor, task: d.task })
     try {
       const out = await ex(p, { runId, request })
-      emit("execute.result", d.executor, firstLine(out.summary) || "끝났어요", { proposalId: d.proposalId, executor: d.executor, ok: true, summary: out.summary, ...(out.data || {}) })
+      // 대기열에 넣은 일은 결과가 아니에요: 성공처럼 보이지 않게 info 로만 남겨요(가짜 성공 금지)
+      if (out.queued) { queued++; emit("info", d.executor, firstLine(out.summary) || "대기열에 넣었어요", { stage: "execute", proposalId: d.proposalId, executor: d.executor, queued: true, ...(out.data || {}) }) }
+      else emit("execute.result", d.executor, firstLine(out.summary) || "끝났어요", { proposalId: d.proposalId, executor: d.executor, ok: true, summary: out.summary, ...(out.data || {}) })
     } catch (e) {
       emit("execute.result", d.executor, "실패: " + firstLine(msg(e)), { proposalId: d.proposalId, executor: d.executor, ok: false, error: msg(e), errorKind: kindOf(e) })
       emit("error", d.executor, msg(e), { stage: "execute", proposalId: d.proposalId, errorKind: kindOf(e) })
@@ -174,6 +178,7 @@ export async function runCouncil(runId: string, request: string, deps: CouncilDe
     pass: decisions.filter((d) => d.decision === "pass").length,
     hold: decisions.filter((d) => d.decision === "hold").length,
     reject: decisions.filter((d) => d.decision === "reject").length,
+    ...(queued ? { queued } : {}),
     ...(reusedFrom ? { reusedFrom } : {}),
     board: boardNote,
     durationMs: now() - t0,

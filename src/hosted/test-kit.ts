@@ -14,6 +14,8 @@ export async function jwt(email: string) {
   return data + "." + Buffer.from(await crypto.subtle.sign("RSASSA-PKCS1-v1_5", pair.privateKey, new TextEncoder().encode(data))).toString("base64url")
 }
 const certsFetch = (async (input: string | URL | Request) => (String(input) === CERTS ? Response.json({ keys: [jwk] }) : new Response("no", { status: 500 }))) as unknown as typeof fetch
+/** 띄운 server.ts 에 preload 로 넣을 같은 키 목록 */
+export const jwksForPreload = () => ({ url: CERTS, body: { keys: [jwk] } })
 
 export type Call = (path: string, init?: { method?: string; body?: unknown; headers?: Record<string, string>; bearer?: string; noJwt?: boolean; raw?: string }) => Promise<{ status: number; body: any }>
 

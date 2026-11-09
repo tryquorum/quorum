@@ -18,6 +18,8 @@ export type ExecOut = { ok: true; summary: string; data?: Record<string, unknown
 export type ProposalRef = { proposalId: string; title: string; executor: string; task: string; why: string }
 /** 승인한 제안 하나 실행. 바로 runId 를 주고, done 은 결과로 끝나요(던지지 않아요) */
 export type ExecuteFn = (p: ProposalRef, ctx: { runId: string; request: string }) => { runId: string; done: Promise<ExecOut> }
+/** 호스팅 비소유자: 승인한 일을 실행하지 않고 그 사람의 대기열에 넣어요. taskId 를 돌려줘요 */
+export type EnqueueFn = (p: { signalId: string; ref: string; executor: string; title: string; task: string; request: string; runId: string; proposalId: string }) => { taskId: string }
 
 const msg = (e: unknown) => (e instanceof Error ? e.message : String(e))
 const firstLine = (s: string, n = 160) => (s.split("\n").find((l) => l.trim()) || "").trim().slice(0, n)
@@ -85,6 +87,11 @@ function applyEvent(db: Database, run: RunSummary, e: QuorumEvent, proposals: Ma
     logItem(db, itemId, { by: "agent", text: "의회 " + run.runId + ": " + e.text }, now)
     return 1
   }
+  if (e.type === "info" && d.queued === true && pid) {
+    // 통과한 일이 그 사람의 대기열로 갔어요. running 칸에 "Aside 를 기다려요"로 보여요(결과는 quorum_report_result 가 Review 로)
+    ingestSignal(db, { ...base, meta: { ...meta, ...(d.taskId ? { taskId: String(d.taskId) } : {}) }, kind: "start", agent: p.executor, body: "Queued for your Aside. It picks this up through quorum_next_task and reports with quorum_report_result.", reason: "Queued · waiting for your Aside" }, now)
+    return 1
+  }
   return 0
 }
 
@@ -107,7 +114,7 @@ export function approvalTask(db: Database, s: Signal): string {
   ].join("\n")
 }
 
-export function approveSignal(db: Database, id: string, execute: ExecuteFn | undefined, now = Date.now()): { status: number; body: Record<string, unknown>; done?: Promise<void> } {
+export function approveSignal(db: Database, id: string, execute: ExecuteFn | undefined, now = Date.now(), enqueue?: EnqueueFn): { status: number; body: Record<string, unknown>; done?: Promise<void> } {
   const cur = getSignal(db, id)
   if (!cur) return { status: 404, body: { error: "signal not found" } }
   if (cur.status !== "open" || !["decide", "now"].includes(cur.lane)) return { status: 409, body: { error: "승인을 기다리는 사건이 아니에요", signal: cur } }
@@ -121,6 +128,16 @@ export function approveSignal(db: Database, id: string, execute: ExecuteFn | und
     return { status: 200, body: { signal: s } }
   }
   if (!["aside", "codex", "board"].includes(m.executor)) return { status: 400, body: { error: "모르는 실행기: " + m.executor } }
+  if (enqueue) {
+    // 호스팅 비소유자: 서버는 이 사람 대신 실행하지 않아요. 승인한 일을 이 사람 대기열에 넣고, 이 사람 Aside 가 가져가요
+    if (m.executor === "board") return { status: 400, body: { error: "Direction Board is not available on the hosted site" } }
+    const moved = moveSignal(db, id, ["open"], { status: "running", lane: "running", reason: "Approved · waiting for your Aside", kind: "start", meta: decided }, now)
+    if (!moved) return { status: 409, body: { error: "이미 처리됐어요" } }
+    const { taskId } = enqueue({ signalId: id, ref: "approve:" + id, executor: m.executor, title: cur.title, task: approvalTask(db, cur), request: String(m.request || cur.title), runId: String(m.runId), proposalId: String(m.proposalId) })
+    const s = moveSignal(db, id, ["running"], { status: "running", lane: "running", reason: moved.reason ?? "Approved", meta: { taskId } }, now)
+    appendNote(db, "signal:" + id, "## Approved\nQueued for your Aside (task " + taskId + "). It runs when your Aside calls quorum_next_task.", "system", now)
+    return { status: 202, body: { signal: s ?? moved, taskId } }
+  }
   if (!execute) return { status: 501, body: { error: "이 서버에는 실행기가 연결되지 않았어요" } }
   const moved = moveSignal(db, id, ["open"], { status: "running", lane: "running", reason: "승인했어요 · " + m.executor + " 실행 중", kind: "start", meta: decided }, now)
   if (!moved) return { status: 409, body: { error: "이미 처리됐어요" } }
@@ -164,6 +181,22 @@ export function resolveSignal(db: Database, id: string, now = Date.now()): { sta
 }
 
 type CustomRuns = { startCustom(request: string, body: (emit: Emit) => Promise<"done" | "error">): { runId: string; done: Promise<void> } }
+
+/**
+ * 그 사람의 에이전트가 대기열 일의 결과를 보고했어요. 사건을 Review(성공) 또는 Needs you(실패)로 옮기고 결과를 노트에 붙여요.
+ * 결과 글은 그 사람 에이전트가 쓴 것이라 그 사람 Workspace 에만 남아요. 사람이 이미 닫은 사건은 옮기지 않고 노트만 더해요.
+ */
+export function finishQueued(db: Database, signalId: string, r: { ok: boolean; text: string; executor: string; taskId: string }, now = Date.now()): Signal | null {
+  const cur = getSignal(db, signalId)
+  if (!cur) return null
+  const text = r.text.trim() || "(the agent reported no text)"
+  const moved = r.ok
+    ? moveSignal(db, signalId, ["open", "running"], { status: "open", lane: "review", kind: "done", reason: "Your Aside ran this · review the result", body: text.slice(0, 8000), meta: { taskId: r.taskId } }, now)
+    : moveSignal(db, signalId, ["open", "running"], { status: "open", lane: "decide", kind: "error", reason: "Your Aside could not finish: " + firstLine(text), meta: { taskId: r.taskId, execError: text.slice(0, 2000) } }, now)
+  appendNote(db, "signal:" + signalId, (r.ok ? "## Result from your Aside" : "## Your Aside could not finish") + " (" + r.executor + ", task " + r.taskId + ")\n\n" + text.slice(0, 8000), "agent", now)
+  if (cur.meta?.itemId) logItem(db, String(cur.meta.itemId), { by: "agent", text: (r.ok ? "Aside finished: " : "Aside failed: ") + cur.title }, now)
+  return moved ?? getSignal(db, signalId)
+}
 /** 엔진 실행기를 RunManager.startCustom 위에서 불러요. 콘솔에는 "workspace approve: …" 실행으로 보여요 */
 export function engineExecute(runs: CustomRuns, executorsFor: (runId: string) => Partial<Record<"aside" | "codex" | "board", Executor>>): ExecuteFn {
   return (p, ctx) => {

@@ -5,6 +5,7 @@ import type { Store } from "../engine/store"
 import type { RunManager } from "../engine/runs"
 import type { User } from "../engine/access"
 import type { Health, Listener, RecipesModule } from "../server"
+import type { McpQueue } from "../engine/mcp"
 
 export type TenantRole = "owner" | "guest"
 export type StartResult = { runId: string } | { status: number; error: string }
@@ -23,8 +24,8 @@ export type Tenant = {
   start: (request: string) => StartResult
   /** MCP quorum_propose 를 보여 줄지 */
   mcpPropose: boolean
-  /** 추가 MCP 도구(대기열 등). 없으면 기본 도구만 */
-  extra?: Record<string, unknown>
+  /** 호스팅 비소유자의 작업 대기열 MCP 도구 */
+  queue?: McpQueue
 }
 
 export const tenantKey = (email: string) => new Bun.CryptoHasher("sha256").update(email.trim().toLowerCase()).digest("hex").slice(0, 24)

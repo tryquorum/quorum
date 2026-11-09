@@ -11,7 +11,7 @@ import { RunManager } from "./engine/runs"
 import { INSTALL_HINTS, liveDeps } from "./engine/live"
 import type { Emit } from "./engine/council"
 import { localRequestAllowed } from "./engine/local-guard"
-import { createAccess, parseAllowed, publicCsrfAllowed, type User } from "./engine/access"
+import { createAccess, isAllowed, parseAllowed, publicCsrfAllowed, type User } from "./engine/access"
 import { mcpHandler } from "./engine/mcp"
 import { BoardClient } from "./executors/board"
 import { ASIDE_BIN, resolveAsideAccount, type AsideAccount } from "./executors/aside"
@@ -20,8 +20,10 @@ import { GBRAIN_BIN, searchMemory } from "./executors/gbrain"
 import { asideRunner, listRecipes, runRecipe } from "./recipes"
 import { createWorkspace } from "./workspace/api"
 import { engineExecute } from "./workspace/council"
-import { tenantFrom, type Tenant, type TenantRegistry } from "./hosted/tenants"
-import type { Hosted } from "./hosted/hosted"
+import { createTenants, tenantFrom, type Tenant, type TenantRegistry } from "./hosted/tenants"
+import { openHosted, type Hosted } from "./hosted/hosted"
+import { makeGuestTenant } from "./hosted/guest"
+import { modelFromEnv } from "./hosted/model"
 import { ACTIVE_LIMIT, cleanName, sameOriginMutation } from "./hosted/tokens"
 
 export const VERSION = "0.2.0"
@@ -218,7 +220,7 @@ export function createApp(d: AppDeps, listener: Listener = "local", pub?: Public
 
     if (parts[0] === "mcp") {
       if (parts.length !== 1) return err(404, "unknown route " + m + " " + url.pathname)
-      return mcpHandler({ store: t.store, start: (request) => { const r = t.start(request); if ("error" in r) throw new Error(r.error); return r.runId }, memory: t.memory, allowPropose: t.mcpPropose, version: VERSION, ...(t.extra ? { extra: t.extra } : {}) }, req)
+      return mcpHandler({ store: t.store, start: (request) => { const r = t.start(request); if ("error" in r) throw new Error(r.error); return r.runId }, memory: t.memory, allowPropose: t.mcpPropose, version: VERSION, ...(t.queue ? { queue: t.queue } : {}) }, req)
     }
     if (parts[1] === "ws" && t.workspace) return t.workspace(req, parts, user?.email ?? null)
 
@@ -360,6 +362,20 @@ if (import.meta.main) {
     localUser: process.env.QUORUM_LOCAL_USER || null,
     workspace: workspace.handle,
   }
+  // 호스팅: 로그인한 사람마다 자기 저장소. 소유자(QUORUM_OWNER_EMAIL)만 위의 저장소·이 맥 실행기를 써요
+  const ownerEmail = (process.env.QUORUM_OWNER_EMAIL || "").trim().toLowerCase() || null
+  const hosted = openHosted(join(stateDir, "hosted.db"))
+  const guestBots = process.env.QUORUM_GUEST_BOTS === "api" ? "api" : "client"
+  const guestModel = modelFromEnv(process.env)
+  if (guestBots === "api" && !guestModel) console.error("[quorum] QUORUM_GUEST_BOTS=api but QUORUM_GUEST_MODEL_URL/_KEY/QUORUM_GUEST_MODEL are missing: guest councils will fail until they are set")
+  const ownerTenant = tenantFrom({ email: ownerEmail ?? deps.localUser ?? null, role: "owner", store, runs, workspace: workspace.handle, memory: deps.memory, recipes: deps.recipes, health: deps.health, mcpPropose: !!deps.mcpPropose })
+  deps.tenants = createTenants({
+    owner: ownerTenant,
+    ownerEmail,
+    maxGuests: Number(process.env.QUORUM_MAX_GUESTS) || 200,
+    makeGuest: (email, key) => makeGuestTenant({ email, key, dir: join(stateDir, "tenants", key), hosted, bots: guestBots, model: guestModel, councilsPerHour: Number(process.env.QUORUM_GUEST_COUNCILS_PER_HOUR) || 5 }),
+  })
+  deps.hosted = hosted
   Bun.serve({ port: PORT, hostname: process.env.QUORUM_HOST || "127.0.0.1", idleTimeout: 255, fetch: createApp(deps, "local") })
   console.log("quorum on http://localhost:" + PORT + " (board write " + (board.writeEnabled ? "on" : "off") + ")")
   // bun run dev -- --open (또는 QUORUM_OPEN=1): 브라우저로 Workspace 를 열어요
@@ -376,8 +392,8 @@ if (import.meta.main) {
       const access = createAccess({ team: process.env.ACCESS_TEAM || "lidgeai.cloudflareaccess.com", aud, allowed })
       const origin = process.env.PUBLIC_ORIGIN || "https://quorum.lidgeai.com"
       try {
-        Bun.serve({ port: publicPort, hostname: "127.0.0.1", idleTimeout: 255, maxRequestBodySize: 1024 * 1024, fetch: createApp(deps, "public", { who: access.who, origin }) })
-        console.log("[quorum] public listener on 127.0.0.1:" + publicPort + " for " + origin + " (" + allowed.length + " allowed)")
+        Bun.serve({ port: publicPort, hostname: "127.0.0.1", idleTimeout: 255, maxRequestBodySize: 1024 * 1024, fetch: createApp(deps, "public", { who: access.who, origin, allowed: (e) => isAllowed(e, allowed) }) })
+        console.log("[quorum] public listener on 127.0.0.1:" + publicPort + " for " + origin + " (" + allowed.length + " allowed, owner " + (ownerEmail ? "set" : "NOT set: everyone is a guest") + ", guest bots " + guestBots + ")")
       } catch (e) {
         console.error("[quorum] public listener failed:", e)
       }

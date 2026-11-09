@@ -4,7 +4,7 @@
 import { Database } from "bun:sqlite"
 import { mkdirSync } from "node:fs"
 import { dirname } from "node:path"
-import { approveSignal, initCouncilSync, rejectSignal, resolveSignal, syncCouncil, type EngineStore, type ExecuteFn } from "./council"
+import { approveSignal, initCouncilSync, rejectSignal, resolveSignal, syncCouncil, type EnqueueFn, type EngineStore, type ExecuteFn } from "./council"
 import { archiveItem, createItem, getItem, initItems, listItems, logItem, patchItem, type Item } from "./items"
 import { appendNote, getNote, initNotes, putNote } from "./notes"
 import { getSignal, ingestSignal, initSignals, listSignals, type Signal } from "./signals"
@@ -22,6 +22,8 @@ export type WorkspaceDeps = {
   boardBase?: string; boardGet?: GetJson
   /** 처음 여는 빈 Workspace 에 Send to agent 로 바로 해 볼 데모 항목 하나를 넣어요(한 번만) */
   demo?: boolean
+  /** 호스팅 비소유자: 승인한 일을 실행하지 않고 그 사람 대기열에 넣어요(src/hosted/guest.ts) */
+  enqueue?: EnqueueFn
 }
 export type GoalView = { goal: Item; total: number; done: number; open: Item[]; next: string | null }
 export type NowView = {
@@ -181,7 +183,7 @@ export function createWorkspace(deps: WorkspaceDeps) {
         return s ? json({ signal: s, note: getNote(db, "signal:" + id) }) : err(404, "signal not found")
       }
       if (action === "approve" && m === "POST") {
-        const r = approveSignal(db, id, deps.execute, clock())
+        const r = approveSignal(db, id, deps.execute, clock(), deps.enqueue)
         if (r.done) { const p = r.done.catch((e) => console.error("[workspace] approve finish failed:", e)).finally(() => pending.delete(p)); pending.add(p) }
         return json(r.body, r.status)
       }
