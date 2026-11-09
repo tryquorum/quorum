@@ -21,6 +21,8 @@ import { asideRunner, listRecipes, runRecipe } from "./recipes"
 import { createWorkspace } from "./workspace/api"
 import { engineExecute } from "./workspace/council"
 import { tenantFrom, type Tenant, type TenantRegistry } from "./hosted/tenants"
+import type { Hosted } from "./hosted/hosted"
+import { ACTIVE_LIMIT, cleanName, sameOriginMutation } from "./hosted/tokens"
 
 export const VERSION = "0.2.0"
 const json = (data: unknown, status = 200) =>
@@ -35,7 +37,11 @@ export type RecipesModule = {
   listRecipes: () => unknown
   runRecipe: (id: string, vars: Record<string, string>, emit: Emit) => Promise<{ ok?: boolean; reason?: string } | unknown>
 }
-export type PublicAuth = { who: (req: Request) => Promise<User | null>; origin: string }
+/** allowed: 연결 토큰 주인이 지금도 ALLOWED_EMAILS 에 있는지(토큰은 Access 를 거치지 않아서 매번 다시 봐요) */
+export type PublicAuth = { who: (req: Request) => Promise<User | null>; origin: string; allowed?: (email: string) => boolean }
+
+/** 공개 리스너 제한. 본문은 64KB(가장 큰 것: 노트 50,000자), 사람마다 1분에 API 600번·MCP 240번, 틀린 Bearer 는 주소마다 1분에 30번 */
+export const PUBLIC_LIMITS = { bodyBytes: 64 * 1024, apiPerMin: 600, mcpPerMin: 240, badBearerPerMin: 30 }
 
 export type AppDeps = {
   store: Store
@@ -52,6 +58,8 @@ export type AppDeps = {
   workspace?: (req: Request, parts: string[], me?: string | null) => Promise<Response>
   /** 사람마다 저장소를 나눠요(src/hosted/tenants.ts). 없으면 모두 위의 store·runs 하나를 써요 */
   tenants?: TenantRegistry
+  /** 연결 토큰·감사 기록·속도 제한(src/hosted/hosted.ts). 공개 리스너에서 /mcp Bearer 와 /api/mcp-tokens 를 켜요 */
+  hosted?: Hosted
 }
 
 export type HealthProbe = { asideBin: () => Promise<boolean>; account: () => Promise<AsideAccount>; which: (name: string) => string | null }
@@ -164,19 +172,41 @@ export function createApp(d: AppDeps, listener: Listener = "local", pub?: Public
     const guarded = parts[0] === "api" || parts[0] === "mcp"
 
     let user: User | null
+    let viaToken = false
     if (listener === "local") {
       if (guarded && !localRequestAllowed(req)) return err(403, "이 맥 안에서 온 요청만 받아요")
       user = d.localUser ? { email: d.localUser } : null
     } else {
       const p = pub as PublicAuth // justified: checked when the app was created
       if (!publicCsrfAllowed(req, p.origin)) return err(403, "origin not allowed")
-      user = await p.who(req)
+      // 본문을 읽기 전에 크기부터 봐요(Bun.serve 의 maxRequestBodySize 와 같은 상한)
+      // 길이 머리글이 없으면(chunked) 복사본을 읽어 재요. Bun.serve 의 maxRequestBodySize 가 그 위 상한이에요
+      const declared = Number(req.headers.get("content-length") || 0)
+      const size = declared || (req.body && !["GET", "HEAD"].includes(m) ? (await req.clone().arrayBuffer()).byteLength : 0)
+      if (size > PUBLIC_LIMITS.bodyBytes) return err(413, "request body too large")
+      const auth = req.headers.get("authorization")
+      if (parts[0] === "mcp" && auth !== null) {
+        // /mcp 만 연결 토큰을 받아요. 토큰이 틀리면 Access 로그인이 있어도 들여보내지 않아요(섞어 쓰지 않기)
+        const ip = req.headers.get("cf-connecting-ip") || "unknown"
+        const secret = /^Bearer\s+(\S+)$/i.exec(auth)?.[1] ?? ""
+        const found = d.hosted && secret ? d.hosted.tokens.authenticate(secret) : null
+        if (!found || !(p.allowed ? p.allowed(found.owner) : false)) {
+          if (d.hosted && !d.hosted.limiter.take("badbearer:" + ip, PUBLIC_LIMITS.badBearerPerMin, 60_000)) return err(429, "too many failed attempts; wait a minute")
+          d.hosted?.audit(found?.owner ?? null, "mcp.auth_fail", found ? "token owner no longer allowed" : "unknown or revoked token")
+          return err(401, "invalid or revoked connection token")
+        }
+        user = { email: found.owner }
+        viaToken = true
+      } else user = await p.who(req)
       if (!user) {
         // 터널 상태 확인용으로 health 만 열어 두되, 실행기 상태는 로그인한 사람에게만 보여요 (board 공개 리스너와 같음)
         if (url.pathname === "/api/health" && m === "GET") return json({ ok: true, version: VERSION })
         // 랜딩(소개 페이지)과 그 정적 파일은 로그인 없이 보여요. Workspace(/w)·콘솔(/app)·API·MCP 는 로그인한 사람만
         if (isPublicLanding(m, url.pathname)) return serveStatic(d.siteRoot, url.pathname)
         return guarded ? err(401, "login required (Cloudflare Access)") : new Response("login required", { status: 401 })
+      }
+      if (d.hosted && guarded && !d.hosted.limiter.take((parts[0] === "mcp" ? "mcp:" : "api:") + user.email, parts[0] === "mcp" ? PUBLIC_LIMITS.mcpPerMin : PUBLIC_LIMITS.apiPerMin, 60_000)) {
+        return err(429, "too many requests; slow down")
       }
     }
     if (!guarded) return serveStatic(d.siteRoot, url.pathname)
@@ -191,6 +221,36 @@ export function createApp(d: AppDeps, listener: Listener = "local", pub?: Public
       return mcpHandler({ store: t.store, start: (request) => { const r = t.start(request); if ("error" in r) throw new Error(r.error); return r.runId }, memory: t.memory, allowPropose: t.mcpPropose, version: VERSION, ...(t.extra ? { extra: t.extra } : {}) }, req)
     }
     if (parts[1] === "ws" && t.workspace) return t.workspace(req, parts, user?.email ?? null)
+
+    if (parts[1] === "mcp-tokens") {
+      // 연결 토큰은 공개 리스너에서 Access 로 로그인한 사람이 자기 것만 다뤄요(토큰으로 토큰을 만들 수 없어요)
+      if (listener !== "public" || !d.hosted || !user || viaToken) return err(403, "connection tokens are managed on the hosted site after login")
+      const h = d.hosted
+      const email = user.email
+      if (m !== "GET" && !sameOriginMutation(req, (pub as PublicAuth).origin)) return err(403, "origin not allowed")
+      if (parts.length === 2 && m === "GET") return json(h.tokens.list(email))
+      if (parts.length === 2 && m === "POST") {
+        const b = (await req.json().catch(() => null)) as { name?: unknown } | null
+        const name = cleanName(b?.name)
+        if (!name) return err(400, "name must be 1-40 characters without control characters")
+        const made = h.tokens.create(email, name)
+        if (!made) return err(409, "at most " + ACTIVE_LIMIT + " active tokens; revoke one first")
+        h.audit(email, "token.create", "id " + made.token.id + " name " + name)
+        return json(made, 201)
+      }
+      if (parts.length === 3 && m === "DELETE") {
+        const id = /^[a-f0-9]{16}$/.test(parts[2]) ? parts[2] : ""
+        const token = id ? h.tokens.revoke(email, id) : null
+        if (!token) return err(404, "token not found")
+        h.audit(email, "token.revoke", "id " + id)
+        return json({ token })
+      }
+      return err(405, "method not allowed")
+    }
+    if (parts[1] === "audit" && parts.length === 2 && m === "GET") {
+      if (!d.hosted || !user) return json([])
+      return json(d.hosted.auditFor(user.email, Number(url.searchParams.get("limit")) || 100))
+    }
 
     if (parts[1] === "health" && m === "GET") {
       const { details, mode, ...executors } = await t.health()
@@ -316,7 +376,7 @@ if (import.meta.main) {
       const access = createAccess({ team: process.env.ACCESS_TEAM || "lidgeai.cloudflareaccess.com", aud, allowed })
       const origin = process.env.PUBLIC_ORIGIN || "https://quorum.lidgeai.com"
       try {
-        Bun.serve({ port: publicPort, hostname: "127.0.0.1", idleTimeout: 255, fetch: createApp(deps, "public", { who: access.who, origin }) })
+        Bun.serve({ port: publicPort, hostname: "127.0.0.1", idleTimeout: 255, maxRequestBodySize: 1024 * 1024, fetch: createApp(deps, "public", { who: access.who, origin }) })
         console.log("[quorum] public listener on 127.0.0.1:" + publicPort + " for " + origin + " (" + allowed.length + " allowed)")
       } catch (e) {
         console.error("[quorum] public listener failed:", e)
