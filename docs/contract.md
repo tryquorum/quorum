@@ -18,20 +18,22 @@ type EventType =
   | "run.start" | "recall" | "proposal" | "critique" | "verdict"
   | "execute.start" | "execute.result"
   | "recipe.run" | "recipe.broken" | "recipe.repaired"
-  | "memory.saved" | "board.posted" | "run.end" | "error";
+  | "memory.saved" | "board.posted" | "run.end" | "error"
+  | "info";                                       // 오류가 아닌 알림(lane/hosted 추가)
 ```
 
 - proposal.data: { proposalId, title, executor: "aside" | "codex" | "board" | "none", why }
 - critique.data: { proposalId, role: "ceo" | "reviewer" | "qa" | "cso", stance: "keep" | "cut" | "escalate", reason }
 - verdict.data: { proposalId, decision: "pass" | "hold" | "reject", reason, reusedFrom?: string }  (reusedFrom = gbrain 판정 id)
 - recall.data: { hits: { id, summary, decision, score }[] }
+- info.data: { stage, memory?: "off" }  (예: gbrain 이 없어 기억 꺼짐. 오류가 아니에요)
 - recipe.*.data: { recipeId, version, endpoint, status?, reason? }
 
 ## HTTP (기본 포트 4317)
 
 | 메서드·경로 | 설명 |
 |---|---|
-| GET /api/health | { ok, version, executors: { aside, codex, gbrain, board } } 각 도구 사용 가능 여부 |
+| GET /api/health | { ok, version, executors: { aside, codex, gbrain, board }, details: { <이름>: { ok, hint?, reason?, account?, email? } } } 각 도구 사용 가능 여부와 꺼진 이유·설치 안내 |
 | POST /api/runs | body { request: string, mode?: "live" \| "replay", replayId?: string } → { runId } |
 | GET /api/runs | 최근 실행 목록 { runId, request, mode, startedAt, status }[] |
 | GET /api/runs/:id/events | SSE. 각 메시지 data = QuorumEvent JSON. 끝나면 event: done |

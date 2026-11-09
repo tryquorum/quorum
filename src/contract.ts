@@ -2,7 +2,9 @@ export type EventType =
   | "run.start" | "recall" | "proposal" | "critique" | "verdict"
   | "execute.start" | "execute.result"
   | "recipe.run" | "recipe.broken" | "recipe.repaired"
-  | "memory.saved" | "board.posted" | "run.end" | "error";
+  | "memory.saved" | "board.posted" | "run.end" | "error"
+  /** 오류가 아닌 알림(예: gbrain 이 없어 기억 꺼짐). 화면은 회색으로 보여요 */
+  | "info";
 
 export type QuorumEvent = {
   runId: string;

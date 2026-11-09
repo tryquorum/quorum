@@ -8,13 +8,13 @@ import { join, normalize } from "node:path"
 import { PORT, type QuorumEvent } from "./contract"
 import { Store } from "./engine/store"
 import { RunManager } from "./engine/runs"
-import { liveDeps } from "./engine/live"
+import { INSTALL_HINTS, liveDeps } from "./engine/live"
 import type { Emit } from "./engine/council"
 import { localRequestAllowed } from "./engine/local-guard"
 import { createAccess, parseAllowed, publicCsrfAllowed, type User } from "./engine/access"
 import { mcpHandler } from "./engine/mcp"
 import { BoardClient } from "./executors/board"
-import { ASIDE_BIN } from "./executors/aside"
+import { ASIDE_BIN, resolveAsideAccount, type AsideAccount } from "./executors/aside"
 import { CODEX_BIN } from "./executors/codex"
 import { GBRAIN_BIN, searchMemory } from "./executors/gbrain"
 import { asideRunner, listRecipes, runRecipe } from "./recipes"
@@ -28,7 +28,8 @@ const err = (status: number, message: string) => json({ error: message }, status
 const str = (v: unknown, n: number) => (typeof v === "string" ? v.trim().slice(0, n) : "")
 
 export type Listener = "local" | "public"
-export type Health = { aside: boolean; codex: boolean; gbrain: boolean; board: boolean }
+export type HealthDetail = { ok: boolean; hint?: string; reason?: string | null; account?: string | null; email?: string | null }
+export type Health = { aside: boolean; codex: boolean; gbrain: boolean; board: boolean; details?: Record<string, HealthDetail> }
 export type RecipesModule = {
   listRecipes: () => unknown
   runRecipe: (id: string, vars: Record<string, string>, emit: Emit) => Promise<{ ok?: boolean; reason?: string } | unknown>
@@ -50,9 +51,31 @@ export type AppDeps = {
   workspace?: (req: Request, parts: string[]) => Promise<Response>
 }
 
-export async function liveHealth(board: BoardClient): Promise<Health> {
-  const [aside, boardOk] = await Promise.all([Bun.file(ASIDE_BIN).exists(), board.available().catch(() => false)])
-  return { aside, codex: Bun.which(CODEX_BIN) !== null, gbrain: Bun.which(GBRAIN_BIN) !== null, board: boardOk }
+export type HealthProbe = { asideBin: () => Promise<boolean>; account: () => Promise<AsideAccount>; which: (name: string) => string | null }
+const realProbe: HealthProbe = { asideBin: () => Bun.file(ASIDE_BIN).exists(), account: () => resolveAsideAccount(), which: (n) => Bun.which(n) }
+
+/** 실행기마다 쓸 수 있는지와, 꺼져 있으면 왜 그런지·어떻게 켜는지(화면의 연결 카드가 그대로 보여 줘요) */
+export async function liveHealth(board: Pick<BoardClient, "available">, probe: HealthProbe = realProbe): Promise<Health & { details: Record<string, HealthDetail> }> {
+  const [bin, boardOk] = await Promise.all([probe.asideBin(), board.available().catch(() => false)])
+  const acct: AsideAccount = bin ? await probe.account() : { account: null, email: null, source: "none", reason: "Aside CLI 가 없어요(" + ASIDE_BIN + "). Aside 를 설치하고(https://aside.com) 로그인해 주세요" }
+  const codex = probe.which(CODEX_BIN) !== null
+  const gbrain = probe.which(GBRAIN_BIN) !== null
+  const aside = bin && !!acct.account
+  return {
+    aside, codex, gbrain, board: boardOk,
+    details: {
+      aside: { ok: aside, account: acct.account, email: acct.email, reason: acct.reason },
+      codex: codex ? { ok: true } : { ok: false, hint: INSTALL_HINTS.codex },
+      gbrain: gbrain ? { ok: true } : { ok: false, hint: INSTALL_HINTS.gbrain },
+      board: boardOk ? { ok: true } : { ok: false, hint: INSTALL_HINTS.board },
+    },
+  }
+}
+
+/** 방향판(3070) Workspace 가져오기는 QUORUM_BOARD_IMPORT_URL 이 있을 때만 켜요. QUORUM_BOARD_IMPORT=0 이면 꺼요 */
+export function boardImportBase(env: Record<string, string | undefined>): string | undefined {
+  if (env.QUORUM_BOARD_IMPORT === "0") return undefined
+  return env.QUORUM_BOARD_IMPORT_URL?.trim() || undefined
 }
 
 function cached<T>(fn: () => Promise<T>, ms: number): () => Promise<T> {
@@ -216,7 +239,12 @@ export function createApp(d: AppDeps, listener: Listener = "local", pub?: Public
 /** 실제 레시피 레인(src/recipes). 이 맥에서는 Aside 로 수리할 수 있게 asideRunner 를 넘겨요(QUORUM_RECIPE_ASIDE=0 이면 끔) */
 export const liveRecipes: RecipesModule = {
   listRecipes: () => listRecipes(),
-  runRecipe: (id, vars, emit) => runRecipe(id, { vars, aside: process.env.QUORUM_RECIPE_ASIDE === "0" ? null : asideRunner() }, emit),
+  runRecipe: async (id, vars, emit) => {
+    if (process.env.QUORUM_RECIPE_ASIDE === "0") return runRecipe(id, { vars, aside: null }, emit)
+    // 레시피 수리도 감지한 Aside 계정으로. 계정이 없으면 Aside 없이 돌려요(수리만 못 해요)
+    const acct = await resolveAsideAccount()
+    return runRecipe(id, { vars, aside: acct.account ? asideRunner({ account: acct.account }) : null }, emit)
+  },
 }
 
 /** 공개 포트: 빈 값이면 끔, 기본 4318. 잘못된 값이면 어떤 리스너도 열지 않고 끝내요 (board PUBLIC_PORT 검사와 같음) */
@@ -240,8 +268,8 @@ if (import.meta.main) {
   const board = new BoardClient()
   const runs = new RunManager(store, liveDeps(stateDir, board))
   const engineDeps = liveDeps(stateDir, board)
-  const boardBase = process.env.QUORUM_BOARD_IMPORT === "0" ? undefined : process.env.QUORUM_BOARD_IMPORT_URL || "http://127.0.0.1:3070"
-  const workspace = createWorkspace({ path: join(stateDir, "workspace.db"), engine: store, execute: engineExecute(runs, (id) => engineDeps(id).executors), boardBase })
+  const boardBase = boardImportBase(process.env)
+  const workspace = createWorkspace({ path: join(stateDir, "workspace.db"), engine: store, execute: engineExecute(runs, (id) => engineDeps(id).executors), boardBase, demo: process.env.QUORUM_DEMO_ITEM !== "0" })
   workspace.board?.start()
   const deps: AppDeps = {
     store,
@@ -256,6 +284,12 @@ if (import.meta.main) {
   }
   Bun.serve({ port: PORT, hostname: process.env.QUORUM_HOST || "127.0.0.1", idleTimeout: 255, fetch: createApp(deps, "local") })
   console.log("quorum on http://localhost:" + PORT + " (board write " + (board.writeEnabled ? "on" : "off") + ")")
+  // bun run dev -- --open (또는 QUORUM_OPEN=1): 브라우저로 Workspace 를 열어요
+  if (process.argv.includes("--open") || process.env.QUORUM_OPEN === "1") {
+    const url = "http://localhost:" + PORT + "/w"
+    const cmd = process.platform === "darwin" ? ["open", url] : process.platform === "win32" ? ["cmd", "/c", "start", "", url] : ["xdg-open", url]
+    try { Bun.spawn(cmd, { stdout: "ignore", stderr: "ignore" }) } catch (e) { console.error("[quorum] could not open a browser:", e) }
+  }
   if (publicPort !== null) {
     const aud = (process.env.ACCESS_AUD || "").trim()
     const allowed = parseAllowed(process.env.ALLOWED_EMAILS)

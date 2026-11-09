@@ -20,6 +20,8 @@ export type WorkspaceDeps = {
   path: string; engine?: EngineStore; execute?: ExecuteFn; now?: () => number
   /** 방향판 읽기 전용 가져오기(예: http://127.0.0.1:3070). 없으면 가져오지 않아요 */
   boardBase?: string; boardGet?: GetJson
+  /** 처음 여는 빈 Workspace 에 Send to agent 로 바로 해 볼 데모 항목 하나를 넣어요(한 번만) */
+  demo?: boolean
 }
 export type GoalView = { goal: Item; total: number; done: number; open: Item[]; next: string | null }
 export type NowView = {
@@ -85,9 +87,25 @@ export function nowView(db: ReturnType<typeof openWorkspaceDb>, now: number): No
   return { today, needsYou, running, dueToday, goals, review, inbox, later, counts: { needsYou: needsYou.length, dueToday: dueToday.length, review: review.length, inbox: inbox.length, running: running.length, goals: goals.length } }
 }
 
+/** 첫 실행 데모 항목. 공개 페이지를 읽고 정리만 하는 일이라 의회가 통과시키기 쉽고, 보내기·결제가 없어요 */
+export const DEMO_TEXT = "Read the top 3 stories on news.ycombinator.com right now and summarize each in one line with its link"
+
+/** 한 번도 쓴 적 없는 Workspace(항목·사건이 지운 것까지 0개)에만 데모 항목을 넣어요. 그 뒤로는 지워도 다시 넣지 않아요 */
+export function seedDemo(db: Database, now: number): boolean {
+  return db.transaction(() => {
+    if (db.query("SELECT 1 FROM kv WHERE key='demo.seeded'").get()) return false
+    db.query("INSERT INTO kv(key,value) VALUES ('demo.seeded', ?)").run(JSON.stringify(now))
+    const used = (db.query("SELECT (SELECT COUNT(*) FROM items) + (SELECT COUNT(*) FROM signals) AS n").get() as { n: number }).n
+    if (used > 0) return false
+    const r = createItem(db, { text: DEMO_TEXT, due: null }, now)
+    return !failed(r)
+  })()
+}
+
 export function createWorkspace(deps: WorkspaceDeps) {
   const db = openWorkspaceDb(deps.path)
   const clock = deps.now ?? Date.now
+  if (deps.demo) seedDemo(db, clock())
   const sync = () => { if (deps.engine) { try { syncCouncil(db, deps.engine, clock()) } catch (e) { console.error("[workspace] council sync failed:", e) } } }
   const board = deps.boardBase ? createBoardImport(db, { base: deps.boardBase, get: deps.boardGet, now: clock }) : null
   /** 시험이 승인 실행을 기다릴 때 써요 */

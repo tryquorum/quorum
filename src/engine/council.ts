@@ -21,6 +21,8 @@ export type CouncilDeps = {
   boardPost?: (input: { title: string; body: string; tags?: string[] }) => Promise<PostResult>
   boardDecide?: (input: { title: string; body: string }) => Promise<PostResult>
   executors: Partial<Record<"aside" | "codex" | "board", Executor>>
+  /** gbrain 이 없을 때 그 이유. 있으면 기억 단계는 오류가 아니라 info 이벤트로 "memory off" 를 남겨요 */
+  memoryOff?: string
   proposers?: number
   reuseThreshold?: number
   now?: () => number
@@ -57,12 +59,14 @@ export async function runCouncil(runId: string, request: string, deps: CouncilDe
   const current = candidates.filter((c) => c.rulesVersion === RULES_VERSION)
   const stale = candidates.length - current.length
   const { best, hits } = pickReuse(request, current, threshold)
-  emit("recall", "gbrain", (hits.length ? "비슷한 판정 " + hits.length + "개 · 가장 가까운 것 " + Math.round(hits[0].score * 100) + "%" + (best ? " → 재사용" : "") : "비슷한 판정이 없어요") + (stale ? " (옛 규칙 판정 " + stale + "개는 건너뜀)" : ""), {
+  const memoryOff = !deps.recall && deps.memoryOff ? deps.memoryOff : null
+  emit("recall", "gbrain", memoryOff ? "기억 꺼짐(memory off) · 지난 판정 없이 의회를 열어요" : (hits.length ? "비슷한 판정 " + hits.length + "개 · 가장 가까운 것 " + Math.round(hits[0].score * 100) + "%" + (best ? " → 재사용" : "") : "비슷한 판정이 없어요") + (stale ? " (옛 규칙 판정 " + stale + "개는 건너뜀)" : ""), {
     hits: hits.slice(0, 5).map((h) => ({ id: h.id, summary: firstLine(h.request, 120), decision: tallyText(h.verdicts), score: Math.round(h.score * 1000) / 1000 })),
     threshold,
     rulesVersion: RULES_VERSION,
     stale,
     board: board.slice(0, 5),
+    ...(memoryOff ? { memory: "off" } : {}),
   })
 
   let proposals: Proposal[] = []
@@ -79,7 +83,8 @@ export async function runCouncil(runId: string, request: string, deps: CouncilDe
     // 2b) 제안 봇들 병렬
     const personas = PROPOSERS.slice(0, Math.max(1, Math.min(PROPOSERS.length, deps.proposers ?? 3)))
     const drafts: ProposalDraft[] = []
-    const res = await Promise.allSettled(personas.map((p) => deps.ask("bot:" + p.id, proposalPrompt(p, request, board)).then((t) => readProposals(parseBotJson(t), "bot:" + p.id))))
+    const usable = Object.keys(deps.executors).filter((k) => !!deps.executors[k as keyof CouncilDeps["executors"]])
+    const res = await Promise.allSettled(personas.map((p) => deps.ask("bot:" + p.id, proposalPrompt(p, request, board, usable)).then((t) => readProposals(parseBotJson(t), "bot:" + p.id))))
     res.forEach((r, i) => {
       if (r.status === "fulfilled") drafts.push(...r.value)
       else emit("error", "bot:" + personas[i].id, "제안 봇이 실패했어요: " + msg(r.reason), { stage: "proposal", errorKind: kindOf(r.reason) })
@@ -137,6 +142,8 @@ export async function runCouncil(runId: string, request: string, deps: CouncilDe
     } catch (e) {
       emit("error", "gbrain", "판정을 기억하지 못했어요: " + msg(e), { stage: "memory", errorKind: kindOf(e) })
     }
+  } else if (!deps.remember && deps.memoryOff) {
+    emit("info", "gbrain", "기억 꺼짐(memory off): " + deps.memoryOff, { stage: "memory", memory: "off" })
   }
 
   // 7) 방향판: 결과 문서 + 보류는 결정 칸 사건으로 (쓰기 플래그가 있을 때만 deps 가 들어와요)

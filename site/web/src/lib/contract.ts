@@ -4,6 +4,7 @@ export type EventType =
   | "execute.start" | "execute.result"
   | "recipe.run" | "recipe.broken" | "recipe.repaired"
   | "memory.saved" | "board.posted" | "run.end" | "error"
+  | "info"
 
 export type QuorumEvent = {
   runId: string
