@@ -74,9 +74,9 @@ export function StorySea({ progress, label, chips, className }: { progress: Reac
       const mountainTop = (x: number) => x < mx0 || x > mx1 ? Infinity : x <= mPeakX ? peak + ((mPeakX - x) / (mPeakX - mx0 + 1)) * (horizon - peak) * 0.55 : peak + ((x - mPeakX) / (mx1 - mPeakX)) * (horizon - peak)
       const moonX = Math.round(W * 0.78), moonY = Math.round(horizon * 0.42), moonR = Math.max(5, Math.min(12, Math.round(H * 0.07)))
       const rocks = [
-        { x: Math.round(W * 0.36), y: Math.round(horizon + seaH * 0.4), r: W < 110 ? 4 : 5 },
+        { x: Math.round(W * (W < 110 ? 0.24 : 0.34)), y: Math.round(horizon + seaH * 0.4), r: W < 110 ? 4 : 5 },
         { x: Math.round(W * 0.22), y: Math.round(horizon + seaH * 0.62), r: 4 },
-        { x: Math.round(W * 0.44), y: Math.round(horizon + seaH * 0.72), r: 3 },
+        { x: Math.round(W * 0.42), y: Math.round(horizon + seaH * 0.74), r: 3 },
       ]
       // sky, mountain, sea
       for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
@@ -150,7 +150,8 @@ export function StorySea({ progress, label, chips, className }: { progress: Reac
         if (p > 0.66 && !cuts(b.kind)) {
           const s = survivors.indexOf(b), k = ease(clamp((p - 0.66) / 0.12))
           const row = s % 2, col = Math.floor(s / 2)
-          const fx = gx - W * 0.3 + col * Math.max(10, W * 0.07) + row * 6 + (p - 0.66) * W * 0.4, fy = gy - 4 + row * 8
+          // the line forms to the right of the rocks and sails toward the moon path
+          const fx = gx - W * 0.12 + col * Math.max(10, W * 0.07) + row * 6 + (p - 0.66) * W * 0.5, fy = gy - 4 + row * 8
           x = gx + ox + (fx - gx - ox) * k; y = gy + oy + (fy - gy - oy) * k
         }
         if (alpha <= 0) return
