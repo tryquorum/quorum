@@ -400,7 +400,7 @@ describe("helpers", () => {
     await runRecipe("t-blasts", ctx(), emit)
     expect(store.list()).toEqual([expect.objectContaining({ id: "t-blasts", version: 2, health: expect.objectContaining({ ok: true }) })])
     const real = new RecipeStore(new Database(":memory:"))
-    expect(real.list().map((r) => [r.id, r.version])).toEqual([["luma-blasts", 1], ["luma-event", 1]])
+    expect(real.list().map((r) => [r.id, r.version])).toEqual([["luma-blasts", 2], ["luma-event", 1]])
     expect(real.current("luma-blasts").discover.http!.candidates[0].request.url).toContain("get-blasts")
   })
 
