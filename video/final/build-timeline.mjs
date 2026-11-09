@@ -25,12 +25,12 @@ const words = (s) => s.split(/\s+/).filter((w) => /[A-Za-z0-9]/.test(w));
 
 function caption(b) {
   const text = clean(b.caption);
-  if (!text || b.id === "cta" || b.id === "landing") return null;
+  if (!text || b.id === "cta") return null;
   const serif = ["hook", "boatmen", "judgment", "converge"].includes(b.id);
   const light = !SYNTH.has(b.id);
   const base = { type: "kinetic", x: 960, align: "center", letterSpacing: serif ? 0 : -1,
     enter: { style: "rise", stagger: serif ? "0.12s" : "0.09s", duration: "0.4s" }, exit: { style: "fade", duration: "0.2s" } };
-  const at = { converge: "3.3s", judgment: "0.5s", hook: "0.7s", boatmen: "0.2s" }[b.id] ?? "0.2s";
+  const at = { converge: "0.3s", judgment: "0.2s", hook: "0.3s", boatmen: "0.15s", built: "0.1s" }[b.id] ?? "0.15s";
   const color = light ? DARK : serif ? CREAM : INK;
   const accentWords = { judgment: ["your", "judgment."], converge: ["Quorum."], hook: ["broth."] }[b.id] ?? [];
   const tokens = text.split(/\s+/).map((w, i, all) => ({ text: w, ...(accentWords.includes(w) ? { color: LIME } : {}), ...(b.id === "judgment" && w === "your" ? { newline: true } : {}) }));
@@ -39,19 +39,19 @@ function caption(b) {
     return { ...base, x: lx, align: "left", y: 150, size: 46, maxWidth: 1400, gap: 0.26, font: "sans", weight: "semibold", color: INK, states: [{ at, tokens }] };
   }
   const layout = {
-    hook: { y: 260, size: 116, maxWidth: 1500 }, boatmen: { y: 215, size: 84, maxWidth: 1500 }, judgment: { y: 500, size: 104, maxWidth: 1300 },
-    converge: { y: 250, size: 120, maxWidth: 1400 }, built: { y: 330, size: 56, maxWidth: 1600 },
+    hook: { y: 260, size: 116, maxWidth: 1500 }, boatmen: { y: 215, size: 84, maxWidth: 1500 }, judgment: { y: 250, size: 96, maxWidth: 1400 },
+    converge: { y: 230, size: 120, maxWidth: 1400 }, built: { y: 330, size: 56, maxWidth: 1600 },
   }[b.id] ?? (light ? { y: 104, size: 52, maxWidth: 1700 } : { y: 200, size: 64, maxWidth: 1500 });
   return { ...base, ...layout, gap: serif ? 0.2 : 0.26, font: serif ? "serif" : "sans", weight: serif ? "regular" : "semibold", color, states: [{ at, tokens }] };
 }
 
 // Side panel for split product beats: names the tool doing the work and translates the Korean UI text on screen into English.
 // Times are scene seconds; every number comes from runs.json (measured on the demo server).
-function panel(kind, dur) {
+function panel(kind, dur, SC = 1) {
   const nodes = [], tracks = [], X = 1330, W = 500, top = 250;
   let y = top;
-  const show = (key, at) => tracks.push({ node: key, prop: "opacity", keys: [{ at: at.toFixed(2) + "s", value: 0 }, { at: (at + 0.3).toFixed(2) + "s", value: 1, ease: "out" }] },
-    { node: key, prop: "y", keys: [{ at: at.toFixed(2) + "s", value: nodes.find((n) => n.key === key).y + 12 }, { at: (at + 0.35).toFixed(2) + "s", value: nodes.find((n) => n.key === key).y, ease: "out" }] });
+  const show = (key, at0) => { const at = at0 * SC; tracks.push({ node: key, prop: "opacity", keys: [{ at: at.toFixed(2) + "s", value: 0 }, { at: (at + 0.3).toFixed(2) + "s", value: 1, ease: "out" }] },
+    { node: key, prop: "y", keys: [{ at: at.toFixed(2) + "s", value: nodes.find((n) => n.key === key).y + 12 }, { at: (at + 0.35).toFixed(2) + "s", value: nodes.find((n) => n.key === key).y, ease: "out" }] }); };
   const text = (key, t, at, o = {}) => { nodes.push({ kind: "text", key, text: t, font: o.font ?? "sans", weight: o.weight ?? "semibold", size: o.size ?? 28, color: o.color ?? INK, x: X + (o.dx ?? 0), y, anchorX: 0, opacity: 0 }); show(key, at); y += o.gap ?? 44; };
   const logo = { gstack: "gstackLogo", gbrain: "gbrainLogo", aside: "asideLogo" }[kind];
   if (kind === "gbrain") { nodes.push({ kind: "image", key: "logo", source: logo, x: X, y: y + 4, width: 200, height: 52, fit: "contain", anchorX: 0, opacity: 0 }); show("logo", 0.2); }
@@ -65,7 +65,7 @@ function panel(kind, dur) {
     ["CEO", "Reviewer", "QA", "CSO"].forEach((r, i) => {
       const key = "r" + i, x = X + [0, 96, 250, 322][i];
       nodes.push({ kind: "text", key, text: r, font: "mono", weight: "bold", size: 26, color: "#4B5060", x, y, anchorX: 0, opacity: 0 }); show(key, 0.5);
-      tracks.push({ node: key, prop: "color", keys: [{ at: (3.9 + i * 0.12).toFixed(2) + "s", value: "#4B5060" }, { at: (4.15 + i * 0.12).toFixed(2) + "s", value: LIME, ease: "out" }] });
+      tracks.push({ node: key, prop: "color", keys: [{ at: ((3.9 + i * 0.12) * SC).toFixed(2) + "s", value: "#4B5060" }, { at: ((4.15 + i * 0.12) * SC).toFixed(2) + "s", value: LIME, ease: "out" }] });
     });
     y += 70;
     const V = [["pass", "Shortlist YC RFS that fit Quorum", LIME], ["hold", "Draft the Northwind reply (not sent)", "#FBBF24"], ["hold", "Note the pricing call on your board", "#FBBF24"]];
@@ -105,47 +105,51 @@ const scenes = list.map((b) => {
     scene.layers.push({ type: "media", source: src, fit: "cover" });
   } else {
     const cap = CAPTURES[b.id];
-    if (cap && existsSync(join(HERE, cap.session))) {
-      const src = "cap_" + cap.session.replace(/\W+/g, "_");
-      sources[src] = { type: "capture", session: cap.session };
+    const parts = cap ? (cap.parts ?? [{ in: cap.in }]).map((p) => ({ ...p, session: p.session ?? cap.session, speed: p.speed ?? cap.speed, camera: p.camera ?? cap.camera })) : [];
+    if (parts.length && parts.every((p) => existsSync(join(HERE, p.session)))) {
       const win = cap.split ? { x: 100, y: 250, width: 1200, height: 675, radius: 20, shadow: true, border: true } : { x: 272, y: 214, width: 1376, height: 774, radius: 20, shadow: true, border: true }; // 16:9 so cover never crops the footage
-      const parts = cap.parts ?? [{ in: cap.in }];
       let t = 0;
       parts.forEach((p, k) => {
+        const src = "cap_" + p.session.replace(/\W+/g, "_");
+        sources[src] = { type: "capture", session: p.session };
         const end = k === parts.length - 1 ? b.dur : t + p.dur;
-        scene.layers.push({ type: "media", source: src, fit: "cover", start: +t.toFixed(3), end: +end.toFixed(3), in: p.in, ...(cap.speed ? { speed: cap.speed } : {}), ...(cap.camera ? { camera: cap.camera } : {}), ...(cap.cursor ? { cursor: cap.cursor } : {}), window: win });
+        scene.layers.push({ type: "media", source: src, fit: "cover", start: +t.toFixed(3), end: +end.toFixed(3), in: p.in, ...(p.speed ? { speed: p.speed } : {}), ...(p.camera ? { camera: p.camera } : {}), ...(cap.cursor ? { cursor: cap.cursor } : {}), window: win });
         t = end;
       });
     } else {
       missing.push("capture " + b.id);
       scene.layers.push({ type: "text", text: "CAPTURE PENDING · " + b.id, x: "center", y: 560, align: "center", font: "mono", weight: "bold", size: 44, color: "#9CA3AF" });
     }
-    if (b.id === "council") scene.layers.push(panel("gstack", b.dur));
-    if (b.id === "execute") scene.layers.push(panel("aside", b.dur));
-    if (b.id === "reuse") scene.layers.push(panel("gbrain", b.dur));
+    if (cap?.panel) scene.layers.push(panel(cap.panel.kind, b.dur, cap.panel.scale));
   }
-  if (EYEBROW[b.id]) scene.layers.push({ type: "text", text: EYEBROW[b.id], x: ["council", "execute", "reuse"].includes(b.id) ? 100 : 272, y: 82, align: "left", font: "mono", weight: "bold", size: 22, color: LIME, animation: "fade", start: b.id === "landing" ? "0.45s" : "0.05s" });
+  if (EYEBROW[b.id]) scene.layers.push({ type: "text", text: EYEBROW[b.id], x: ["council", "execute", "reuse"].includes(b.id) ? 100 : 272, y: 82, align: "left", font: "mono", weight: "bold", size: 22, color: LIME, animation: "fade", start: "0.05s" });
   const c = caption(b); if (c) scene.layers.push(c);
   return scene;
 });
 // dark → light when the product appears, light → dark for the close
 const idx = (id) => scenes.findIndex((s) => s.id === id);
-// a scene transition is the cut into the next scene (vid2): night to product, product to night
-scenes[idx("converge")].transition = { type: "fadewhite", duration: "0.4s" }; scenes[idx("heal")].transition = { type: "fade", duration: "0.3s" };
+// v2: hard cuts only, so every cut stays on the 120 BPM grid (an overlapping transition would pull later cuts off it)
 
 const at = (id) => list.find((b) => b.id === id).at;
+const BPM = 120, BEAT = 60 / BPM;
+// clicks in the captures, mapped to film time (scene start + (footage time − in) / speed); quieter when within 60 ms of a beat so they never stack on a kick
+const footageToFilm = (id, footageS) => { const c = CAPTURES[id]; const p = (c.parts ?? [{ in: c.in }])[0]; return +(at(id) + (footageS - p.in) / (p.speed ?? c.speed ?? 1)).toFixed(3); };
+const CLICKS = existsSync(join(HERE, "captures.json")) ? [footageToFilm("workspace", 1.855), footageToFilm("workspace", 4.702), footageToFilm("reuse", 5.087)] : [];
+const onBeat = (tt) => Math.abs(tt / BEAT - Math.round(tt / BEAT)) * BEAT < 0.06;
+const missingBed = !existsSync(join(HERE, "media/bed-v2.wav"));
+if (missingBed) missing.push("media/bed-v2.wav (node music.mjs)");
 const timeline = {
   $schema: "https://raw.githubusercontent.com/lidge-ai/vid2-gen/main/schema/timeline.v1.json",
   version: 1,
   output: { width: 1920, height: 1080, fps: 30, background: "#08080A" },
-  beat: { bpm: 112 },
-  sources,
+  beat: { bpm: BPM },
+  sources: { ...sources, bed: { type: "audio", path: "media/bed-v2.wav" } },
   scenes,
-  qa: { waive: [{ check: "contrast", from: +(at("converge") + 4.0).toFixed(2), to: +(at("landing") + 0.5).toFixed(2), reason: "fadewhite from the night close-up into the light landing capture: text is sampled while the frame is washing to white" }] },
   audio: {
-    music: { synth: { preset: "launch", key: "Am", sections: [{ at: 0, energy: "intro" }, { at: at("fleet"), energy: "build" }, { at: at("judgment"), energy: "break" }, { at: +(at("converge") + 3.3).toFixed(2), energy: "drop" }, { at: at("built"), energy: "outro" }] }, volume: 0.75, fadeOut: "1.5s" },
-    autoCues: true,
-    cues: [{ at: +(at("rocks") + 1.5).toFixed(2), sfx: "preset:impact", volume: 0.6 }, { at: +(at("judgment") + 0.5).toFixed(2), sfx: "preset:shimmer", volume: 0.5 }, { at: +(at("converge") + 1.95).toFixed(2), sfx: "preset:riser", anchor: "start", volume: 0.6 }, { at: +(at("converge") + 3.3).toFixed(2), sfx: "preset:impact" }],
+    // the bed is arranged by music.mjs (buildup → roll → silent beat → drop at the convergence); vid2 masters it to −14 LUFS
+    music: { source: "bed", volume: 1, fadeOut: "0.6s" },
+    autoCues: false,
+    cues: CLICKS.map((c) => ({ at: c, sfx: "preset:click", volume: onBeat(c) ? 0.18 : 0.4 })),
   },
 };
 writeFileSync(OUT, JSON.stringify(timeline, null, 1) + "\n");

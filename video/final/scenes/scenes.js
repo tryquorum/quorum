@@ -322,62 +322,57 @@ SCENES.buried = (t, d) => {
   const g = ctx.createLinearGradient(0, y0 + ch - 120, 0, y0 + ch); g.addColorStop(0, "rgba(15,17,23,0)"); g.addColorStop(1, "rgba(15,17,23,0.95)");
   ctx.fillStyle = g; ctx.globalAlpha = enter; ctx.fillRect(x0 + 2, y0 + ch - 120, cw - 4, 118); ctx.globalAlpha = 1;
 };
+// v2: the judgment line holds the frame; on the snare roll (2.0 s) the agents' cards appear scattered and drift inward, accelerating;
+// on the silent beat (4.0–4.5 s) they freeze, almost touching. The drop is the first frame of "converge".
+const CARDS = AGENTS.map((a, k) => ({ a, x: [330, 1590, 470, 1450, 840, 1200, 660][k], y: [560, 520, 900, 930, 470, 760, 760][k] }));
+const SEAT_OF = [2, 7, 8, 9, 16, 15, 17];
+const MARK = { cx: W / 2, cy: 660, size: 300 };
+const seatXY = (n) => { const k = MARK.size / 32, s = SEATS[SEAT_OF[n]]; return [MARK.cx + (s[0] - 16) * k, MARK.cy + (s[1] - 18) * k]; };
+const GATHER = 0.82; // share of the path covered when the music stops
+function card(c, x, y, sc, a) {
+  if (sc <= 0.02 || a <= 0) return;
+  ctx.save(); ctx.globalAlpha = a; ctx.translate(x, y); ctx.scale(sc, sc);
+  rr(-170, -52, 340, 104, 18); ctx.fillStyle = "rgba(15,17,23,0.97)"; ctx.fill(); ctx.strokeStyle = "rgba(255,255,255,0.14)"; ctx.lineWidth = 1.5; ctx.stroke();
+  if (c.a.key) { ctx.save(); rr(-148, -26, 52, 52, 12); ctx.clip(); ctx.drawImage(LOGOS[c.a.key], -148, -26, 52, 52); ctx.restore(); }
+  text(c.a.name, -80, -10, "600 28px Geist", INK); text("proposing…", -80, 22, "400 20px GeistMono", MUTED);
+  ctx.restore();
+}
 SCENES.judgment = (t, d) => {
-  CAM = { cx: 240, cy: lerp(150, 140, t / d), z: lerp(1.0, 1.08, t / d) }; world(t + 30, { dim: 0.7, moonX: 446, moonY: 30 }); blitWorld(); topShade(0.5, 300);
+  const hang = t >= 4.0;
+  CAM = { cx: 240, cy: 140, z: 1 + 0.02 * clamp(t / 4) }; world(t + 30, { dim: 0.6, moonX: 446, moonY: 30 }); blitWorld();
   ctx.fillStyle = "rgba(8,8,10,0.45)"; ctx.fillRect(0, 0, W, H);
-  fade(1 - clamp(t / 0.6));
-};
-// converge: chaos peak → dissolve → cards slide together → seats of the Quorum mark
-const CARDS = AGENTS.map((a, k) => ({ a, x: [330, 1560, 520, 1400, 860, 1180, 700][k], y: [430, 400, 800, 820, 360, 620, 600][k] }));
-SCENES.converge = (t, d) => {
-  const P1 = 1.25, P2 = 1.75, P3 = 3.25;
-  if (t < P2) {
-    const T = 15.5 + t * 1.6;
-    const placed = fleetScene(T, t, d, { cx: 270, cy: 175, z: 1.0 }, { reefK: 1 });
-    const dis = clamp((t - P1) / (P2 - P1));
-    for (const { b, p } of placed) { const [sx, sy] = toScreen(p.x, p.y - 10); chip(sx + Math.sin(t * 20 + b.i) * 3, sy - 18, b.label, 1 - dis); }
-    // threads between chips
-    ctx.save(); ctx.globalAlpha = 0.35 * (1 - dis); ctx.strokeStyle = RED; ctx.lineWidth = 1.5;
-    for (let k = 0; k < placed.length; k++) { const A = placed[k].p, B = placed[(k * 5 + 3) % placed.length].p; const [ax, ay] = toScreen(A.x, A.y - 12), [bx, by] = toScreen(B.x, B.y - 12); ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke(); }
-    ctx.restore();
-    const AL = ["SAME TASK · 5TH TIME", "SENT THE EMAIL", "PAID THE INVOICE", "WAITING FOR INPUT", "RE-PROPOSED", "A RESULT NOBODY ASKED FOR", "POSTED IT PUBLICLY", "QUOTA 97%"];
-    AL.forEach((s, k) => { const at = k * 0.12; const x = 260 + hash(k + 3) * 1400, y = 450 + hash(k + 9) * 520; alert(x, y, s, clamp((t - at) / 0.1) * (1 - dis) * (Math.floor(t * 12 + k) % 5 ? 1 : 0.5), 0.9); });
-    vignette("rgba(248,113,113,A)", 0.35 + 0.2 * Math.sin(t * 9));
-    hud(["AGENTS      14", "DIRECTIONS  09", "ALERTS      " + pad2(8 + t * 9)]);
-    // particles: the chaos breaks into pixels
-    if (dis > 0) { fade(dis * 0.85); ctx.fillStyle = CREAM; for (let k = 0; k < 260; k++) { const px = hash(k) * W, py = 300 + hash(k + 99) * 760, r = dis * 160 * (hash(k + 7) - 0.5); ctx.globalAlpha = (1 - dis) * 0.9; ctx.fillRect(px + r, py - dis * 60 * hash(k + 3), 6, 6); } ctx.globalAlpha = 1; }
-    return;
-  }
-  // calm night
-  CAM = { cx: 240, cy: 140, z: 1 }; world(t + 40, { dim: 0.45 }); blitWorld(); ctx.fillStyle = "rgba(8,8,10,0.55)"; ctx.fillRect(0, 0, W, H);
-  const cx = W / 2, cy = 640, size = 300, k = size / 32;
-  const slide = inout((t - 1.95) / 1.15); // cards travel
-  const toDot = clamp((t - 2.85) / 0.4);  // cards become dots
+  fade(1 - clamp(t / 0.4));
+  const p = Math.pow(clamp((Math.min(t, 4.0) - 2.0) / 2.0), 2.2) * GATHER;
   CARDS.forEach((c, n) => {
-    const appear = out3((t - P2 - n * 0.04) / 0.25);
-    const seat = SEATS[[2, 7, 8, 9, 16, 15, 17][n]];
-    const tx = cx + (seat[0] - 16) * k, ty = cy + (seat[1] - 18) * k;
-    const x = lerp(c.x, lerp(cx, tx, toDot), slide), y = lerp(c.y, lerp(cy, ty, toDot), slide);
-    const sc = lerp(1, 0.55, slide) * (1 - toDot);
-    if (sc > 0.02) {
-      ctx.save(); ctx.globalAlpha = appear; ctx.translate(x, y); ctx.scale(sc, sc);
-      rr(-170, -52, 340, 104, 18); ctx.fillStyle = "rgba(15,17,23,0.97)"; ctx.fill(); ctx.strokeStyle = "rgba(255,255,255,0.14)"; ctx.lineWidth = 1.5; ctx.stroke();
-      if (c.a.key) { ctx.save(); rr(-148, -26, 52, 52, 12); ctx.clip(); ctx.drawImage(LOGOS[c.a.key], -148, -26, 52, 52); ctx.restore(); }
-      text(c.a.name, -80, -10, "600 28px Geist", INK); text("proposing…", -80, 22, "400 20px GeistMono", MUTED);
-      ctx.restore();
-    }
-    if (toDot > 0) { ctx.globalAlpha = toDot; ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(x, y, 1.35 * k, 0, 7); ctx.fill(); ctx.globalAlpha = 1; }
+    const appear = out3((t - 2.0 - n * 0.06) / 0.3);
+    const [tx, ty] = seatXY(n);
+    card(c, lerp(c.x, tx, p), lerp(c.y, ty, p), lerp(1, 0.62, p), appear);
   });
-  const rest = clamp((t - 3.05) / 0.35);
-  if (rest > 0) {
-    // the other seats fill in, then the lime centre lands
-    ctx.fillStyle = INK; SEATS.forEach(([sx, sy], n) => { if ([2, 7, 8, 9, 16, 15, 17].includes(n)) return; const a = clamp(rest * 1.6 - hash(n) * 0.6); ctx.globalAlpha = a; ctx.beginPath(); ctx.arc(cx + (sx - 16) * k, cy + (sy - 18) * k, 1.35 * k * a, 0, 7); ctx.fill(); });
-    const core = backOut((t - 3.3) / 0.35); ctx.globalAlpha = clamp((t - 3.3) / 0.1); ctx.fillStyle = LIME; ctx.beginPath(); ctx.arc(cx, cy + 7 * k, 2.4 * k * core, 0, 7); ctx.fill();
-    const glow = clamp((t - 3.4) / 0.4); const gg = ctx.createRadialGradient(cx, cy + 7 * k, 0, cx, cy + 7 * k, 160); gg.addColorStop(0, "rgba(217,249,157," + 0.35 * glow + ")"); gg.addColorStop(1, "rgba(217,249,157,0)"); ctx.fillStyle = gg; ctx.globalAlpha = 1; ctx.fillRect(cx - 200, cy - 100, 400, 400);
-  }
-  ctx.globalAlpha = clamp((t - 3.6) / 0.35); text("quorum", cx, cy + 250, "700 76px Geist", INK, "center");
-  ctx.globalAlpha = 1;
-  hud(["AGENTS      14", t > 3.3 ? "!DIRECTION   01" : "DIRECTIONS  " + pad2(lerp(9, 1, slide)), t > 3.3 ? "!ONE COUNCIL" : "ALERTS      --"], 1);
+  if (hang) { ctx.fillStyle = "rgba(0,0,0,0.25)"; ctx.fillRect(0, 0, W, H); }
+  hud(["AGENTS      14", "DIRECTIONS  " + pad2(lerp(9, 2, p / GATHER)), hang ? "…" : ""], clamp((t - 2) / 0.3));
+};
+SCENES.converge = (t, d) => {
+  // the drop: cards snap into their seats, the other seats pop in, the lime core lands
+  const punch = 1 + 0.035 * Math.exp(-t * 9);
+  CAM = { cx: 240, cy: 140, z: 1 }; world(t + 40, { dim: 0.45, moonX: 446, moonY: 30 }); blitWorld();
+  ctx.fillStyle = "rgba(8,8,10,0.55)"; ctx.fillRect(0, 0, W, H);
+  ctx.save(); ctx.translate(W / 2, MARK.cy); ctx.scale(punch, punch); ctx.translate(-W / 2, -MARK.cy);
+  const k = MARK.size / 32, snap = out3(t / 0.12);
+  CARDS.forEach((c, n) => {
+    const [tx, ty] = seatXY(n);
+    const x = lerp(lerp(c.x, tx, GATHER), tx, snap), y = lerp(lerp(c.y, ty, GATHER), ty, snap);
+    card(c, x, y, lerp(0.62, 0, snap), 1);
+    ctx.globalAlpha = snap; ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(x, y, 1.35 * k, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
+  });
+  ctx.fillStyle = INK; SEATS.forEach(([sx, sy], n) => { if (SEAT_OF.includes(n)) return; const a = backOut((t - 0.04 - hash(n) * 0.22) / 0.18); if (a <= 0) return; ctx.globalAlpha = clamp(a); ctx.beginPath(); ctx.arc(MARK.cx + (sx - 16) * k, MARK.cy + (sy - 18) * k, 1.35 * k * a, 0, 7); ctx.fill(); });
+  const core = backOut(t / 0.25); ctx.globalAlpha = 1; ctx.fillStyle = LIME; ctx.beginPath(); ctx.arc(MARK.cx, MARK.cy + 7 * k, Math.max(0, 2.4 * k * core), 0, 7); ctx.fill();
+  const gg = ctx.createRadialGradient(MARK.cx, MARK.cy + 7 * k, 0, MARK.cx, MARK.cy + 7 * k, 220); gg.addColorStop(0, "rgba(217,249,157," + (0.45 * Math.exp(-t * 1.5) + 0.15) + ")"); gg.addColorStop(1, "rgba(217,249,157,0)");
+  ctx.fillStyle = gg; ctx.fillRect(MARK.cx - 260, MARK.cy - 200, 520, 520);
+  ctx.globalAlpha = clamp((t - 0.3) / 0.3); text("quorum", MARK.cx, MARK.cy + 250, "700 76px Geist", INK, "center"); ctx.globalAlpha = 1;
+  ctx.restore();
+  // flash on the downbeat
+  if (t < 0.18) { ctx.fillStyle = "rgba(244,236,210," + (0.42 * (1 - t / 0.18)) + ")"; ctx.fillRect(0, 0, W, H); }
+  hud(["AGENTS      14", "!DIRECTION   01", "!ONE COUNCIL"], 1);
 };
 SCENES.mcp = (t, d) => {
   CAM = { cx: 240, cy: 140, z: 1 }; world(t + 50, { dim: 0.4 }); blitWorld(); ctx.fillStyle = "rgba(8,8,10,0.55)"; ctx.fillRect(0, 0, W, H);
@@ -427,7 +422,7 @@ SCENES.cta = (t, d) => {
   ctx.globalAlpha = out3((t - 0.6) / 0.4); text("quorum.lidgeai.com", W / 2, 520, "600 52px Geist", LIME, "center");
   ctx.globalAlpha = out3((t - 0.9) / 0.4); text("github.com/tryquorum/quorum  ·  open source", W / 2, 590, "400 30px GeistMono", "#c9c6b8", "center");
   ctx.restore();
-  fade(clamp((t - d + 0.6) / 0.6));
+  fade(clamp((t - d + 0.45) / 0.45) * 0.97);
 };
 
 window.SCENE_IDS = Object.keys(SCENES);
