@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { Store } from "./store"
 import { RunManager } from "./runs"
-import { createApp } from "../server"
+import { createApp, VERSION } from "../server"
 import type { CouncilDeps } from "./council"
 import type { QuorumEvent } from "../contract"
 
@@ -85,7 +85,7 @@ describe("HTTP API", () => {
 
   test("health, validation, recipes 501 and memory", async () => {
     const { call } = make()
-    expect(await (await call("/api/health")).json()).toEqual({ ok: true, version: "0.1.0", executors: { aside: true, codex: true, gbrain: false, board: true } })
+    expect(await (await call("/api/health")).json()).toEqual({ ok: true, version: VERSION, executors: { aside: true, codex: true, gbrain: false, board: true } })
     expect((await call("/api/runs", post({}))).status).toBe(400)
     expect((await call("/api/runs", post({ mode: "replay" }))).status).toBe(400)
     expect((await call("/api/runs", post({ mode: "weird", request: "x" }))).status).toBe(400)

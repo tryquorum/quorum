@@ -32,11 +32,13 @@ CREATE TABLE IF NOT EXISTS recipe_health(id TEXT PRIMARY KEY, ok INTEGER NOT NUL
   current(id: string): RecipeDef {
     if (!ID.test(id)) throw new RecipeError("unknown_recipe", `레시피 id 가 이상해요: ${id}`)
     const row = this.db.query("SELECT def FROM recipe_versions WHERE id=? ORDER BY version DESC LIMIT 1").get(id) as { def: string } | null
-    if (row) return JSON.parse(row.def) as RecipeDef
-    let def: RecipeDef
-    try { def = JSON.parse(readFileSync(join(this.defsDir, `${id}.json`), "utf8")) as RecipeDef }
-    catch { throw new RecipeError("unknown_recipe", `레시피가 없어요: ${id}`) }
-    if (def.id !== id) throw new RecipeError("unknown_recipe", `defs/${id}.json 의 id 가 ${def.id} 예요`)
+    let def: RecipeDef | null = null
+    try { def = JSON.parse(readFileSync(join(this.defsDir, `${id}.json`), "utf8")) as RecipeDef } catch { def = null }
+    if (def && def.id !== id) throw new RecipeError("unknown_recipe", `defs/${id}.json 의 id 가 ${def.id} 예요`)
+    const stored = row ? (JSON.parse(row.def) as RecipeDef) : null
+    // 저장된 버전이 있어도 defs 파일이 더 높은 버전이면(배포한 정의 수정) 그 파일을 새 버전으로 받아들여요
+    if (stored && (!def || def.version <= stored.version)) return stored
+    if (!def) throw new RecipeError("unknown_recipe", `레시피가 없어요: ${id}`)
     this.db.query("INSERT OR IGNORE INTO recipe_versions(id, version, def, reason, prev_endpoint, created_at) VALUES (?,?,?,?,?,?)").run(id, def.version, JSON.stringify(def), null, null, Date.now())
     return def
   }

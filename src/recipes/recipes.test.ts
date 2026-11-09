@@ -82,6 +82,7 @@ describe("runRecipe", () => {
     expect(events.map((e) => e.seq)).toEqual([5, 6])
     expect(out.nextSeq).toBe(7)
     for (const e of events) {
+      expect(Object.keys(e.data || {})).toEqual(expect.arrayContaining(["recipeId", "version", "endpoint"]))
       expect(e).toMatchObject({ runId: "run-1", mode: "replay", actor: "recipe:t-blasts" })
       expect(Number.isNaN(Date.parse(e.at))).toBe(false)
       expect(e.data).toMatchObject({ recipeId: "t-blasts", version: 1 })
@@ -328,6 +329,16 @@ describe("runRecipe", () => {
     expect(store.current("t-blasts").request).toEqual({ method: "GET", url: `${other}/event/get-blasts?event_api_id={{eventApiId}}` })
   })
 
+  test("discover.aside.headers is only attached to declared origins", async () => {
+    const def = blasts(["/missing"])
+    def.discover.aside = { startUrl: `${base}/{{slug}}`, match: "/event/", headers: { cookie: "{{env.QUORUM_TEST_COOKIE}}" } }
+    await useDef(def)
+    const other = base.replace("127.0.0.1", "localhost")
+    const aside: AsideRunner = async () => ({ code: 0, stderr: "", stdout: RESULT_PREFIX + JSON.stringify({ url: `${other}/event/get-blasts?event_api_id=evt-123`, status: 200, body: { entries: [{ api_id: "x", message: "m" }] } }) })
+    expect(await runRecipe("t-blasts", ctx({ aside }), emit)).toMatchObject({ ok: true, version: 2 })
+    expect(store.current("t-blasts").request.headers).toBeUndefined()
+  })
+
   test("browser-only success of the current request does not stack identical versions", async () => {
     blastsAuth = true
     await useDef(blasts(["/missing"], { request: { method: "GET", url: `${base}/event/get-blasts?event_api_id={{eventApiId}}` } }))
@@ -355,7 +366,7 @@ describe("runRecipe", () => {
 
   test("unknown recipe and missing vars are error events", async () => {
     await runRecipe("nope", ctx(), emit)
-    expect(events[0]).toMatchObject({ type: "error" })
+    expect(events[0]).toMatchObject({ type: "error", data: { recipeId: "nope", version: 0, endpoint: "" } })
     events = []
     await useDef(blasts([]))
     const out = await runRecipe("t-blasts", ctx({ vars: { slug: "x" } }), emit)
@@ -374,7 +385,7 @@ describe("helpers", () => {
     expect(templatize("https://h/event/get-blasts?event_api_id=ab&x=event", { eventApiId: "ab", slug: "event" }, fixedSegments(["https://h/event/get-posts?event_api_id={{eventApiId}}"]))).toBe("https://h/event/get-blasts?event_api_id={{eventApiId}}&x={{slug}}")
     expect(templatize("https://h/e/my-event/posts", { slug: "my-event" })).toBe("https://h/e/{{slug}}/posts")
     for (const k of ["country_code", "zipcode", "keyword", "design", "event_api_id", "author"]) expect(isSecretKey(k)).toBe(false)
-    for (const k of ["access_token", "api_key", "apiKey", "session", "sig", "client_secret", "X-Amz-Signature", "code"]) expect(isSecretKey(k)).toBe(true)
+    for (const k of ["access_token", "api_key", "apiKey", "session", "sig", "client_secret", "X-Amz-Signature", "code", "access_key", "X-Goog-Credential", "AWSAccessKeyId", "appid", "private_key"]) expect(isSecretKey(k)).toBe(true)
     expect(originOf("http://host/x")).not.toBe(originOf("https://host/x"))
     expect(originOf("https://host/x?a=1")).toBe(originOf("https://host/y"))
     expect(stripSecretParams("https://h/r?country_code=US&id=1")).toBe("https://h/r?country_code=US&id=1")
@@ -389,7 +400,7 @@ describe("helpers", () => {
     await runRecipe("t-blasts", ctx(), emit)
     expect(store.list()).toEqual([expect.objectContaining({ id: "t-blasts", version: 2, health: expect.objectContaining({ ok: true }) })])
     const real = new RecipeStore(new Database(":memory:"))
-    expect(real.list().map((r) => [r.id, r.version])).toEqual([["luma-blasts", 1], ["luma-event", 1]])
+    expect(real.list().map((r) => [r.id, r.version])).toEqual([["luma-blasts", 2], ["luma-event", 1]])
     expect(real.current("luma-blasts").discover.http!.candidates[0].request.url).toContain("get-blasts")
   })
 

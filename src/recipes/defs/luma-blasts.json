@@ -2,7 +2,7 @@
   "id": "luma-blasts",
   "site": "luma.com",
   "intent": "Luma 행사 공지 읽기",
-  "version": 1,
+  "version": 2,
   "vars": [
     "eventApiId",
     "slug"
@@ -17,9 +17,9 @@
   "parse": {
     "path": "entries|blasts|posts",
     "pick": {
-      "id": "api_id|blast_id|id",
-      "message": "message|content_md|text|body",
-      "created_at": "created_at|sent_at"
+      "id": "blast.api_id|api_id|blast_id|id",
+      "message": "blast.content_text|blast.message|message|content_md|text|body",
+      "created_at": "blast.sent_at|blast.created_at|created_at|sent_at"
     },
     "markdown": [
       "message"
@@ -49,7 +49,7 @@
               "cookie": "{{env.LUMA_COOKIE}}"
             }
           },
-          "note": "2026-11-09 실제 사례: get-posts 404, get-blasts 가 정답(로그인 필요)"
+          "note": "2026-11-09 실제 사례: get-posts 404, get-blasts 가 정답(로그인 필요). 응답: {blasts:[{blast:{api_id,content_text,sent_at}}]}"
         }
       ]
     },
