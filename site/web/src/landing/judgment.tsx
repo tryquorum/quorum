@@ -59,8 +59,9 @@ export function Judgment() {
 // Logos from site/web/public/logos/agents (sources and terms in logos/SOURCES.md), drawn as published: no recolor,
 // crop, pixelation or skew. Names are the products the logos come from (grok.com, muse.ai). Each logo sits on a chip it
 // reads on: cursor.svg is light grey, so it gets a dark chip.
-const AGENTS: { name: string; logo: string; chip: "light" | "dark" }[] = [
-  { name: "Codex", logo: "codex.svg", chip: "light" },
+// pad: the OpenAI file ships with wide built-in margins, so it renders larger to show the same mark size (no crop).
+const AGENTS: { name: string; logo: string; chip: "light" | "dark"; pad?: boolean }[] = [
+  { name: "Codex", logo: "codex.svg", chip: "light", pad: true },
   { name: "Claude Code", logo: "claude.svg", chip: "light" },
   { name: "Cursor", logo: "cursor.svg", chip: "dark" },
   { name: "Grok", logo: "grok.svg", chip: "light" },
@@ -70,18 +71,23 @@ const AGENTS: { name: string; logo: string; chip: "light" | "dark" }[] = [
 
 // A sailboat sprite with a real mainsail and jib (the old one was a mast on a hull and read as a chair, audit GAP-6).
 // Column 8 is the mast; the flag flies from its top, to the right, above the jib.
+// Rows 0-8 are bare mast so the flag never covers a sail.
 const SAILBOAT = [
   "........1........",
   "........1........",
   "........1........",
   "........1........",
+  "........1........",
+  "........1........",
+  "........1........",
+  "........1........",
+  "........1........",
   ".......11........",
-  "......111........",
-  ".....1111..1.....",
-  "....11111..11....",
-  "...111111..111...",
-  "..1111111..1111..",
-  ".11111111..11111.",
+  "......111..1.....",
+  ".....1111..11....",
+  "....11111..111...",
+  "...111111..1111..",
+  "..1111111..11111.",
   "........1........",
   "11111111111111111",
   ".111111111111111.",
@@ -90,14 +96,14 @@ const SAILBOAT = [
 const MAST = 8
 
 /** A pixel sailboat flying the agent's logo from the masthead. The flag sways a little; more on hover. */
-function FlagBoat({ name, logo, chip }: (typeof AGENTS)[number]) {
+function FlagBoat({ name, logo, chip, pad }: (typeof AGENTS)[number]) {
   const w = SAILBOAT[0].length, h = SAILBOAT.length
   const rects = useMemo(() => SAILBOAT.flatMap((row, y) => row.split("").map((c, x) => (c === "1" ? <rect key={x + "-" + y} x={x} y={y} width="1" height="1" /> : null))), [])
   return (
-    <span className="relative inline-block h-[68px] shrink-0" style={{ aspectRatio: w + " / " + h }}>
+    <span className="relative inline-block h-[84px] shrink-0" style={{ aspectRatio: w + " / " + h }}>
       <svg viewBox={"0 0 " + w + " " + h} className="size-full text-foreground/85" aria-hidden shapeRendering="crispEdges" fill="currentColor">{rects}</svg>
       <span className={cn("lp-flag absolute top-[-2px] grid size-10 place-items-center rounded-lg ring-1", chip === "dark" ? "bg-zinc-900 ring-white/20" : "bg-white ring-black/15")} style={{ left: ((MAST + 1) / w) * 100 + "%" }}>
-        <img src={asset("logos/agents/" + logo)} alt={name + " logo"} className="size-6 object-contain" draggable={false} />
+        <img src={asset("logos/agents/" + logo)} alt={name + " logo"} className={pad ? "size-9 max-w-none object-contain" : "size-6 object-contain"} draggable={false} />
       </span>
     </span>
   )
@@ -135,13 +141,13 @@ export function RunsOn() {
               </li>
             ))}
           </ul>
-          <pre className="lp-ring mt-3 overflow-x-auto rounded-2xl bg-card p-4 font-mono text-xs leading-6 text-foreground"><code>{"POST /mcp            JSON-RPC, MCP tools/list · tools/call\n  quorum_runs        recent council runs\n  quorum_run         one run: proposals, critiques, verdicts, results\n  quorum_memory      search the verdicts gbrain remembers\n  quorum_propose     put a request in front of the council   (QUORUM_MCP_PROPOSE=1, off by default)"}</code></pre>
+          <pre className="lp-ring mt-3 overflow-x-auto rounded-2xl bg-card p-4 font-mono text-xs leading-6 text-foreground"><code>{"POST /mcp            JSON-RPC, MCP tools/list · tools/call\n  quorum_runs        recent council runs\n  quorum_run         one run: proposals, critiques, verdicts, results\n  quorum_memory      search the verdicts gbrain remembers\n  quorum_propose     put a request in front of the council   (QUORUM_MCP_PROPOSE=1)"}</code></pre>
           <h3 className="lp-label mt-8">Built on</h3>
-          <ul className="mt-2 grid gap-x-8 sm:grid-cols-2">
+          <ul className="mt-2 flex flex-col">
             {BUILT_ON.map((b) => (
               <li key={b.name} className="border-t">
                 <a href={b.href} className="group flex min-h-14 items-center gap-4 py-2">
-                  <span className="flex h-8 w-28 shrink-0 items-center">{b.logo ? <Logo name={b.logo} size="sm" /> : <span className="font-semibold tracking-tight">Direction Board</span>}</span>
+                  <span className="flex h-9 w-40 shrink-0 items-center">{b.logo ? <Logo name={b.logo} /> : <span className="text-lg font-semibold tracking-tight">Direction Board</span>}</span>
                   <span className="text-sm text-muted-foreground group-hover:text-foreground group-hover:underline">{b.role}</span>
                 </a>
               </li>

@@ -4,7 +4,7 @@ Owner skills: cxc-dev-uiux-design experience-audit.md (UX-AUDIT-01..08) and cxc-
 visual-audit-loop.md (FE-VISUAL-AUDIT-01..03). Scope: `/` (landing). `/app` and `/w` are in scope only for
 token consistency. Base commit: 8b4cfa9 (main) merged into lane/site3.
 
-Capture command: `node /tmp/qshots/cap.cjs` (Playwright 1.64 driving installed Chrome, colorScheme and reducedMotion
+Capture command: `node docs/design/audit/cap.cjs` (Playwright 1.64 driving installed Chrome, colorScheme and reducedMotion
 set per context, fonts ready, 1.2 s settle) against `bun run src/server.ts` on QUORUM_PORT=4350 with
 QUORUM_BOARD_IMPORT=0 and an empty temporary state dir, so no personal board data is loaded.
 
@@ -99,4 +99,37 @@ PER-3: inactive step text fails 1.4.3 (EV-8); motion carries no information that
 
 Fix order: GAP-2 (S1), then GAP-1, GAP-3 (S2), then GAP-4, -5, -6, -7, -10 (S3), then GAP-8, -9 (S4).
 Each GAP becomes a violation row in after/ledger with the same EV ids as before evidence.
+
+
+
+## 8. After (FE-VISUAL-AUDIT-01..03), cycle c5 head
+
+After captures: `after/` with the same names (same command, same server flags). Measurements: probe.cjs and
+a11y.cjs (computed contrast for every text node in `main` outside canvas/iframe/video/aria-hidden, both themes,
+reduced motion; Tab walk from the top).
+
+| V / GAP | Before | After | Verifier, result |
+|---|---|---|---|
+| GAP-1 demo opens with a dialog over the board | EV-1, EV-9 | after/landing__firstviewport__1280__light.png: Now list visible, "Start here" ring on the Seoul row; ring moves to Send to agent when the popup opens | Visual judgment "Now list fully visible, one row marked": yes (1280 light, 1024 dark, 390 light/dark) |
+| GAP-2 inactive steps about 1.9:1 | EV-8 | steps no longer dimmed; titles muted ink #666 (5.2:1), current step ink + top rule | a11y.cjs: 161 text nodes, 0 below threshold in light and dark (pass) |
+| GAP-3 proof at 7,022 px, split over 4 sections | EV-8 | Record is the third section, top at 2,984 px (hero 1,328 + story 1,600); critics, verdicts, Aside result and the film in one artifact column | probe: first critique card top < hero + 2,000 px (pass: about 3,050 vs 3,384) |
+| GAP-4 256 px between sections, 10,361 px page | EV-8, EV-11, EV-12 | section padding clamp(32px, 6vw, 80px) = 154 px between sections at 1280; story runway 185svh | probe: max inter-section gap 154 <= 160 (pass); page 7,555 px at 1280 (<= 8,000, pass) |
+| GAP-5 six grammars, seven eyebrows | EV-1, EV-8 | three grammars: Stage (hero), Claim + artifact (.lp-ca: story, record, judgment, recipes, runs on), Statement (CTA); one eyebrow (The record) | probe eyebrows = 1 (<= 4, pass); grammar table in CONCEPT.md |
+| GAP-6 chair-like boat, 17 px logo | EV-10 | 17x19 sprite with mainsail and jib, flag chip 40 px, logo 24 px (Codex file 36 px because of its built-in margins), flag on bare mast above the sails | probe: logo img 26 px >= 24 (pass); visual judgment "reads as a sailboat with a flag": yes |
+| GAP-7 46-word lede | EV-1 | 23 words | word count 23 <= 25 (pass) |
+| GAP-8 nav anchors | EV-1 | Why / Proof / Agents / GitHub -> #story, #record, #agents | DOM hrefs match section ids (pass) |
+| GAP-9 two logo sections | EV-1 | one "Runs on" section: agents over MCP + Built on list | logo sections = 1 (pass) |
+| GAP-10 13,240 px at 390 | EV-5 | 9,435 px at 390 | probe <= 10,000 (pass) |
+| SLOP-1 three equal cards | EV-1 | list of three, real Seoul item first, examples labelled | removed |
+| SLOP-2 split header | EV-1 | stacked claim | removed |
+| SLOP-3 eyebrow per section | EV-8 | one | removed |
+| SLOP-4 uniform padding | EV-11 | one scale, dense artifacts against sparse claims | reduced |
+
+Other checks at the after head: no horizontal overflow at 1280/1024/768/390 in either theme; no console errors;
+focus ring visible on skip link, nav, CTAs (the wordmark uses a ring, not an outline); reduced motion page 6,874 px
+with every step at full ink and the final story frame; hero lede #3f3f46 on the lightest/darkest sky dither is
+about 7.9:1 (light) and #d4d4d8 on #18203c about 10.7:1 (dark).
+
+Open: none of S1-S2. Not verified: axe-core (not installed here; contrast and focus were measured by script
+instead), real Safari/iOS, the workspace preview's own focus order inside the iframe.
 
