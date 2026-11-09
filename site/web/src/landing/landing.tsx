@@ -9,7 +9,6 @@ import { Healing } from "./healing"
 import { PixelSea } from "./pixel-sea"
 import { Story } from "./story"
 import { Judgment, RunsOn } from "./judgment"
-import { CountUp } from "./motion"
 import "./landing.css"
 
 // Design system: docs/design/DESIGN-READ.md and CONCEPT.md (concept B "product as stage" + A's provenance labels).
@@ -36,7 +35,7 @@ function Header() {
             <li className="max-md:hidden"><a className="lp-nav" href="#record">Proof</a></li>
             <li className="max-md:hidden"><a className="lp-nav" href="#agents">Agents</a></li>
             <li className="max-sm:hidden"><a className="lp-nav" href={REPO}>GitHub</a></li>
-            <li><a className="lp-nav ml-1 rounded-full bg-primary px-4 text-primary-foreground hover:bg-primary/90" href={WORKSPACE}>Open workspace</a></li>
+            <li><a className="lp-nav lp-ring ml-1 rounded-full px-4" href={WORKSPACE}>Open workspace</a></li>
           </ul>
         </nav>
       </div>
@@ -98,21 +97,21 @@ function Record() {
           <dl className="mt-6 grid grid-cols-3 gap-x-6">
             {facts.map((f) => (
               <div key={f.k} className="border-t pt-3 pb-4">
-                <dd className="num text-2xl font-semibold tracking-tight"><CountUp value={f.v} format={f.f} /></dd>
+                <dd className="num text-2xl font-semibold tracking-tight">{f.f ? f.f(f.v) : f.v}</dd>
                 <dt className="mt-0.5 text-sm text-muted-foreground">{f.k}</dt>
               </div>
             ))}
           </dl>
+          <figure className="m-0 mt-4">
+            <video className="aspect-video w-full rounded-2xl border border-[var(--lp-ring)] bg-card" controls playsInline preload="none" poster={DEMO.poster} src={DEMO.src}>
+              <a href={DEMO.src}>Download the demo video</a>
+            </video>
+            <figcaption className="mt-2 text-sm text-muted-foreground">The {DEMO.seconds}-second submission film, cut from captures of real runs.</figcaption>
+          </figure>
           {STATIC && <a className="lp-text-link mt-2 inline-flex min-h-11 items-center gap-1.5 font-semibold underline-offset-4 hover:underline" href={APP + "?demo=seoul"}>Replay it in the console</a>}
         </div>
         <div className="lp-artifact">
           <Argument />
-          <figure className="m-0 mt-3">
-            <video className="aspect-video w-full rounded-2xl border border-[var(--lp-ring)] bg-card" controls playsInline preload="none" poster={DEMO.poster} src={DEMO.src}>
-              <a href={DEMO.src}>Download the demo video</a>
-            </video>
-            <figcaption className="lp-label mt-2">The {DEMO.seconds}-second submission film, cut from captures of real runs.</figcaption>
-          </figure>
         </div>
       </div>
     </section>
@@ -158,7 +157,7 @@ function Cta() {
   return (
     <section aria-labelledby="cta-title" className="lp-section">
       <div className="lp-container flex flex-col items-center text-center">
-        <h2 id="cta-title" className="lp-h1 max-w-[18ch] text-[clamp(2rem,1rem+2.4vw,3.25rem)]">Bring a request. Leave with a verdict.</h2>
+        <h2 id="cta-title" className="lp-h1 max-w-[18ch]">Bring a request. Leave with a verdict.</h2>
         <p className="mx-auto mt-5 max-w-[52ch] text-muted-foreground">Your workspace runs your own council after sign-in. The source, the recorded run and this page are public.</p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <a className={primary} href={WORKSPACE}>Open your workspace <ArrowRight className="size-4" /></a>
