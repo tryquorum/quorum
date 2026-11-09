@@ -1,140 +1,110 @@
-import { useEffect, useState } from "react"
-import { Hemicycle, type Tally } from "@/components/hemicycle"
+import { useEffect, useMemo, useState } from "react"
+import { Brain, Globe } from "lucide-react"
+import { RoleChamber } from "@/components/hemicycle"
+import { useReducedMotion } from "@/components/reveal"
 import { cn } from "@/lib/utils"
-import type { Decision, Role, Stance } from "@/lib/contract"
+import type { Decision, QuorumEvent, Role, Stance } from "@/lib/contract"
+import { EN, SEOUL_EVENTS, SEOUL_PROPOSALS, SEOUL_STATS } from "@/lib/seoul"
 
-type Scene = {
-  proposer: string
-  title: string
-  executor: "aside" | "codex" | "board"
-  critiques: [Role, Stance, string][]
-  tally: Tally
-  verdict: Decision
-  result: string
-  recall?: string
+// Plays the real recording of the first live council run (c0mpiled-17 Seoul, 11:31 KST).
+// The engine emitted all critiques and verdicts in one batch (same timestamp), so they are shown grouped
+// by proposal; every line keeps its real seq. Timing is compressed; the real run took 2 min 32 s.
+const DWELL: Partial<Record<QuorumEvent["type"], number>> = {
+  "run.start": 1700, recall: 2300, proposal: 1100, critique: 850, verdict: 1700,
+  "execute.start": 1700, "execute.result": 3200, "memory.saved": 1200, "run.end": 3600,
+}
+function script(events: QuorumEvent[]): QuorumEvent[] {
+  const pid = (e: QuorumEvent) => (e.data as { proposalId?: string } | undefined)?.proposalId
+  const head = events.filter((e) => ["run.start", "recall", "proposal"].includes(e.type))
+  const tail = events.filter((e) => ["execute.start", "execute.result", "memory.saved", "run.end"].includes(e.type))
+  const debate = SEOUL_PROPOSALS.flatMap((p) => events.filter((e) => (e.type === "critique" || e.type === "verdict") && pid(e) === p.id))
+  return [...head, ...debate, ...tail]
 }
 
-// A scripted session in the contract's own vocabulary (proposal, critique, verdict, execute.result).
-const SCENES: Scene[] = [
-  { proposer: "bot:scout", title: "Read today's Luma announcements", executor: "aside",
-    critiques: [["ceo", "keep", "you asked for exactly this"], ["qa", "keep", "recipe luma-blasts covers it"], ["cso", "keep", "read-only"]],
-    tally: { keep: 8, escalate: 1, cut: 1 }, verdict: "pass", result: "aside · read 7 announcements" },
-  { proposer: "bot:ops", title: "Email every organizer to confirm details", executor: "aside",
-    critiques: [["ceo", "cut", "nobody asked to contact anyone"], ["cso", "escalate", "sends mail in your name"], ["reviewer", "cut", "details are already in the posts"]],
-    tally: { keep: 1, escalate: 3, cut: 6 }, verdict: "reject", result: "nothing ran" },
-  { proposer: "bot:planner", title: "Draft a submission checklist", executor: "codex",
-    critiques: [["reviewer", "keep", "no open task covers it"], ["qa", "keep", "checkable output: checklist.md"]],
-    tally: { keep: 7, escalate: 2, cut: 1 }, verdict: "pass", result: "codex · checklist.md, 4 items" },
-  { proposer: "bot:planner", title: "Post the checklist to the team channel", executor: "board",
-    critiques: [["cso", "escalate", "posts where others can see"], ["ceo", "keep", "team needs it by 14:00"]],
-    tally: { keep: 4, escalate: 5, cut: 1 }, verdict: "hold", result: "board · waiting for your approval" },
-  { proposer: "you", title: "What do I need to do from the announcements?", executor: "aside",
-    critiques: [], recall: "gb:v-0412 · score 0.93",
-    tally: { keep: 1, escalate: 0, cut: 0 }, verdict: "pass", result: "verdict reused · no debate needed" },
-]
-
-const SCENE_MS = 6200
-const STAMP: Record<Decision, string> = { pass: "PASS", hold: "HOLD", reject: "REJECT" }
-const STAMP_TONE: Record<Decision, string> = { pass: "border-keep text-keep", hold: "border-escalate text-escalate", reject: "border-cut text-cut" }
-const TYPE_TONE: Record<string, string> = {
-  proposal: "text-foreground", critique: "text-muted-foreground", verdict: "text-signal",
-  recall: "text-memory", "execute.result": "text-live",
+const STAMP: Record<Decision, string> = { pass: "border-keep text-keep", hold: "border-escalate text-escalate", reject: "border-cut text-cut" }
+const TYPE_TONE: Partial<Record<QuorumEvent["type"], string>> = {
+  recall: "text-memory", proposal: "text-foreground", critique: "text-muted-foreground", verdict: "text-signal",
+  "execute.start": "text-live", "execute.result": "text-live", "memory.saved": "text-memory", "run.end": "text-signal",
 }
 const STANCE_TONE: Record<Stance, string> = { keep: "text-keep", cut: "text-cut", escalate: "text-escalate" }
 
-type Line = { id: number; type: string; actor: string; text: string; stance?: Stance }
-
-function linesFor(scene: Scene, t: number, base: number): Line[] {
-  const out: Line[] = []
-  let id = base
-  if (scene.recall) {
-    out.push({ id: id++, type: "recall", actor: "gbrain", text: scene.recall })
-    if (t > 1200) out.push({ id: id++, type: "verdict", actor: "council", text: `${STAMP[scene.verdict].toLowerCase()} · reused from gb:v-0412` })
-    if (t > 2600) out.push({ id: id++, type: "execute.result", actor: scene.executor, text: scene.result })
-    return out
-  }
-  out.push({ id: id++, type: "proposal", actor: scene.proposer, text: scene.title })
-  scene.critiques.forEach(([role, stance, why], i) => {
-    if (t > 700 + i * 650) out.push({ id: id++, type: "critique", actor: `bot:${role}`, text: `${stance} · ${why}`, stance })
-  })
-  if (t > 3000) out.push({ id: id++, type: "verdict", actor: "council", text: STAMP[scene.verdict].toLowerCase() })
-  if (t > 3900) out.push({ id: id++, type: "execute.result", actor: scene.verdict === "reject" ? "council" : scene.executor, text: scene.result })
-  return out
-}
-
-function useReducedMotion() {
-  const [reduced, setReduced] = useState(() => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches)
-  useEffect(() => {
-    const q = matchMedia("(prefers-reduced-motion: reduce)")
-    const on = () => setReduced(q.matches)
-    q.addEventListener("change", on)
-    return () => q.removeEventListener("change", on)
-  }, [])
-  return reduced
-}
-
 export function HeroSession() {
   const reduced = useReducedMotion()
+  const steps = useMemo(() => script(SEOUL_EVENTS), [])
+  const starts = useMemo(() => { let t = 0; return steps.map((e) => { const s = t; t += DWELL[e.type] ?? 1000; return s }) }, [steps])
+  const total = starts[starts.length - 1] + (DWELL[steps[steps.length - 1].type] ?? 1000)
   const [clock, setClock] = useState(0)
   useEffect(() => {
     if (reduced) return
-    const start = performance.now()
-    const id = window.setInterval(() => setClock(performance.now() - start), 90)
+    const t0 = performance.now()
+    const id = window.setInterval(() => setClock((performance.now() - t0) % total), 100)
     return () => window.clearInterval(id)
-  }, [reduced])
-  const total = reduced ? SCENE_MS * 3 - 1 : clock
-  const index = Math.floor(total / SCENE_MS) % SCENES.length
-  const t = reduced ? SCENE_MS - 1 : total % SCENE_MS
-  const scene = SCENES[index]
-  const progress = scene.recall ? (t > 1200 ? 1 : 0) : Math.min(1, Math.max(0, (t - 700) / 2200))
-  const stamped = scene.recall ? t > 1200 : t > 3000
-
-  // keep a rolling log across scenes so it reads like one live stream
-  const history: Line[] = []
-  for (let back = 2; back >= 1; back--) {
-    const prevIndex = Math.floor(total / SCENE_MS) - back
-    if (prevIndex >= 0) history.push(...linesFor(SCENES[prevIndex % SCENES.length], SCENE_MS, prevIndex * 100))
-  }
-  const lines = [...history, ...linesFor(scene, t, Math.floor(total / SCENE_MS) * 100)].slice(-9)
+  }, [reduced, total])
+  // Reduced motion: show the moment the CSO escalates p2, the scene the section below is about.
+  const index = reduced ? steps.findIndex((e) => e.seq === 18) : Math.max(0, starts.findLastIndex((s) => s <= clock))
+  const shown = steps.slice(0, index + 1)
+  const cur = shown[shown.length - 1]
+  const curPid = (() => { for (let i = shown.length - 1; i >= 0; i--) { const p = (shown[i].data as { proposalId?: string } | undefined)?.proposalId; if (p && shown[i].type !== "proposal") return p } return undefined })()
+  const executing = cur.type.startsWith("execute") || cur.type === "memory.saved" || cur.type === "run.end"
+  const focusPid = executing ? "p1" : curPid
+  const p = SEOUL_PROPOSALS.find((x) => x.id === focusPid)
+  const stances: Partial<Record<Role, Stance>> = {}
+  if (p) for (const e of shown) { const d = e.data as { proposalId?: string; role?: Role; stance?: Stance }; if (e.type === "critique" && d.proposalId === p.id && d.role && d.stance) stances[d.role] = d.stance }
+  const verdict = p && shown.some((e) => e.type === "verdict" && (e.data as { proposalId?: string }).proposalId === p.id) ? p.decision : undefined
+  const lines = shown.slice(-6)
+  const progress = reduced ? 0.6 : clock / total
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border bg-card/60 shadow-2xl shadow-black/40 backdrop-blur">
+    <div className="relative overflow-hidden rounded-2xl border bg-card/60 shadow-2xl shadow-black/50 backdrop-blur">
       <div className="flex items-center gap-2 border-b px-4 py-2.5 text-xs text-muted-foreground">
-        <span className="size-2.5 rounded-full bg-foreground/15" />
-        <span className="size-2.5 rounded-full bg-foreground/15" />
-        <span className="size-2.5 rounded-full bg-foreground/15" />
-        <span className="ml-2 truncate font-mono">quorum · council session</span>
-        <span className="ml-auto inline-flex shrink-0 items-center gap-1.5 font-mono text-2xs whitespace-nowrap uppercase tracking-wider">
-          <span className="size-1.5 animate-pulse rounded-full bg-signal" /> scripted demo
-        </span>
+        <span className="relative flex size-2"><span className="absolute inline-flex size-full animate-ping rounded-full bg-cut/60" /><span className="relative inline-flex size-2 rounded-full bg-cut" /></span>
+        <span className="truncate font-medium text-foreground">Recorded live · Seoul · 11:31 KST today</span>
+        <span className="ml-auto hidden font-mono text-2xs sm:inline">real run 2 min 32 s · shown faster</span>
       </div>
-      <div className="grid gap-0 md:grid-cols-[1.15fr_1fr]">
-        <div className="relative px-4 pt-6 pb-4 sm:px-8">
-          <Hemicycle tally={scene.tally} progress={progress} memory={!!scene.recall} />
-          <div className="mt-3 flex flex-col items-center gap-2 px-2 text-center md:absolute md:inset-x-0 md:bottom-5 md:mt-0 md:px-6">
-            <p className="max-w-[22ch] text-sm font-medium text-balance text-foreground sm:text-base">{scene.title}</p>
-            <div className="flex h-8 items-center gap-2">
-              {stamped ? (
-                <span key={index} className={cn("stamp rounded-md border-2 px-2.5 py-0.5 font-mono text-sm font-bold tracking-widest", scene.recall ? "border-memory text-memory" : STAMP_TONE[scene.verdict])}>
-                  {scene.recall ? "REUSED" : STAMP[scene.verdict]}
-                </span>
-              ) : (
-                <span className="font-mono text-2xs tracking-wider text-muted-foreground uppercase">{scene.recall ? "recalling…" : "arguing…"}</span>
-              )}
-            </div>
+      <div className="grid md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+        <div className="relative flex flex-col px-4 pt-7 pb-5 sm:px-8">
+          <RoleChamber stances={stances} className="mx-auto max-w-[30rem]" />
+          <div className="mt-2 flex min-h-28 flex-col items-center gap-2 text-center">
+            {cur.type === "run.start" ? (
+              <p className="max-w-[34ch] text-sm text-muted-foreground">“{EN[0].replace("Request: ", "")}”</p>
+            ) : cur.type === "recall" ? (
+              <p className="inline-flex items-center gap-2 rounded-full bg-memory/12 px-3 py-1 text-sm text-memory"><Brain className="size-4" />gbrain recall · closest {Math.round(SEOUL_STATS.recallScore * 100)}% &lt; {Math.round(SEOUL_STATS.recallThreshold * 100)}% · debate from scratch</p>
+            ) : p ? (
+              <>
+                <p className="font-mono text-2xs text-muted-foreground">{p.id} · {p.actor}</p>
+                <p className="max-w-[30ch] text-base leading-snug font-medium text-balance">{p.titleEn}</p>
+                <div className="flex h-8 items-center gap-2">
+                  {verdict ? (
+                    <span key={p.id + verdict} className={cn("stamp rounded-md border-2 px-2.5 py-0.5 font-mono text-sm font-bold tracking-widest uppercase", STAMP[verdict])}>{verdict}</span>
+                  ) : (
+                    <span className="font-mono text-2xs tracking-wider text-muted-foreground uppercase">arguing…</span>
+                  )}
+                  {executing && <span className="inline-flex items-center gap-1 rounded-full bg-live/12 px-2 py-0.5 font-mono text-2xs text-live"><Globe className="size-3" />aside</span>}
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">{SEOUL_PROPOSALS.length} proposals on the floor</p>
+            )}
           </div>
         </div>
-        <ol className="min-h-[14rem] border-t bg-background/60 p-4 font-mono text-[12px] leading-relaxed md:min-h-[19rem] md:border-t-0 md:border-l" aria-label="Council event stream">
-          {lines.map((l) => (
-            <li key={l.id} className="row-in grid grid-cols-[7rem_1fr] gap-2 truncate sm:grid-cols-[7.25rem_5.75rem_1fr]">
-              <span className={cn(TYPE_TONE[l.type] ?? "text-muted-foreground")}>{l.type}</span>
-              <span className="hidden truncate text-muted-foreground sm:block">{l.actor}</span>
-              <span className={cn("truncate", l.stance ? STANCE_TONE[l.stance] : "text-foreground/85")}>{l.text}</span>
-            </li>
-          ))}
-          <li className="caret text-muted-foreground" aria-hidden />
+        <ol className="flex min-h-[22rem] min-w-0 flex-col justify-end gap-2.5 border-t bg-background/60 p-4 md:border-t-0 md:border-l" aria-label="Recorded council events">
+          {lines.map((e) => {
+            const d = e.data as { stance?: Stance; role?: string; proposalId?: string } | undefined
+            return (
+              <li key={e.seq} className="row-in min-w-0">
+                <div className="flex items-baseline gap-2 font-mono text-[11px]">
+                  <span className="num w-5 shrink-0 text-muted-foreground/60">{e.seq}</span>
+                  <span className={cn("shrink-0", TYPE_TONE[e.type] ?? "text-muted-foreground")}>{e.type}</span>
+                  <span className="truncate text-muted-foreground">{e.actor}{d?.proposalId ? ` → ${d.proposalId}` : ""}</span>
+                </div>
+                <p className={cn("truncate pl-7 text-[13px]", d?.stance ? STANCE_TONE[d.stance] : "text-foreground/90")} lang="ko">{e.text}</p>
+                {EN[e.seq] && <p className="truncate pl-7 text-[12px] text-muted-foreground italic">{EN[e.seq]}</p>}
+              </li>
+            )
+          })}
         </ol>
       </div>
+      <div className="h-0.5 bg-muted"><div className="h-full bg-signal/70 transition-[width] duration-100" style={{ width: `${progress * 100}%` }} /></div>
     </div>
   )
 }
