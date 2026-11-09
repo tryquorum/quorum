@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils"
 import type { Proposal } from "@/console/stream"
 import { call, ws, type Area, type GoalView, type Item, type Note, type Signal } from "./api"
 import { Md } from "./md"
+import { ALERT, CHIP } from "./tone"
 import { SourceChip, dueLabel, isLate, whenOf } from "./rows"
 import { useMemory, useRunWatch } from "./run-watch"
 import { dday } from "./views"
@@ -20,8 +21,9 @@ type Acts = { approve: (s: Signal) => Promise<void>; reject: (s: Signal) => Prom
 const AUTO = new Set(["agent", "goat", "system"])
 const ROLES = [["ceo", "CEO"], ["reviewer", "Reviewer"], ["qa", "QA"], ["cso", "CSO"]] as const
 const when = (ms: number) => new Date(ms).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
-const DECISION = { pass: "text-keep bg-keep/10 ring-keep/30", hold: "text-escalate bg-escalate/10 ring-escalate/30", reject: "text-cut bg-cut/10 ring-cut/30" } as const
-const STANCE = { keep: "text-keep border-keep/40", cut: "text-cut border-cut/40", escalate: "text-escalate border-escalate/40" } as const
+// 판정·반박 칩: 보류와 escalate 만 빨간 바탕에 흰 글씨, 나머지는 한 톤(./tone)
+const DECISION = { pass: "border border-border text-foreground", hold: ALERT, reject: CHIP } as const
+const STANCE = { keep: "border-border text-foreground", cut: "border-border text-muted-foreground", escalate: "border-transparent " + ALERT } as const
 
 function requestFor(d: Loaded, goal: GoalView | null): string {
   if (d.kind === "signal") return [d.signal.title, d.signal.body ?? ""].filter(Boolean).join("\n\n").slice(0, 4000)
@@ -97,7 +99,7 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf }: {
   return (
     <Dialog open={!!open} onOpenChange={(o) => { if (!o) onClose() }}>
       <DialogContent className="max-h-[90svh] gap-0 overflow-y-auto p-0 sm:max-w-2xl">
-        {!data && <div className="p-5"><DialogTitle className="text-sm text-muted-foreground">{error ? "Couldn't open" : "Loading…"}</DialogTitle>{error && <p role="alert" className="mt-2 text-sm text-cut">{error}</p>}</div>}
+        {!data && <div className="p-5"><DialogTitle className="text-sm text-muted-foreground">{error ? "Couldn't open" : "Loading…"}</DialogTitle>{error && <p role="alert" className={"mt-2 rounded-lg px-2.5 py-1.5 text-sm " + ALERT}>{error}</p>}</div>}
         {data && head && (
           <>
             {/* 머리 + 요약 */}
@@ -105,7 +107,7 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf }: {
               <div className="flex flex-wrap items-center gap-1.5 pr-8 text-2xs">
                 <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 font-medium text-muted-foreground">{head.icon}{head.kind}</span>
                 <SourceChip item={data.kind === "item" ? data.item : data.signal} />
-                {head.when && <span className={cn("rounded-full border px-2 py-0.5 font-mono", head.late && "border-cut/40 text-cut")}>{head.when}</span>}
+                {head.when && <span className={cn("rounded-full border px-2 py-0.5 font-mono", head.late && "border-transparent " + ALERT)}>{head.when}</span>}
                 {head.area && <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5"><span className="size-1.5 rounded-full" style={{ background: head.area.color }} />{head.area.name}</span>}
                 {head.status && <span className="rounded-full border px-2 py-0.5 text-muted-foreground">{head.status}</span>}
               </div>
@@ -128,7 +130,7 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf }: {
                 <ul className="flex flex-col gap-1">
                   {data.item.log.slice(-3).map((l, i) => (
                     <li key={l.id ?? i} className="flex items-start gap-2 text-xs">
-                      {AUTO.has(l.by) ? <Bot className="mt-0.5 size-3.5 shrink-0 text-memory" /> : <User className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />}
+                      {AUTO.has(l.by) ? <Bot className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" /> : <User className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />}
                       <span className={cn("min-w-0 flex-1", AUTO.has(l.by) && "text-muted-foreground")}>{l.text}</span>
                       <span className="shrink-0 font-mono text-2xs text-muted-foreground">{when(l.at)}</span>
                     </li>
@@ -157,7 +159,7 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf }: {
                   <Button size="sm" variant="outline" className="rounded-full" onClick={() => void run_(() => data.item.done ? ws.patch(data.item.id, { done: false }) : act.done(data.item), data.item.done ? "Reopened" : "Done")}>
                     <Check />{data.item.done ? "Reopen" : "Mark done"}
                   </Button>
-                  {data.item.runId && <a href="/app" className="inline-flex items-center gap-1 font-mono text-2xs text-memory hover:underline">{data.item.runId}<ExternalLink className="size-3" /></a>}
+                  {data.item.runId && <a href="/app" className="inline-flex items-center gap-1 font-mono text-2xs text-muted-foreground hover:text-foreground hover:underline">{data.item.runId}<ExternalLink className="size-3" /></a>}
                 </div>
               )}
               {data.kind === "item" && (
@@ -173,7 +175,7 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf }: {
                   <Button size="sm" variant="secondary" disabled={md === (data.note?.md ?? "")} onClick={() => void run_(() => ws.saveNote(ref, md), "Note saved")}>Save note</Button>
                 </div>
               </details>
-              {(saved || error) && <p role="status" className={cn("text-2xs", error ? "text-cut" : "text-keep")}>{error ?? saved}</p>}
+              {(saved || error) && <p role="status" className={cn("text-2xs", error ? "rounded px-1.5 py-0.5 " + ALERT : "text-muted-foreground")}>{error ?? saved}</p>}
             </div>
           </>
         )}
@@ -198,7 +200,7 @@ function GoalProgress({ g }: { g: GoalView }) {
   const pct = g.total ? Math.round((g.done / g.total) * 100) : 0
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="flex items-center gap-2"><div className="h-1.5 flex-1 overflow-hidden rounded-full bg-foreground/10"><div className="h-full rounded-full bg-keep" style={{ width: pct + "%" }} /></div><span className="num font-mono text-2xs text-muted-foreground">{g.done}/{g.total} · {pct}%</span></div>
+      <div className="flex items-center gap-2"><div className="h-1.5 flex-1 overflow-hidden rounded-full bg-foreground/10"><div className="h-full rounded-full bg-foreground" style={{ width: pct + "%" }} /></div><span className="num font-mono text-2xs text-muted-foreground">{g.done}/{g.total} · {pct}%</span></div>
       {g.open.length > 0 && <ul className="flex flex-col gap-0.5 text-xs text-muted-foreground">{g.open.slice(0, 4).map((t) => <li key={t.id} className="truncate">○ {t.text.split("\n")[0]}{whenOf(t) && <span className="ml-1.5 font-mono text-2xs">{dueLabel(whenOf(t)!)}</span>}</li>)}{g.open.length > 4 && <li className="text-2xs">+{g.open.length - 4} more</li>}</ul>}
     </div>
   )
@@ -217,8 +219,8 @@ function NotePreview({ md, by }: { md: string; by: string }) {
 
 function Remembers({ memory }: { memory: ReturnType<typeof useMemory> }) {
   return (
-    <section aria-label="gbrain remembers" className="rounded-xl border border-memory/25 bg-memory/5 p-3">
-      <h3 className="mb-1.5 flex items-center gap-1.5 text-2xs font-semibold tracking-wide text-memory uppercase"><Brain className="size-3.5" />gbrain remembers</h3>
+    <section aria-label="gbrain remembers" className="rounded-xl border bg-muted/30 p-3">
+      <h3 className="mb-1.5 flex items-center gap-1.5 text-2xs font-semibold tracking-wide text-muted-foreground uppercase"><Brain className="size-3.5" />gbrain remembers</h3>
       {memory.hits === null ? <p className="text-2xs text-muted-foreground">Searching past verdicts…</p>
         : memory.error ? <p className="text-2xs text-muted-foreground">gbrain is unavailable: {memory.error}</p>
         : !memory.hits.length ? <p className="text-2xs text-muted-foreground">Nothing similar yet. The council's verdict will be remembered.</p>
@@ -226,7 +228,7 @@ function Remembers({ memory }: { memory: ReturnType<typeof useMemory> }) {
           <ul className="flex flex-col gap-1.5">
             {memory.hits.map((h) => (
               <li key={h.slug} className="flex min-w-0 items-start gap-2 text-xs">
-                {h.decision ? <span className={cn("shrink-0 rounded px-1 font-mono text-2xs ring-1", DECISION[h.decision])}>{h.decision}</span> : <span className="shrink-0 rounded bg-muted px-1 font-mono text-2xs text-muted-foreground">fact</span>}
+                {h.decision ? <span className={cn("shrink-0 rounded px-1 font-mono text-2xs", DECISION[h.decision])}>{h.decision}</span> : <span className="shrink-0 rounded bg-muted px-1 font-mono text-2xs text-muted-foreground">fact</span>}
                 <span className="min-w-0 flex-1"><span className="block truncate">{h.title || h.snippet.slice(0, 80)}</span><span className="block truncate font-mono text-2xs text-muted-foreground">{h.slug}</span></span>
               </li>
             ))}
@@ -244,14 +246,14 @@ function RunPanel({ run, signals, act, onDone }: { run: NonNullable<ReturnType<t
   return (
     <div className="flex flex-col gap-2.5">
       <p className="flex items-center gap-2 text-2xs text-muted-foreground">
-        {live ? <Loader2 className="size-3 animate-spin text-live" /> : run.status === "error" ? <CircleAlert className="size-3 text-cut" /> : <Check className="size-3 text-keep" />}
+        {live ? <Loader2 className="size-3 animate-spin" /> : run.status === "error" ? <CircleAlert className={"size-3.5 rounded-full " + ALERT} /> : <Check className="size-3 text-foreground" />}
         <span className="font-mono">{run.runId}</span>
         <span>{live ? (props.length ? "council is arguing…" : run.recall ? "proposing…" : "recalling memory…") : run.end?.text ?? run.status}</span>
-        {replay && <span className="rounded border border-escalate/50 px-1 font-mono text-escalate">REPLAY</span>}
+        {replay && <span className={"rounded px-1 font-mono font-semibold " + ALERT}>REPLAY</span>}
       </p>
-      {run.failure && <p role="alert" className="text-xs text-cut">{run.failure}</p>}
+      {run.failure && <p role="alert" className={"rounded-lg px-2.5 py-1.5 text-xs " + ALERT}>{run.failure}</p>}
       {props.map((p) => <ProposalCard key={p.id} p={p} signal={signals.find((s) => s.meta?.proposalId === p.id) ?? null} act={act} onDone={onDone} />)}
-      {run.errors.length > 0 && !live && <p className="text-2xs text-cut">{run.errors.length} error(s): {run.errors[run.errors.length - 1].text}</p>}
+      {run.errors.length > 0 && !live && <p className={"rounded px-1.5 py-0.5 text-2xs " + ALERT}>{run.errors.length} error(s): {run.errors[run.errors.length - 1].text}</p>}
     </div>
   )
 }
@@ -269,7 +271,7 @@ function ProposalCard({ p, signal, act, onDone }: { p: Proposal; signal: Signal 
       <div className="flex items-start gap-2">
         <p className="min-w-0 flex-1 text-sm leading-5 font-medium">{p.title}</p>
         {p.executor && <span className="shrink-0 rounded bg-muted px-1 font-mono text-2xs text-muted-foreground">{p.executor}</span>}
-        {p.verdict && <span className={cn("shrink-0 rounded px-1.5 font-mono text-2xs ring-1", DECISION[p.verdict.decision])}>{p.verdict.decision}</span>}
+        {p.verdict && <span className={cn("shrink-0 rounded px-1.5 font-mono text-2xs", DECISION[p.verdict.decision])}>{p.verdict.decision}</span>}
       </div>
       <div className="mt-2 flex flex-wrap gap-1">
         {ROLES.map(([role, label]) => {
@@ -282,22 +284,22 @@ function ProposalCard({ p, signal, act, onDone }: { p: Proposal; signal: Signal 
         })}
       </div>
       {p.verdict?.reason && <p className="mt-1.5 text-2xs text-muted-foreground">{p.verdict.reason}</p>}
-      {running && <p className="mt-2 flex items-center gap-1.5 text-xs text-live"><Loader2 className="size-3 animate-spin" />{p.executor} is running…</p>}
+      {running && <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground"><Loader2 className="size-3 animate-spin" />{p.executor} is running…</p>}
       {result && (
-        <div className={cn("mt-2 rounded-lg p-2.5 text-xs leading-5", result.ok === false ? "bg-cut/10 text-cut" : "bg-keep/5")}>
+        <div className={cn("mt-2 rounded-lg p-2.5 text-xs leading-5", result.ok === false ? ALERT : "bg-muted/50")}>
           <Md text={result.summary || result.text} />
         </div>
       )}
       {waiting && (
         <div className="mt-2.5 flex flex-wrap items-center gap-2">
-          <Button size="sm" className="rounded-full bg-keep text-background hover:bg-keep/85" disabled={busy} onClick={() => void go(() => act.approve(signal))}><Check />Approve</Button>
+          <Button size="sm" className="rounded-full" disabled={busy} onClick={() => void go(() => act.approve(signal))}><Check />Approve</Button>
           <Button size="sm" variant="outline" className="rounded-full" disabled={busy} onClick={() => void go(() => act.reject(signal))}><X />Reject</Button>
           <span className="text-2xs text-muted-foreground">Approve runs it on {String(signal.meta?.executor)} now.</span>
         </div>
       )}
       {p.verdict?.decision === "hold" && !signal && <p className="mt-2 text-2xs text-muted-foreground">Waiting for the workspace to pick up this hold…</p>}
       {after && <p className="mt-2 text-2xs text-muted-foreground">{after}{signal?.body && signal.lane === "review" ? "" : ""}</p>}
-      {signal && signal.meta?.decidedBy && signal.lane === "review" && signal.body && <div className="mt-2 rounded-lg bg-keep/5 p-2.5 text-xs leading-5"><Md text={signal.body} /></div>}
+      {signal && signal.meta?.decidedBy && signal.lane === "review" && signal.body && <div className="mt-2 rounded-lg bg-muted/50 p-2.5 text-xs leading-5"><Md text={signal.body} /></div>}
     </div>
   )
 }
@@ -312,7 +314,7 @@ function SignalActions({ s, act, onDone }: { s: Signal; act: Acts; onDone: (m: s
   return (
     <div className="flex flex-wrap gap-2">
       {items.map(([label, fn, msg]) => (
-        <Button key={label} size="sm" variant={label === "Approve" ? "default" : "outline"} className={cn("rounded-full", label === "Approve" && "bg-keep text-background hover:bg-keep/85")} onClick={() => void fn().then(() => onDone(msg))}>
+        <Button key={label} size="sm" variant={label === "Approve" ? "default" : "outline"} className="rounded-full" onClick={() => void fn().then(() => onDone(msg))}>
           {label === "Reject" ? <X /> : <Check />}{label}
         </Button>
       ))}

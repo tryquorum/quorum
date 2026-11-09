@@ -4,6 +4,7 @@ import { Check, CircleAlert, ExternalLink, Gavel, Loader2, MessageSquareText, X 
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { Area, Item, Signal } from "./api"
+import { ALERT } from "./tone"
 import { W } from "./when"
 
 const pad = (n: number) => String(n).padStart(2, "0")
@@ -25,7 +26,7 @@ export function SourceChip({ item, className }: { item: { source?: string; meta?
 }
 
 type RowShell = { selected: boolean; onSelect: () => void; children: React.ReactNode; tone?: "decide" | "review" | "plain" }
-function Row({ selected, onSelect, children, tone = "plain" }: RowShell) {
+function Row({ selected, onSelect, children }: RowShell) {
   return (
     <li
       data-selected={selected || undefined}
@@ -33,8 +34,6 @@ function Row({ selected, onSelect, children, tone = "plain" }: RowShell) {
       className={cn(
         "group/tr relative flex items-start gap-3 rounded-xl border border-transparent px-3 py-2.5 transition-colors max-md:min-h-11 hover:bg-muted/50",
         selected && "border-border bg-muted/60",
-        tone === "decide" && "before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-full before:bg-escalate",
-        tone === "review" && "before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-full before:bg-keep",
       )}
     >
       {children}
@@ -49,7 +48,7 @@ export function ItemRow({ item, area, selected, busy, onSelect, onOpen, onDone, 
   return (
     <Row selected={selected} onSelect={onSelect}>
       <button type="button" onClick={onDone} disabled={busy || item.done} aria-label={(item.done ? "Done: " : "Mark done: ") + item.text} title="Done (E)"
-        className={cn("mt-0.5 grid size-[18px] shrink-0 place-items-center rounded-full border border-foreground/30 text-transparent transition-colors hover:border-keep hover:text-keep disabled:opacity-60 max-md:size-6", item.done && "border-keep bg-keep/20 text-keep")}>
+        className={cn("mt-0.5 grid size-[18px] shrink-0 place-items-center rounded-full border border-foreground/30 text-transparent transition-colors hover:border-foreground hover:text-foreground disabled:opacity-60 max-md:size-6", item.done && "border-foreground bg-foreground text-background")}>
         <Check className="size-3" strokeWidth={3} />
       </button>
       <div className="min-w-0 flex-1">
@@ -58,12 +57,12 @@ export function ItemRow({ item, area, selected, busy, onSelect, onOpen, onDone, 
           <p className="mt-0.5 flex items-center gap-1.5 truncate text-2xs text-muted-foreground">
             {area && <span className="inline-flex shrink-0 items-center gap-1"><span className="size-1.5 rounded-full" style={{ background: area.color }} aria-hidden />{area.name}</span>}
             <SourceChip item={item} />
-            {item.runId && <a href={"/app"} className="inline-flex items-center gap-1 font-mono text-memory hover:underline"><Gavel className="size-3" />{item.runId}</a>}
+            {item.runId && <a href={"/app"} className="inline-flex items-center gap-1 font-mono text-muted-foreground hover:text-foreground hover:underline"><Gavel className="size-3" />{item.runId}</a>}
             {lastAuto && <span className="truncate">{lastAuto.text}</span>}
           </p>
         )}
       </div>
-      {when && <span className={cn("mt-0.5 shrink-0 num font-mono text-2xs text-muted-foreground", late && "text-cut")}>{dueLabel(when)}</span>}
+      {when && <span className={cn("mt-0.5 shrink-0 num font-mono text-2xs text-muted-foreground", late && "rounded px-1 " + ALERT)}>{dueLabel(when)}</span>}
       {onAsk && !item.runId && !item.done && (
         <Button type="button" variant="outline" size="xs" className="shrink-0 rounded-full max-sm:px-1.5" onClick={onAsk} disabled={busy} title="Ask the council (Q)" aria-label={"Ask the council: " + item.text}>
           <Gavel /><span className="max-sm:hidden">Ask the council</span>
@@ -83,7 +82,7 @@ export function SignalRow({ s, selected, busy, onSelect, onOpen, onApprove, onRe
   const tone = s.lane === "review" ? "review" : s.lane === "decide" || s.lane === "now" ? "decide" : "plain"
   return (
     <Row selected={selected} onSelect={onSelect} tone={tone}>
-      <span className={cn("mt-0.5 grid size-[18px] shrink-0 place-items-center", failed ? "text-cut" : running ? "text-live" : tone === "review" ? "text-keep" : "text-escalate")} aria-hidden>
+      <span className={cn("mt-0.5 grid size-[18px] shrink-0 place-items-center", failed ? "rounded-full " + ALERT : "text-muted-foreground")} aria-hidden>
         {failed ? <CircleAlert className="size-4" /> : running ? <Loader2 className="size-4 animate-spin" /> : tone === "review" ? <MessageSquareText className="size-4" /> : <Gavel className="size-4" />}
       </span>
       <div className="min-w-0 flex-1">
@@ -96,7 +95,7 @@ export function SignalRow({ s, selected, busy, onSelect, onOpen, onApprove, onRe
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
         {onApprove && (
-          <Button type="button" size="xs" className="rounded-full bg-keep text-background hover:bg-keep/85" onClick={onApprove} disabled={busy} title="Approve (A)">
+          <Button type="button" size="xs" className="rounded-full" onClick={onApprove} disabled={busy} title="Approve (A)">
             <Check /><span className="max-sm:sr-only">Approve</span>
           </Button>
         )}

@@ -5,6 +5,7 @@ import { forwardRef, useState } from "react"
 import { CalendarClock, CornerDownLeft, Feather } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { newKey, ws, type Item } from "./api"
+import { ALERT } from "./tone"
 import { W } from "./when"
 
 type Status = { tone: "ok" | "warn" | "error"; text: string } | null
@@ -58,7 +59,7 @@ export const CaptureBar = forwardRef<HTMLInputElement, { onSaved: (item: Item) =
         </button>
       </div>
       {(status || when) && (
-        <p role="status" className={cn("border-t px-3 py-1.5 text-2xs", status?.tone === "error" ? "text-cut" : status?.tone === "warn" ? "text-escalate" : "text-muted-foreground")}>
+        <p role="status" className={cn("border-t px-3 py-1.5 text-2xs", status?.tone === "error" ? "rounded-b-2xl border-transparent " + ALERT : status?.tone === "warn" ? "text-foreground" : "text-muted-foreground")}>
           {status ? status.text : when ? <span className="sm:hidden">Due {W.long(when.at)} · </span> : null}
           {!status && when && <>Saves “{when.title || text.trim()}” as you wrote it</>}
         </p>

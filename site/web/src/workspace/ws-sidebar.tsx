@@ -13,6 +13,7 @@ import { QuorumMark } from "@/components/wordmark"
 import { cn } from "@/lib/utils"
 import type { Area, Item, Meta, NowView } from "./api"
 import { dueLabel, isLate, whenOf } from "./rows"
+import { ALERT } from "./tone"
 
 export type View = "now" | "inbox" | "goals" | "signals" | "list"
 export const VIEWS: readonly View[] = ["now", "inbox", "goals", "signals", "list"]
@@ -97,7 +98,7 @@ export function WsSidebar({ view, onView, onSearch, meta, now, items, space, onS
               {views.map(([v, label, Icon, n]) => (
                 <SidebarMenuItem key={v}>
                   <SidebarMenuButton isActive={view === v} onClick={() => go(() => onView(v))}><Icon /><span>{label}</span></SidebarMenuButton>
-                  {n > 0 && <SidebarMenuBadge className={cn(v === "now" && "text-escalate")}>{n}</SidebarMenuBadge>}
+                  {n > 0 && <SidebarMenuBadge className={cn(v === "now" && "rounded-full bg-red-600 px-1.5 !text-white")}>{n}</SidebarMenuBadge>}
                 </SidebarMenuItem>
               ))}
               <SidebarMenuItem>
@@ -122,7 +123,7 @@ export function WsSidebar({ view, onView, onSearch, meta, now, items, space, onS
                       <div className="grid min-w-0 flex-1 gap-1">
                         <span className="truncate">{g.goal.text}</span>
                         <span className="flex items-center gap-1.5">
-                          <span className="h-1 flex-1 overflow-hidden rounded-full bg-foreground/10"><span className="block h-full rounded-full bg-keep" style={{ width: pct + "%" }} /></span>
+                          <span className="h-1 flex-1 overflow-hidden rounded-full bg-foreground/10"><span className="block h-full rounded-full bg-foreground" style={{ width: pct + "%" }} /></span>
                           <span className="num font-mono text-2xs text-muted-foreground">{g.done}/{g.total}</span>
                         </span>
                       </div>
@@ -144,7 +145,7 @@ export function WsSidebar({ view, onView, onSearch, meta, now, items, space, onS
                     <li key={t.id}>
                       <button type="button" onClick={() => go(() => onOpenItem(t.id))} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-sidebar-accent max-md:min-h-11">
                         <span className="min-w-0 flex-1 truncate">{t.text.split("\n")[0]}</span>
-                        {w && <span className={cn("shrink-0 num font-mono text-2xs text-muted-foreground", isLate(w) && "text-cut")}>{dueLabel(w)}</span>}
+                        {w && <span className={cn("shrink-0 num font-mono text-2xs text-muted-foreground", isLate(w) && "rounded px-1 " + ALERT)}>{dueLabel(w)}</span>}
                       </button>
                     </li>
                   )
@@ -189,8 +190,8 @@ export function WsSidebar({ view, onView, onSearch, meta, now, items, space, onS
               <span className="grid size-7 shrink-0 place-items-center rounded-full bg-foreground/10 text-xs font-semibold uppercase">{meta?.me?.email?.[0] ?? "?"}</span>
               <div className="grid min-w-0 flex-1 leading-tight">
                 <span className="truncate text-xs">{meta?.me?.email ?? "Not signed in"}</span>
-                <span className={cn("flex items-center gap-1 truncate text-2xs", imp && !imp.ok ? "text-cut" : "text-muted-foreground")} title={imp?.error ?? imp?.base ?? ""}>
-                  <span className={cn("size-1.5 shrink-0 rounded-full", !imp ? "bg-foreground/25" : imp.ok ? "bg-keep" : "bg-cut")} />
+                <span className={cn("flex items-center gap-1 truncate text-2xs", imp && !imp.ok ? "rounded px-1 " + ALERT : "text-muted-foreground")} title={imp?.error ?? imp?.base ?? ""}>
+                  <span className={cn("size-1.5 shrink-0 rounded-full", !imp ? "bg-foreground/25" : imp.ok ? "bg-foreground/60" : "bg-white")} />
                   {!imp ? "Direction Board import off" : imp.ok ? "Direction Board · " + imp.items + " copied" : "Direction Board unreachable"}
                 </span>
               </div>
