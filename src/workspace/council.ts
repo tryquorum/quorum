@@ -29,9 +29,14 @@ export function initCouncilSync(db: Database) {
 }
 
 /** 엔진 저장소에서 새 판정·실행 결과를 읽어 사건으로 넣어요. 다시 틀기(replay)와 Workspace 승인 실행은 건너뛰어요(가짜 성공 금지) */
-export function syncCouncil(db: Database, store: EngineStore, now = Date.now()): number {
+/**
+ * only: 이 실행들만 읽어요(호스팅 대기열 결과가 자기 실행을 콕 집어 읽을 때). 없으면 최근 실행 100개.
+ * 창은 다시 틀기·레시피·승인 실행을 뺀 뒤 100개라서, 그런 실행이 많아도 의회 실행이 창 밖으로 밀리지 않아요
+ */
+export function syncCouncil(db: Database, store: EngineStore, now = Date.now(), only?: (RunSummary & { kind?: string })[]): number {
   let n = 0
-  for (const run of store.listRuns(100)) {
+  const runs = only ?? store.listRuns(400).filter((r) => r.mode !== "replay" && r.kind !== "custom" && r.kind !== "replay").slice(0, 100)
+  for (const run of runs) {
     // 서버가 적은 kind 로 걸러요. kind 가 없는 옛 행(소유자 저장소)만 요청 글 머리로 짐작해요
     if (run.mode === "replay" || run.kind === "custom" || run.kind === "replay" || (!run.kind && run.request.startsWith(APPROVE_PREFIX))) continue
     const mark = db.query("SELECT last_seq, closed FROM council_sync WHERE run_id=?").get(run.runId) as { last_seq: number; closed: number } | null

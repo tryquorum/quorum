@@ -8,7 +8,8 @@ import { RunManager } from "../engine/runs"
 import type { CouncilDeps, Executor } from "../engine/council"
 import type { McpQueue } from "../engine/mcp"
 import { createWorkspace } from "../workspace/api"
-import { finishQueued } from "../workspace/council"
+import { finishQueued, syncCouncil } from "../workspace/council"
+import { getSignal } from "../workspace/signals"
 import { createQueue, type TaskQueue } from "./queue"
 import { createGuestMemory } from "./memory"
 import { modelAsk, type ModelConfig } from "./model"
@@ -70,12 +71,20 @@ export function makeGuestTenant(c: GuestConfig): GuestTenant {
   tasks = createQueue(ws.db, { now, ...(c.leaseMs ? { leaseMs: c.leaseMs } : {}) })
   const memory = createGuestMemory(ws.db, now)
 
-  // 결과가 오면 그 사건을 Review(또는 실패면 Needs you)로. 의회가 통과시킨 일은 사건 ref 가 대기열 ref 와 같아요
+  // 결과가 오면 그 사건을 Review(또는 실패면 Needs you)로. 이 함수는 결과 기록과 한 트랜잭션 안에서 돌아요:
+  // 사건을 찾지 못하거나 옮기지 못하면 던져서 결과도 기록하지 않아요(에이전트는 같은 리스로 다시 보고해요).
+  // 의회가 통과시킨 일은 그 실행 하나를 콕 집어 읽어서 사건을 만들어요(최근 실행 창과 상관없이, 오류를 삼키지 않고)
   tasks.onReport((task, ok, text) => {
-    ws.sync()
-    const signalId = task.ref.startsWith("approve:") ? task.ref.split(":")[1]
-      : (ws.db.query("SELECT id FROM signals WHERE ref=?").get(task.ref) as { id: string } | null)?.id
-    if (signalId) finishQueued(ws.db, signalId, { ok, text, executor: task.executor ?? "aside", taskId: task.id }, now())
+    let signalId: string | undefined
+    if (task.ref.startsWith("approve:")) signalId = task.ref.split(":")[1]
+    else {
+      const run = task.runId ? store.getRun(task.runId) : null
+      if (!run) throw new Error("the council run for task " + task.id + " is missing")
+      syncCouncil(ws.db, store, now(), [run])
+      signalId = (ws.db.query("SELECT id FROM signals WHERE ref=?").get(task.ref) as { id: string } | null)?.id
+    }
+    if (!signalId || !getSignal(ws.db, signalId)) throw new Error("no Workspace signal for task " + task.id)
+    if (!finishQueued(ws.db, signalId, { ok, text, executor: task.executor ?? "aside", taskId: task.id }, now())) throw new Error("could not update the Workspace signal for task " + task.id)
   })
 
   const timeout = c.opinionTimeoutMs ?? 15 * 60_000

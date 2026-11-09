@@ -277,6 +277,8 @@ export function createApp(d: AppDeps, listener: Listener = "local", pub?: Public
         const body = (await req.json().catch(() => null)) as Record<string, unknown> | null
         if (!body) return err(400, "JSON body required")
         if (body.mode === "replay") {
+          // 다시 틀기는 의회 제한 밖이라 비소유자는 쓸 수 없어요(자원 소모·Workspace 창 밀어내기 방지)
+          if (guest) return err(403, "replays are only for the host on the hosted site")
           const replayId = str(body.replayId, 80)
           if (!replayId) return err(400, "replayId required for replay")
           const r = t.runs.replay(replayId)
