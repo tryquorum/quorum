@@ -165,6 +165,11 @@ export function Console() {
     return () => window.removeEventListener("keydown", onKey)
   }, [])
 
+  // Workspace 사이드바의 Recipes 링크(/app#recipes)가 레시피 패널로 바로 오게 해요(패널은 첫 렌더 뒤에 생겨서 브라우저가 스스로 못 찾아요)
+  useEffect(() => {
+    if (location.hash === "#recipes") requestAnimationFrame(() => document.getElementById("recipes")?.scrollIntoView({ block: "start" }))
+  }, [])
+
   const isReplay = source === "fixture"
   const proposals = view.order.map((id) => view.proposals[id])
   const busy = view.status === "connecting" || view.status === "running"
@@ -200,6 +205,7 @@ export function Console() {
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
           <Brand />
           <span className="font-mono text-xs text-muted-foreground">console</span>
+          <a href={import.meta.env.BASE_URL + "w"} className="rounded-full border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground">Workspace</a>
           <div className="ml-auto"><HealthChips /></div>
         </div>
       </header>
@@ -276,7 +282,7 @@ export function Console() {
             <RecallPanel view={view} />
             <RecipePanel steps={view.recipe} />
             <OutcomePanel view={view} />
-            <RecipesPanel disabledReason={STATIC ? "Recipes run against your signed-in browser, so they only run locally." : undefined} busy={busy} onRun={(id) => void startRecipe(id)} />
+            <div id="recipes" className="scroll-mt-4"><RecipesPanel disabledReason={STATIC ? "Recipes run against your signed-in browser, so they only run locally." : undefined} busy={busy} onRun={(id) => void startRecipe(id)} /></div>
             <Panel title="Event stream" icon={Terminal} aside={<span className="num text-2xs text-muted-foreground">{view.events.length}</span>}>
               {view.events.length ? <EventLog events={view.events} /> : <p className="text-sm text-muted-foreground">Raw contract events, in order.</p>}
             </Panel>

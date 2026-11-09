@@ -203,7 +203,14 @@ export function Workspace() {
               <h1 className="text-sm font-semibold">{route.goal ? "Goal" : TITLES[route.view]}</h1>
               {route.view === "now" && now && <span className="font-mono text-2xs text-muted-foreground">{now.today} · {total ? total + " to handle" : "all clear"}</span>}
               <div className="ml-auto flex items-center gap-1.5">
-                {imp && <SyncButton onSync={async () => { await ws.syncBoard().catch(() => null); await Promise.all([data.reload(), data.reloadMeta()]) }} />}
+                {imp && <SyncButton onSync={async () => {
+                  // 3070 을 GET 으로 다시 읽고 결과를 알려 줘요(board 처럼 실패해도 마지막 사본은 그대로)
+                  try {
+                    const s = await ws.syncBoard()
+                    await Promise.all([data.reload(), data.reloadMeta()])
+                    setToast(s?.ok ? { tone: "ok", text: "Synced from Direction Board · " + s.items + " copied" } : { tone: "error", text: "Sync failed: " + (s?.error ?? "no answer") + ". Your copies stay as they were." })
+                  } catch (e) { setToast({ tone: "error", text: "Sync failed: " + (e instanceof Error ? e.message : String(e)) }) }
+                }} />}
                 <button type="button" onClick={() => setPalette(true)} className="inline-flex items-center justify-center gap-1.5 rounded-full border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground max-md:size-11 [@media(pointer:coarse)]:size-11" aria-label="Search"><Search className="size-3.5" /><kbd className="font-mono text-2xs max-sm:hidden">⌘K</kbd></button>
                 <button type="button" onClick={() => setHelp(true)} className="rounded-full p-1.5 text-muted-foreground hover:text-foreground max-sm:hidden" aria-label="Keyboard shortcuts"><Keyboard className="size-4" /></button>
               </div>
