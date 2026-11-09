@@ -24,7 +24,7 @@ export const CRITICS: { role: Role; name: string; criteria: string }[] = [
 
 export type BoardHit = { ref: string; title: string; kind: string; snippet?: string }
 export type ProposalDraft = { title: string; executor: "aside" | "codex" | "board" | "none"; why: string; task: string; risk: string[]; actor: string }
-export type ProposalView = { proposalId: string; title: string; executor: string; why: string; task: string }
+export type ProposalView = { proposalId: string; title: string; executor: string; why: string; task: string; risk?: string[] }
 export type CritiqueDraft = { proposalId: string; role: Role; stance: Stance; reason: string }
 
 const JSON_ONLY = "브라우저나 도구를 쓰지 말고, 설명 없이 JSON 하나만 답해요."
@@ -35,7 +35,8 @@ export function proposalPrompt(p: Persona, request: string, board: BoardHit[]): 
     "사람의 요청: " + JSON.stringify(request),
     board.length ? "[방향판에 이미 있는 관련 항목 — 같은 일을 또 만들지 마]\n" + board.map((b) => "- " + b.kind + " " + b.title).join("\n") : "",
     "실행기: aside = 사람의 로그인된 브라우저로 읽고 정리, codex = 새 빈 샌드박스 저장소에서 작은 코드 작성, board = 방향판에 메모로 남기기, none = 실행 없이 답만.",
-    "규칙: 보내기·결제·제출·신청·머지·공개 게시는 하지 말고 초안까지만. 확인 안 된 걸 사실처럼 쓰지 마. 위험이 있으면 risk 에 money|external|security|prod|legal|private 중에서 적어.",
+    "규칙: 보내기·결제·제출·신청·머지·공개 게시는 하지 말고 초안까지만. 확인 안 된 걸 사실처럼 쓰지 마.",
+    "risk 는 실행이 실제로 그 일을 할 때만 적어: money(돈을 씀) | external(메일·메시지·글을 밖으로 보냄) | prod(실서비스를 바꿈) | legal(계약·서명) | private(개인정보를 밖에 남김) | security(비밀값을 다룸). 읽고 정리만 하면 빈 배열이야.",
     "할 일을 1~2개 제안해. task 는 실행기가 그대로 따를 구체적 지시(어디서 무엇을 읽고 어떤 형식으로 정리할지)로 써.",
     JSON_ONLY,
     '{"proposals":[{"title":"한 줄 제목","executor":"aside|codex|board|none","why":"왜 필요한지 한 줄","task":"구체적 지시","risk":[]}]}',
@@ -46,7 +47,7 @@ export function critiquePrompt(c: (typeof CRITICS)[number], request: string, pro
   return [
     "너는 Quorum 의회의 " + c.name + " 역할 반박 봇이야. 기준: " + c.criteria,
     "사람의 요청: " + JSON.stringify(request),
-    "[제안 목록]\n" + proposals.map((p) => p.proposalId + ". " + p.title + " (실행기 " + p.executor + ")\n   이유: " + p.why + "\n   지시: " + p.task).join("\n"),
+    "[제안 목록]\n" + proposals.map((p) => p.proposalId + ". " + p.title + " (실행기 " + p.executor + (p.risk?.length ? ", 제안자가 적은 위험 " + p.risk.join("·") : "") + ")\n   이유: " + p.why + "\n   지시: " + p.task).join("\n"),
     "제안마다 하나씩 stance 를 정해: keep(통과 찬성) | cut(빼자) | escalate(사람이 직접 봐야 함). reason 은 한 줄, 근거를 구체적으로.",
     JSON_ONLY,
     '{"critiques":[{"proposalId":"p1","stance":"keep|cut|escalate","reason":"한 줄"}]}',

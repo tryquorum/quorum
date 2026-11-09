@@ -2,7 +2,7 @@
 // 바깥 도구(Aside, codex, gbrain, 방향판)는 모두 deps 로 받아서, 시험은 가짜 deps 로 돌려요(aside exec 는 유료라 시험에서 부르지 않아요).
 import type { EventType, Role } from "../contract"
 import { DEFAULT_REUSE_THRESHOLD, dedupProposals, pickReuse } from "./dedup"
-import { decide } from "./rules"
+import { decide, RULES_VERSION } from "./rules"
 import { CRITICS, PROPOSERS, critiquePrompt, parseBotJson, proposalPrompt, readCritiques, readProposals, type BoardHit, type CritiqueDraft, type ProposalDraft } from "./roles"
 import type { MemoryRecord, Recalled, StoredDecision } from "../executors/gbrain"
 
@@ -53,10 +53,15 @@ export async function runCouncil(runId: string, request: string, deps: CouncilDe
     try { board = await deps.boardContext(request) } catch (e) { emit("error", "board", "방향판을 읽지 못했어요: " + msg(e), { stage: "recall" }) }
   }
   const threshold = deps.reuseThreshold ?? DEFAULT_REUSE_THRESHOLD
-  const { best, hits } = pickReuse(request, candidates, threshold)
-  emit("recall", "gbrain", hits.length ? "비슷한 판정 " + hits.length + "개 · 가장 가까운 것 " + Math.round(hits[0].score * 100) + "%" + (best ? " → 재사용" : "") : "비슷한 판정이 없어요", {
+  // 다른 규칙 버전으로 내린 판정은 재사용하지 않아요(규칙을 고친 뒤 옛 판정이 그대로 되풀이되지 않게)
+  const current = candidates.filter((c) => c.rulesVersion === RULES_VERSION)
+  const stale = candidates.length - current.length
+  const { best, hits } = pickReuse(request, current, threshold)
+  emit("recall", "gbrain", (hits.length ? "비슷한 판정 " + hits.length + "개 · 가장 가까운 것 " + Math.round(hits[0].score * 100) + "%" + (best ? " → 재사용" : "") : "비슷한 판정이 없어요") + (stale ? " (옛 규칙 판정 " + stale + "개는 건너뜀)" : ""), {
     hits: hits.slice(0, 5).map((h) => ({ id: h.id, summary: firstLine(h.request, 120), decision: tallyText(h.verdicts), score: Math.round(h.score * 1000) / 1000 })),
     threshold,
+    rulesVersion: RULES_VERSION,
+    stale,
     board: board.slice(0, 5),
   })
 
@@ -88,7 +93,7 @@ export async function runCouncil(runId: string, request: string, deps: CouncilDe
 
     // 3) gstack 역할 반박 병렬
     const ids = new Set(proposals.map((p) => p.proposalId))
-    const view = proposals.map(({ proposalId, title, executor, why, task }) => ({ proposalId, title, executor, why, task }))
+    const view = proposals.map(({ proposalId, title, executor, why, task, risk }) => ({ proposalId, title, executor, why, task, risk }))
     const critiques: CritiqueDraft[] = []
     const cr = await Promise.allSettled(CRITICS.map((c) => deps.ask("bot:" + c.role, critiquePrompt(c, request, view)).then((t) => readCritiques(parseBotJson(t), c.role, ids))))
     cr.forEach((r, i) => {
@@ -127,7 +132,7 @@ export async function runCouncil(runId: string, request: string, deps: CouncilDe
   // 6) 기억
   if (deps.remember && decisions.length) {
     try {
-      const id = await deps.remember({ quorumVerdict: 1, runId, request, at: new Date(now()).toISOString(), ...(reusedFrom ? { reusedFrom } : {}), verdicts: decisions })
+      const id = await deps.remember({ quorumVerdict: 1, rulesVersion: RULES_VERSION, runId, request, at: new Date(now()).toISOString(), ...(reusedFrom ? { reusedFrom } : {}), verdicts: decisions })
       emit("memory.saved", "gbrain", "판정을 기억했어요", { id, ...(reusedFrom ? { reusedFrom } : {}) })
     } catch (e) {
       emit("error", "gbrain", "판정을 기억하지 못했어요: " + msg(e), { stage: "memory", errorKind: kindOf(e) })

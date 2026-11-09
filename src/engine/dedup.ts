@@ -6,12 +6,20 @@
 export const normTitle = (s: string) => s.normalize("NFC").toLowerCase().replace(/[\s\p{P}\p{S}]+/gu, "")
 export const SAME_TITLE_MIN = 4
 
-export function dedupProposals<T extends { title: string; actor: string }>(list: T[]): (T & { alsoBy: string[] })[] {
+/**
+ * near: 같은 실행기의 제안끼리 제목 비슷함이 이 값 이상이면 한 제안으로 합쳐요(먼저 온 제안을 남겨요).
+ * board 규칙(완전히 같은 제목만)에 더한 단계예요. 첫 실제 실행에서 "공지 읽고 할 일 정리"가 표현만 바꿔 두 번 올라와 표가 갈렸어요.
+ */
+export const NEAR_DUPLICATE = 0.6
+
+export function dedupProposals<T extends { title: string; actor: string; executor?: string }>(list: T[], near = NEAR_DUPLICATE): (T & { alsoBy: string[] })[] {
   const out: (T & { alsoBy: string[] })[] = []
   const byKey = new Map<string, T & { alsoBy: string[] }>()
   for (const p of list) {
     const key = normTitle(p.title)
-    const same = key.length >= SAME_TITLE_MIN ? byKey.get(key) : undefined
+    const same = key.length >= SAME_TITLE_MIN
+      ? byKey.get(key) || out.find((o) => o.executor === p.executor && normTitle(o.title).length >= SAME_TITLE_MIN && similarity(o.title, p.title) >= near)
+      : undefined
     if (same) {
       if (same.actor !== p.actor && !same.alsoBy.includes(p.actor)) same.alsoBy.push(p.actor)
       continue

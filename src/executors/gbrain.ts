@@ -8,7 +8,7 @@ export const VERDICT_PREFIX = "quorum/verdicts/"
 const FENCE = "\u0060".repeat(3)
 
 export type StoredDecision = { proposalId: string; title: string; executor: string; task: string; decision: "pass" | "hold" | "reject"; reason: string }
-export type MemoryRecord = { quorumVerdict: 1; runId: string; request: string; at: string; reusedFrom?: string; verdicts: StoredDecision[] }
+export type MemoryRecord = { quorumVerdict: 1; rulesVersion?: number; runId: string; request: string; at: string; reusedFrom?: string; verdicts: StoredDecision[] }
 export type Recalled = MemoryRecord & { id: string }
 
 export function formatRecord(rec: MemoryRecord): string {

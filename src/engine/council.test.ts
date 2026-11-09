@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import type { EventType } from "../contract"
 import { runCouncil, type CouncilDeps } from "./council"
+import { RULES_VERSION } from "./rules"
 import type { MemoryRecord, Recalled } from "../executors/gbrain"
 
 type Ev = { type: EventType; actor: string; text: string; data?: Record<string, unknown> }
@@ -73,7 +74,7 @@ describe("runCouncil", () => {
 
   test("a close remembered verdict is reused and the council is skipped", async () => {
     const prior: Recalled = {
-      id: "quorum/verdicts/r0", quorumVerdict: 1, runId: "r0", request: "오늘 c0mpiled 행사 공지에서 내가 할 일 정리해줘", at: "x",
+      id: "quorum/verdicts/r0", quorumVerdict: 1, rulesVersion: RULES_VERSION, runId: "r0", request: "오늘 c0mpiled 행사 공지에서 내가 할 일 정리해줘", at: "x",
       verdicts: [{ proposalId: "p1", title: "공지 읽고 할 일 정리", executor: "aside", task: "정리", decision: "pass", reason: "keep 4 · cut 0" }],
     }
     const { deps, calls, executed, saved } = fakeDeps({ recall: async () => [prior] })
@@ -87,6 +88,13 @@ describe("runCouncil", () => {
     expect(executed).toEqual(["aside:p1"])
     expect(saved[0].reusedFrom).toBe("quorum/verdicts/r0")
     expect(events.find((e) => e.type === "recall")?.data?.hits).toHaveLength(1)
+    // 옛 규칙 버전의 같은 판정은 재사용하지 않고 의회를 다시 열어요
+    const old = fakeDeps({ recall: async () => [{ ...prior, rulesVersion: undefined }] })
+    const o = collect()
+    const r2 = await runCouncil("r2b", "오늘 c0mpiled 행사 공지에서 내가 할 일 정리", old.deps, o.emit)
+    expect(r2.reusedFrom).toBeUndefined()
+    expect(old.calls.length).toBe(7)
+    expect(o.events.find((e) => e.type === "recall")?.data).toMatchObject({ stale: 1, hits: [] })
   })
 
   test("a far remembered verdict is shown in recall but the council still runs", async () => {

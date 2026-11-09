@@ -7,6 +7,14 @@ import type { Decision, Role } from "../contract"
 
 export const RISKS = new Set(["money", "external", "security", "prod", "legal", "private"])
 export const RISK_KO: Record<string, string> = { money: "돈", external: "외부로 나가는 것", security: "보안", prod: "실서비스", legal: "계약·법", private: "개인" }
+/**
+ * 표시만으로 사람에게 올리는 위험. board triage 도 위험 표시만으로는 "지금" 칸에 올리지 않고 승인·질문·오류일 때만 올려요.
+ * 개인정보·보안(private, security)은 읽기 전용 일에도 붙기 쉬워서, 표시만으로 막지 않고 CSO 반박(escalate)에 맡겨요.
+ * 첫 실제 실행(rmw8muook5b33e6)에서 네 역할이 모두 keep 한 읽기 전용 일이 private 표시만으로 보류된 것을 보고 고쳤어요.
+ */
+export const HOLD_RISKS = new Set(["money", "external", "prod", "legal"])
+/** 판정 규칙이 바뀌면 올려요. 다른 버전의 기억은 재사용하지 않아요 */
+export const RULES_VERSION = 2
 /** 밖으로 나가거나 되돌릴 수 없는 동작. 제목에 있으면 사람이 정해요(초안까지만) */
 export const OUTBOUND = /(보내|전송|발송|결제|구매|송금|제출|신청|게시|발행|머지|배포|삭제|\b(send|e-?mail|dm|pay|purchase|buy|submit|apply|publish|merge|deploy|delete|transfer)\b)/i
 export const ROLES: Role[] = ["ceo", "reviewer", "qa", "cso"]
@@ -19,7 +27,7 @@ export type ProposalIn = { title: string; executor: string; risk?: string[] }
 export type Ruling = { decision: Decision; reason: string }
 
 export function decide(p: ProposalIn, critiques: CritiqueIn[]): Ruling {
-  const risks = (p.risk || []).filter((r) => RISKS.has(r))
+  const risks = (p.risk || []).filter((r) => HOLD_RISKS.has(r))
   if (risks.length) return { decision: "hold", reason: risks.map((r) => RISK_KO[r]).join(", ") + "이 걸려 있어 사람이 정해요" }
   if (p.executor !== "board" && OUTBOUND.test(p.title)) return { decision: "hold", reason: "밖으로 나가는 일이라 사람이 정해요(초안까지만)" }
   // 역할마다 마지막 의견 하나만 세요

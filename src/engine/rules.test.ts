@@ -29,8 +29,10 @@ describe("decide", () => {
     expect(decide({ title: "Send the recap email", executor: "aside" }, all).decision).toBe("hold")
     // 방향판 메모는 밖으로 나가는 일이 아니에요
     expect(decide({ title: "할 일 게시판에 메모 남기기", executor: "board" }, all).decision).toBe("pass")
-    // 모르는 위험 표시는 무시해요
+    // 모르는 위험 표시와 읽기 전용 일에 붙기 쉬운 private·security 표시는 표시만으로 막지 않아요(CSO 가 escalate 로 막아요)
     expect(decide({ ...p, risk: ["weather"] }, all).decision).toBe("pass")
+    expect(decide({ ...p, risk: ["private", "security"] }, all).decision).toBe("pass")
+    expect(decide({ ...p, risk: ["private"] }, [...all.slice(0, 3), c("cso", "escalate", "개인정보")]).decision).toBe("hold")
   })
 })
 
@@ -69,5 +71,14 @@ describe("dedupProposals (board dedup.ts rule)", () => {
     ])
     expect(out.map((x) => x.title)).toEqual(["공지 정리하기", "할일", "할 일"])
     expect(out[0].alsoBy).toEqual(["bot:keeper"])
+  })
+  test("near-duplicate titles merge only within the same executor (first live run case)", () => {
+    const out = dedupProposals([
+      { title: "오늘 c0mpiled 행사 공지 읽고 내 할 일 체크리스트로 정리", actor: "bot:scout", executor: "aside" },
+      { title: "c0mpiled 공지에서 내 할 일 뽑는 파서 스크립트", actor: "bot:builder", executor: "codex" },
+      { title: "오늘자 c0mpiled 공지를 읽고 내 할 일 정리", actor: "bot:builder", executor: "aside" },
+    ])
+    expect(out.map((x) => x.executor)).toEqual(["aside", "codex"])
+    expect(out[0].alsoBy).toEqual(["bot:builder"])
   })
 })
