@@ -22,3 +22,11 @@ Quick capture reads Korean dates ("내일 3시") with `when.ts` and stores the t
 
 ## Title edits reset on refresh
 The popup copies the title into local state on every load (`detail.tsx` `setTitle(d.item.text)`). A background refresh (after any action in the popup) replaces a title being typed but not yet saved. Fix: only set the title when the popup opens or after a save, the same way the note keeps the draft.
+
+## Two server processes on one state directory
+The server assumes one process per state directory (`.quorum/`), the same assumption `Store.interruptRunning` makes. Approval runs that a process is waiting on live only in that process's memory (`LIVE_EXEC` in `src/workspace/api.ts`). If a second OS process starts on the same directory, it sees the first one's running approvals as interrupted, moves them to Needs you, and a Retry there could start a second paid run while the first is still going. Fix: hold a lock file in the state directory at start, or record the owning process id with each running approval and only recover approvals whose owner is gone.
+
+## Fixed after the re-review (for the record)
+- GET of a signal no longer writes anything: council signals get their approval fence when they are ingested (`withFence` in `src/workspace/signals.ts`); older rows still get one on first use.
+- Pass verdicts whose run ended with an error (server restart) come back to Needs you as interrupted, so Retry works.
+- A late executor result after the 20-minute timeout is appended to the note as "늦게 도착한 결과"; the timeout reason warns that the first run may still be running.

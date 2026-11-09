@@ -71,8 +71,14 @@ export const pubSignal = (r: SignalRow): Signal => {
  * 사건 하나를 분류해서 넣어요(같은 ref 면 갱신). 문자열을 돌려주면 오류.
  * 사람이 처리한 사건(meta.decidedBy 가 있거나 이미 resolved)은 자동 갱신이 덮지 않고 그대로 돌려줘요.
  */
-export function ingestSignal(db: Database, raw: any, now = Date.now()): Signal | string {
+/**
+ * opts.trusted: 서버 자신(의회 동기화·방향판 가져오기)만 켜요. 꺼져 있으면 quorum:/board: ref 는 공백·대소문자를 바꿔도 받지 않아요
+ * (재리뷰 M1: " quorum:…" 로 의회 승인을 흉내 내 실행기를 부를 수 있었어요)
+ */
+export function ingestSignal(db: Database, raw: any, now = Date.now(), opts: { trusted?: boolean } = {}): Signal | string {
   if (!raw || typeof raw !== "object") return "signal must be an object"
+  const refNorm = typeof raw.ref === "string" ? raw.ref.trim().toLowerCase() : ""
+  if (!opts.trusted && /^(quorum|board):/.test(refNorm)) return "ref prefix quorum: and board: are reserved for the server"
   const kind = str(raw.kind, 20)
   if (!(KINDS as readonly string[]).includes(kind)) return "kind must be one of " + KINDS.join("|")
   const title = str(raw.title, 200)
@@ -83,14 +89,15 @@ export function ingestSignal(db: Database, raw: any, now = Date.now()): Signal |
   const lane = raw.lane && (LANES as readonly string[]).includes(raw.lane) ? raw.lane : t.lane
   const reason = str(raw.reason, 300) || t.reason
   const resolved = ["auto", "info"].includes(lane) && kind !== "deadline"
-  const meta = raw.meta && typeof raw.meta === "object" ? raw.meta : {}
+  const meta: Record<string, unknown> = raw.meta && typeof raw.meta === "object" ? { ...raw.meta } : {}
+  const council = refNorm.startsWith("quorum:")
   const existing = ref ? (db.query("SELECT * FROM signals WHERE ref=?").get(ref) as SignalRow | null) : null
   if (existing) {
     const prev = pubSignal(existing)
     if (prev.meta.decidedBy || (existing.status === "resolved" && prev.meta.resolvedBy)) return prev
-    // 결정 전 의회 사건(quorum:)의 실행 지시는 다시 들어온 meta 가 바꾸지 못해요(리뷰 지적 6: 승인 카드에 보인 일과 실행되는 일이 같아야 해요)
-    const locked = existing.ref?.startsWith("quorum:") && existing.status !== "resolved" ? Object.fromEntries(["task", "executor", "proposalId", "runId"].filter((k) => prev.meta[k] !== undefined).map((k) => [k, prev.meta[k]])) : {}
-    const next = { source: str(raw.source, 40) || existing.source, kind, title, body: str(raw.body, 8000) || null, lane, reason, status: resolved ? "resolved" : "open", meta: JSON.stringify({ ...prev.meta, ...meta, ...locked }) }
+    // 의회 사건(quorum:)의 실행 지시와 구분자는 처음 들어온 값으로 잠겨요. 닫힌 뒤에도요(리뷰 지적 6, 재리뷰 M1: 승인 카드에 보인 일과 실행되는 일이 같아야 해요)
+    const locked = existing.ref?.startsWith("quorum:") ? Object.fromEntries(["task", "executor", "proposalId", "runId", "fence"].filter((k) => prev.meta[k] !== undefined).map((k) => [k, prev.meta[k]])) : {}
+    const next = { source: str(raw.source, 40) || existing.source, kind, title, body: str(raw.body, 8000) || null, lane, reason, status: resolved ? "resolved" : "open", meta: JSON.stringify(withFence({ ...prev.meta, ...meta, ...locked }, council)) }
     // 3070 사건은 60초마다, 의회 판정은 읽을 때마다 다시 들어와요. 바뀐 게 없으면 손대지 않아요(updated_at 이 그대로라 Needs you 순서가 흔들리지 않아요)
     const same = next.source === existing.source && next.kind === existing.kind && next.title === existing.title && next.body === existing.body && next.lane === existing.lane && next.reason === existing.reason && next.status === existing.status && next.meta === (existing.meta ?? "{}")
     if (same) return prev
@@ -100,8 +107,14 @@ export function ingestSignal(db: Database, raw: any, now = Date.now()): Signal |
   }
   const id = crypto.randomUUID().replace(/-/g, "").slice(0, 12)
   db.query("INSERT INTO signals(id,ref,source,kind,title,body,lane,reason,status,meta,created_at,updated_at,resolved_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)")
-    .run(id, ref, str(raw.source, 40) || "agent", kind, title, str(raw.body, 8000) || null, lane, reason, resolved ? "resolved" : "open", JSON.stringify(meta), now, now, resolved ? now : null)
+    .run(id, ref, str(raw.source, 40) || "agent", kind, title, str(raw.body, 8000) || null, lane, reason, resolved ? "resolved" : "open", JSON.stringify(withFence(meta, council)), now, now, resolved ? now : null)
   return getSignal(db, id)!
+}
+
+/** 의회 사건은 들어올 때 승인 맥락 구분자(meta.fence)를 한 번 받아요. 그래서 승인 미리보기 GET 이 사건을 쓰지 않아요(재리뷰 L3) */
+function withFence(meta: Record<string, unknown>, council: boolean): Record<string, unknown> {
+  if (!council || (typeof meta.fence === "string" && /^[0-9a-f]{16}$/.test(meta.fence))) return meta
+  return { ...meta, fence: crypto.randomUUID().replace(/-/g, "").slice(0, 16) }
 }
 
 export function getSignal(db: Database, id: string): Signal | null {

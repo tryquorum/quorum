@@ -73,7 +73,7 @@ export function upsertBoardSignal(db: Database, s: any, now: number): number {
     ref, source: "direction-board", kind, title: s.title, body: str(s.body, 8000) || null,
     lane: open ? s.lane : "info", reason: open ? str(s.reason, 300) || null : "방향판에서 닫혔어요",
     meta: { sourceId: s.id, from: "direction-board", boardSource: str(s.source, 40), url: str(s.url, 1000) || null, due: typeof s.due === "number" ? s.due : null },
-  }, now)
+  }, now, { trusted: true })
   return typeof r === "string" ? 0 : 1
 }
 

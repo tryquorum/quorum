@@ -63,12 +63,12 @@ function applyEvent(db: Database, run: RunSummary, e: QuorumEvent, proposals: Ma
   if (e.type === "verdict" && pid) {
     const reason = String(d.reason ?? "")
     if (d.decision === "hold") {
-      ingestSignal(db, { ...base, kind: "approval", body: "의회 보류: " + reason + (p.task ? "\n\n실행기: " + p.executor + "\n지시: " + p.task : ""), reason: "의회가 보류했어요 · 승인이 필요해요" }, now)
+      ingestSignal(db, { ...base, kind: "approval", body: "의회 보류: " + reason + (p.task ? "\n\n실행기: " + p.executor + "\n지시: " + p.task : ""), reason: "의회가 보류했어요 · 승인이 필요해요" }, now, { trusted: true })
     } else if (d.decision === "pass") {
-      if (p.executor === "none") ingestSignal(db, { ...base, kind: "info", body: reason, reason: "통과 · 실행할 일 없음" }, now)
-      else ingestSignal(db, { ...base, kind: "start", agent: p.executor, body: reason, reason: "통과 · " + p.executor + " 실행 중" }, now)
+      if (p.executor === "none") ingestSignal(db, { ...base, kind: "info", body: reason, reason: "통과 · 실행할 일 없음" }, now, { trusted: true })
+      else ingestSignal(db, { ...base, kind: "start", agent: p.executor, body: reason, reason: "통과 · " + p.executor + " 실행 중" }, now, { trusted: true })
     } else if (d.decision === "reject") {
-      ingestSignal(db, { ...base, kind: "info", body: reason, reason: "의회가 거절했어요(기록만)" }, now)
+      ingestSignal(db, { ...base, kind: "info", body: reason, reason: "의회가 거절했어요(기록만)" }, now, { trusted: true })
     } else return 0
     return 1
   }
@@ -77,13 +77,21 @@ function applyEvent(db: Database, run: RunSummary, e: QuorumEvent, proposals: Ma
     const summary = String(d.summary ?? d.error ?? e.text)
     const s = ingestSignal(db, ok
       ? { ...base, kind: "done", review: true, agent: p.executor, body: summary.slice(0, 8000), reason: "의회가 통과시켜 실행했어요 · 결과를 봐 주세요" }
-      : { ...base, kind: "error", ai_fixable: false, body: summary.slice(0, 8000), reason: "실행이 실패했어요" }, now)
+      : { ...base, kind: "error", ai_fixable: false, body: summary.slice(0, 8000), reason: "실행이 실패했어요" }, now, { trusted: true })
     if (typeof s !== "string") appendNote(db, "signal:" + s.id, (ok ? "## 실행 결과" : "## 실행 실패") + " (" + p.executor + ")\n\n" + summary.slice(0, 8000), "agent", now)
     return 1
   }
-  if (e.type === "run.end" && itemId) {
-    logItem(db, itemId, { by: "agent", text: "의회 " + run.runId + ": " + e.text }, now)
-    return 1
+  if (e.type === "run.end") {
+    let n = 0
+    // 서버 재시작 등으로 오류로 끝난 의회: 통과했지만 실행 결과가 없는 일은 Running 에 멈추지 않고 Retry 할 수 있게 돌아와요(재리뷰 L6)
+    if (d.status === "error") {
+      for (const s of listSignals(db, { open: true, limit: 1000 })) {
+        if (s.meta?.runId !== run.runId || s.status !== "open" || s.lane !== "running" || s.kind !== "start") continue
+        if (moveSignal(db, s.id, ["open"], { status: "open", lane: "decide", kind: "error", reason: "실행이 끊겼어요(interrupted) · Retry 로 다시 실행할 수 있어요", meta: { execError: "interrupted" } }, now)) n++
+      }
+    }
+    if (itemId) { logItem(db, itemId, { by: "agent", text: "의회 " + run.runId + ": " + e.text }, now); n++ }
+    return n
   }
   return 0
 }
@@ -151,7 +159,7 @@ export function recoverRunning(db: Database, now = Date.now(), live: Set<string>
   return n
 }
 
-export function approveSignal(db: Database, id: string, execute: ExecuteFn | undefined, now = Date.now(), opts: { timeoutMs?: number; live?: Set<string>; expectHash?: string } = {}): { status: number; body: Record<string, unknown>; done?: Promise<void> } {
+export function approveSignal(db: Database, id: string, execute: ExecuteFn | undefined, now = Date.now(), opts: { timeoutMs?: number; live?: Set<string>; expectHash?: string; requireHash?: boolean } = {}): { status: number; body: Record<string, unknown>; done?: Promise<void> } {
   const cur = getSignal(db, id)
   if (!cur) return { status: 404, body: { error: "signal not found" } }
   if (cur.status !== "open" || !["decide", "now"].includes(cur.lane)) return { status: 409, body: { error: "승인을 기다리는 사건이 아니에요", signal: cur } }
@@ -168,6 +176,8 @@ export function approveSignal(db: Database, id: string, execute: ExecuteFn | und
   if (!execute) return { status: 501, body: { error: "이 서버에는 실행기가 연결되지 않았어요" } }
   // 사람이 본 글과 지금 보낼 글이 다르면 실행하지 않아요(그사이 결과가 붙었거나 지시가 바뀜)
   const task = approvalTask(db, cur)
+  // 실행하는 승인은 사람이 본 글의 지문이 꼭 있어야 해요(재리뷰 M3). 없으면 428 과 함께 볼 글을 돌려줘요
+  if (opts.requireHash && !opts.expectHash) return { status: 428, body: { error: "실행할 지시를 먼저 확인해 주세요(previewHash 필요)", approvalPreview: task, previewHash: taskHash(task) } }
   if (opts.expectHash && taskHash(task) !== opts.expectHash) return { status: 409, body: { error: "승인 화면에서 본 지시와 지금 지시가 달라요. 다시 확인해 주세요", approvalPreview: task, previewHash: taskHash(task) } }
   const moved = moveSignal(db, id, ["open"], { status: "running", lane: "running", reason: "승인했어요 · " + m.executor + " 실행 중", kind: "start", meta: decided }, now)
   if (!moved) return { status: 409, body: { error: "이미 처리됐어요" } }
@@ -183,7 +193,14 @@ export function approveSignal(db: Database, id: string, execute: ExecuteFn | und
   opts.live?.add(started.runId)
   const timeoutMs = opts.timeoutMs ?? EXEC_TIMEOUT_MS
   let timer: ReturnType<typeof setTimeout> | undefined
-  const timedOut = new Promise<ExecOut>((resolve) => { timer = setTimeout(() => resolve({ ok: false, error: "시간 초과: " + Math.round(timeoutMs / 1000) + "초 안에 끝나지 않았어요" }), timeoutMs) })
+  let expired = false
+  const timedOut = new Promise<ExecOut>((resolve) => { timer = setTimeout(() => { expired = true; resolve({ ok: false, error: "시간 초과: " + Math.round(timeoutMs / 1000) + "초 안에 끝나지 않았어요 · 첫 실행이 아직 돌고 있을 수 있어요(Retry 하면 하나 더 돌아요)" }) }, timeoutMs) })
+  // 시간 초과 뒤에 실행기가 끝나도 그 결과를 버리지 않고 노트에 남겨요(재리뷰 L2)
+  void started.done.then((late) => {
+    if (!expired) return
+    opts.live?.delete(started.runId)
+    appendNote(db, "signal:" + id, "## 늦게 도착한 결과 (" + m.executor + ", 시간 초과 뒤)\n\n" + (late.ok ? late.summary : late.error).slice(0, 8000), "agent", Date.now())
+  })
   const done = Promise.race([started.done, timedOut]).then((out) => {
     clearTimeout(timer)
     opts.live?.delete(started.runId)
