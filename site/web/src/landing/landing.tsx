@@ -3,7 +3,7 @@ import { ArrowRight } from "lucide-react"
 import { Brand } from "@/components/wordmark"
 import { APP, STATIC, asset } from "@/lib/base"
 import { SEOUL_STATS } from "@/lib/seoul"
-import { WorkspaceHero } from "./workspace-hero"
+import { WorkspacePreview } from "./workspace-preview"
 import { Argument } from "./argument"
 import { Healing } from "./healing"
 import { Logo, type LogoKey } from "./logos"
@@ -71,10 +71,11 @@ function Hero() {
       </div>
       <figure className="lp-container relative mt-[clamp(96px,11vw,150px)]">
         <div className="lp-capture">
-          <WorkspaceHero />
+          <WorkspacePreview />
         </div>
         <figcaption className="mt-4 text-center text-sm text-muted-foreground">
-          The workspace replaying the first live run, recorded at 11:31 KST on 9 November 2026. Click a result to see what each critic said.
+          The real workspace from /w, running in your browser on the recorded Seoul run. Read-only: open the Luma request and press
+          Send to agent to replay the council.
         </figcaption>
       </figure>
     </section>
@@ -259,13 +260,17 @@ function Cta() {
   )
 }
 
-/** Short entrance for every block below the hero: added from script, so nothing is hidden without it. */
+/**
+ * Short entrance for every block below the hero, layered on content that is already visible: a block gets lp-rise-in only
+ * when its first pixel enters the viewport. Without script, before the observer runs, or in a full-page capture, every block
+ * shows as is. Reduced motion adds nothing.
+ */
 function useSectionRise() {
   useEffect(() => {
     if (matchMedia("(prefers-reduced-motion: reduce)").matches || typeof IntersectionObserver === "undefined") return
     const els = Array.from(document.querySelectorAll<HTMLElement>(".lp-section > .lp-container > *, .lp-section .lp-split > *"))
-    const io = new IntersectionObserver((entries) => entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("is-in"); io.unobserve(e.target) } }), { threshold: 0.12, rootMargin: "0px 0px -6% 0px" })
-    els.forEach((el) => { if (el.getBoundingClientRect().top > window.innerHeight) { el.classList.add("lp-rise"); io.observe(el) } })
+    const io = new IntersectionObserver((entries) => entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("lp-rise-in"); io.unobserve(e.target) } }), { threshold: 0 })
+    els.forEach((el) => { if (el.getBoundingClientRect().top > window.innerHeight) io.observe(el) })
     return () => io.disconnect()
   }, [])
 }

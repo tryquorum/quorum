@@ -33,7 +33,21 @@ export class ApiError extends Error {
   constructor(status: number, message: string) { super(message); this.status = status }
 }
 
+/**
+ * 데이터 주입 지점. 기본은 fetch·EventSource 로 서버에 붙고, 랜딩의 데모(site/web/src/landing/demo)는 녹화된 서울 실행을
+ * 돌려주는 전송 계층을 꽂아 같은 Workspace 화면을 네트워크 없이 그려요. 화면 코드는 이 차이를 몰라요.
+ */
+export type Transport = {
+  call: (path: string, init: { method?: string; body?: unknown }) => Promise<unknown>
+  events: (path: string) => EventSource
+}
+let transport: Transport | null = null
+export function setTransport(t: Transport | null) { transport = t }
+/** 실행 이벤트 스트림(SSE). 데모에서는 녹화 이벤트를 차례로 흘려요 */
+export function openEvents(path: string): EventSource { return transport ? transport.events(path) : new EventSource(path) }
+
 export async function call<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
+  if (transport) return (await transport.call(path, init)) as T
   const res = await fetch(path, {
     method: init.method ?? "GET",
     cache: "no-store",

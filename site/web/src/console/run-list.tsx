@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Play } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
+import { ALERT, CHIP, DECIDE } from "@/workspace/tone"
 import { asset } from "@/lib/base"
 import { cn } from "@/lib/utils"
 import type { RunSummary } from "@/lib/contract"
@@ -32,11 +32,11 @@ export function RunList({ refreshKey, current, onPlay }: { refreshKey: number; c
         <li key={r.runId}>
           <button type="button" onClick={() => onPlay(r)} aria-current={current === r.runId}
             className={cn("group flex w-full items-start gap-2 px-3 py-2.5 text-left text-sm outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring", current === r.runId && "bg-muted/40")}>
-            <Play aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-signal" />
+            <Play aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />
             <span className="min-w-0 flex-1">
               <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <Badge variant={r.status === "error" ? "destructive" : r.status === "running" ? "default" : "secondary"} className={cn(r.status === "running" && "animate-pulse")}>{r.status}</Badge>
-                {r.mode === "replay" && <Badge className="bg-escalate/15 text-escalate">REPLAY</Badge>}
+                <span className={cn("rounded-full px-1.5 py-px font-mono text-2xs", r.status === "error" ? ALERT : r.status === "running" ? DECIDE + " animate-pulse" : CHIP)}>{r.status}</span>
+                {r.mode === "replay" && <span className={"rounded-full px-1.5 py-px font-mono text-2xs " + DECIDE}>REPLAY</span>}
                 <span className="tnum text-muted-foreground">{clock(r.startedAt)}</span>
                 <span className="font-mono text-2xs text-muted-foreground/70">{r.runId}</span>
               </span>

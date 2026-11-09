@@ -303,9 +303,9 @@ export function Workspace() {
 
 function GoalStrip({ goals, onOpen }: { goals: NowView["goals"]; onOpen: (id: string) => void }) {
   return (
-    <div className="grid gap-2 px-1 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-2 px-1 sm:grid-cols-2">
       {goals.map((g) => (
-        <button key={g.goal.id} type="button" onClick={() => onOpen(g.goal.id)} className="rounded-xl border bg-card/50 p-3 text-left transition-colors hover:bg-muted/50">
+        <button key={g.goal.id} type="button" onClick={() => onOpen(g.goal.id)} className="w-full min-w-0 overflow-hidden rounded-xl border bg-card/50 p-3 text-left transition-colors hover:bg-muted/50">
           <GoalHeader g={g} />
           {g.open[0] && <p className="mt-2 truncate text-2xs text-muted-foreground">Next: {g.open[0].text.split("\n")[0]}</p>}
         </button>

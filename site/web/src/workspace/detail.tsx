@@ -159,7 +159,8 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf, returnFo
                 <span className="text-2xs leading-4 text-muted-foreground">gstack CEO · Reviewer · QA · CSO argue it, Aside or Codex runs only what passes, gbrain remembers the verdict.</span>
               </div>
               {run && <RunPanel run={run} signals={runSignals} act={act} onDone={() => refresh()} />}
-              {data.kind === "signal" && <SignalActions s={data.signal} act={act} onDone={(m) => refresh(m)} />}
+              {/* 이 사건의 제안 카드가 위 진행에 이미 있으면 거기 Approve/Reject 하나만 둬요(같은 버튼이 두 번 나오지 않게) */}
+              {data.kind === "signal" && <SignalActions s={data.signal} act={act} onDone={(m) => refresh(m)} inCard={!!run && runId === data.signal.meta?.runId && !!run.proposals[String(data.signal.meta?.proposalId)]} />}
             </div>
 
             {/* 아래: 사람 기록 */}
@@ -169,7 +170,7 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf, returnFo
                   <Button size="sm" variant="outline" className="rounded-full" onClick={() => void run_(() => data.item.done ? ws.patch(data.item.id, { done: false }) : act.done(data.item), data.item.done ? "Reopened" : "Done")}>
                     <Check />{data.item.done ? "Reopen" : "Mark done"}
                   </Button>
-                  {data.item.runId && <a href="/app" className="inline-flex items-center gap-1 font-mono text-2xs text-muted-foreground hover:text-foreground hover:underline">{data.item.runId}<ExternalLink className="size-3" /></a>}
+                  {data.item.runId && <a href="/app" className="inline-flex items-center gap-1 font-mono text-2xs text-muted-foreground hover:text-foreground hover:underline max-md:min-h-11 [@media(pointer:coarse)]:min-h-11">{data.item.runId}<ExternalLink className="size-3" /></a>}
                 </div>
               )}
               {data.kind === "item" && (
@@ -179,7 +180,7 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf, returnFo
                 </form>
               )}
               <details className="group/note" open={!data.note?.md}>
-                <summary className="cursor-pointer text-xs font-medium text-muted-foreground select-none hover:text-foreground">Note {data.note && <span className="font-normal">· {data.note.personEdited ? "edited by you" : "written by the council"} · {when(data.note.updatedAt)}</span>}</summary>
+                <summary className="cursor-pointer text-xs font-medium text-muted-foreground select-none hover:text-foreground max-md:py-3.5 [@media(pointer:coarse)]:py-3.5">Note {data.note && <span className="font-normal">· {data.note.personEdited ? "edited by you" : "written by the council"} · {when(data.note.updatedAt)}</span>}</summary>
                 <Textarea value={md} onChange={(e) => setMd(e.target.value)} placeholder="Markdown. The council only appends here; it never rewrites what you wrote." className="mt-2 min-h-28 font-mono text-xs leading-5" />
                 <div className="mt-2 flex items-center gap-2">
                   <Button size="sm" variant="secondary" disabled={md === (data.note?.md ?? "")} onClick={() => void run_(() => ws.saveNote(ref, md), "Note saved")}>Save note</Button>
@@ -314,10 +315,11 @@ function ProposalCard({ p, signal, act, onDone }: { p: Proposal; signal: Signal 
   )
 }
 
-function SignalActions({ s, act, onDone }: { s: Signal; act: Acts; onDone: (m: string) => void }) {
+function SignalActions({ s, act, onDone, inCard }: { s: Signal; act: Acts; onDone: (m: string) => void; inCard?: boolean }) {
   const council = !!s.meta?.runId && !!s.meta?.proposalId
   const waiting = s.status === "open" && ["decide", "now", "main"].includes(s.lane)
   if (s.status !== "open") return null
+  if (waiting && council && inCard) return null
   const items: [string, () => Promise<void>, string][] = []
   // 실행이 실패한 판정은 보류가 아니라서 "다시 실행 / 닫기"로 불러요(같은 승인·거절 길을 써요)
   if (waiting && council) items.push(s.kind === "error" ? ["Retry", () => act.approve(s), "Running again"] : ["Approve", () => act.approve(s), "Approved"], s.kind === "error" ? ["Dismiss", () => act.reject(s), "Dismissed"] : ["Reject", () => act.reject(s), "Rejected"])
