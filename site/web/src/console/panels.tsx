@@ -35,7 +35,7 @@ export function ProposalCard({ p }: { p: Proposal }) {
   const reused = !!p.verdict?.reusedFrom
   const Icon = p.executor ? EXEC_ICON[p.executor] : CircleAlert
   return (
-    <article className={cn("row-in rounded-2xl border bg-card/70 p-4 sm:p-5", reused && "glow-memory", p.verdict?.decision === "reject" && "opacity-80")}>
+    <article key={p.verdict ? "decided" : "open"} className={cn("row-in rounded-2xl border bg-card/70 p-4 sm:p-5 transition-opacity duration-500", reused && "glow-memory", p.verdict && "verdict-pulse", p.verdict?.decision === "reject" && "opacity-75")}>
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <p className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-2xs text-muted-foreground">

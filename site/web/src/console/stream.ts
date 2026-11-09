@@ -1,3 +1,4 @@
+import { asset } from "@/lib/base"
 import type { Decision, Executor, QuorumEvent, Role, Stance } from "@/lib/contract"
 
 // Pure fold of contract v1 events into what the console draws. Unknown or partial data is kept in the
@@ -145,27 +146,41 @@ export function applyEvent(prev: RunView, e: QuorumEvent): RunView {
 export type Fixture = { runId: string; request: string; mode: "replay"; recordedAt?: string; events: QuorumEvent[] }
 
 export const FIXTURES: Record<string, { file: string; label: string }> = {
-  "1": { file: `${import.meta.env.BASE_URL}fixtures/sample-run.json`, label: "Recorded run: event announcements" },
-  reuse: { file: `${import.meta.env.BASE_URL}fixtures/sample-reuse.json`, label: "Recorded run: memory reuse" },
+  seoul: { file: asset("fixtures/live-seoul.json"), label: "Recorded live · c0mpiled-17 Seoul · 11:31 KST" },
+  "1": { file: asset("fixtures/sample-run.json"), label: "Scripted sample: event announcements" },
+  reuse: { file: asset("fixtures/sample-reuse.json"), label: "Scripted sample: memory reuse" },
 }
 
 export type StopFn = () => void
 
+// Demo pacing for ?demo=seoul: fixed dwell per event type, tuned so the recorded run reads well in a
+// 2-minute video. The recording's own timestamps are not used (critiques arrived in one batch).
+const DEMO_DWELL: Partial<Record<QuorumEvent["type"], number>> = {
+  "run.start": 1500, recall: 2600, proposal: 2200, critique: 1100, verdict: 2000,
+  "execute.start": 2400, "execute.result": 3800, "memory.saved": 1600, "run.end": 1200,
+}
+
 /** Plays a recorded run. Every event is forced to mode "replay" so nothing recorded can pass as live. */
-export async function playFixture(key: string, speed: number, onEvent: (e: QuorumEvent) => void, onDone: () => void, onError: (m: string) => void): Promise<StopFn> {
-  const meta = FIXTURES[key] ?? FIXTURES["1"]
+export async function playFixture(key: string, speed: number, onEvent: (e: QuorumEvent) => void, onDone: () => void, onError: (m: string) => void, opts: { demo?: boolean } = {}): Promise<StopFn> {
+  const meta = FIXTURES[key] ?? FIXTURES.seoul
   let stopped = false
   const timers: number[] = []
   try {
     const res = await fetch(meta.file)
     if (!res.ok) throw new Error(`${meta.file} returned HTTP ${res.status}`)
     const fx = (await res.json()) as Fixture
-    const events = [...fx.events].sort((a, b) => a.seq - b.seq).map((e) => ({ ...e, mode: "replay" as const }))
+    // Recordings may carry a stray non-event entry; only well-formed contract events are played.
+    const events = fx.events
+      .filter((e) => e && typeof e.type === "string" && typeof e.seq === "number")
+      .sort((a, b) => a.seq - b.seq)
+      .map((e) => ({ ...e, runId: e.runId ?? fx.runId, mode: "replay" as const }))
     let at = 300
     events.forEach((e, i) => {
       if (i > 0) {
-        const gap = Date.parse(e.at) - Date.parse(events[i - 1].at)
-        at += Math.min(1200, Math.max(160, Number.isFinite(gap) ? gap : 600)) / speed
+        const gap = opts.demo
+          ? DEMO_DWELL[events[i - 1].type] ?? 1200
+          : Math.min(1200, Math.max(160, Date.parse(e.at) - Date.parse(events[i - 1].at) || 600))
+        at += gap / speed
       }
       timers.push(window.setTimeout(() => { if (!stopped) onEvent(e) }, at))
     })
@@ -176,26 +191,16 @@ export async function playFixture(key: string, speed: number, onEvent: (e: Quoru
   return () => { stopped = true; timers.forEach((t) => window.clearTimeout(t)) }
 }
 
-/** Starts a live run: POST /api/runs, then follow the SSE stream until the server sends event: done. */
-export async function startLive(request: string, onRun: (runId: string) => void, onEvent: (e: QuorumEvent) => void, onDone: () => void, onError: (m: string) => void): Promise<StopFn> {
-  let res: Response
-  try {
-    res = await fetch("/api/runs", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ request, mode: "live" }) })
-  } catch (err) {
-    onError(`Could not reach the Quorum server: ${err instanceof Error ? err.message : String(err)}`)
-    return () => {}
-  }
-  if (!res.ok) {
-    const body = await res.text().catch(() => "")
-    let detail = body
-    try { detail = (JSON.parse(body) as { error?: string }).error ?? body } catch { /* plain text body */ }
-    onError(`POST /api/runs returned HTTP ${res.status}${detail ? `: ${detail}` : ""}`)
-    return () => {}
-  }
-  const { runId } = (await res.json()) as { runId?: string }
-  if (!runId) { onError("POST /api/runs did not return a runId"); return () => {} }
-  onRun(runId)
-  const es = new EventSource(`/api/runs/${encodeURIComponent(runId)}/events`)
+async function failureText(res: Response, what: string) {
+  const body = await res.text().catch(() => "")
+  let detail = body
+  try { detail = (JSON.parse(body) as { error?: string }).error ?? body } catch { /* plain text body */ }
+  return `${what} returned HTTP ${res.status}${detail ? `: ${detail}` : ""}`
+}
+
+/** Follows /api/runs/:id/events. The engine replays stored events first, so finished runs play back too. */
+export function followRun(runId: string, onEvent: (e: QuorumEvent) => void, onDone: () => void, onError: (m: string) => void): StopFn {
+  const es = new EventSource(asset(`api/runs/${encodeURIComponent(runId)}/events`))
   let finished = false
   es.onmessage = (m) => {
     try { onEvent(JSON.parse(m.data) as QuorumEvent) } catch { onError(`Unreadable event from the server: ${String(m.data).slice(0, 120)}`) }
@@ -207,4 +212,48 @@ export async function startLive(request: string, onRun: (runId: string) => void,
     // otherwise the browser is reconnecting; duplicate seqs are dropped by applyEvent
   }
   return () => { finished = true; es.close() }
+}
+
+/** Starts a live run: POST /api/runs, then follow the SSE stream until the server sends event: done. */
+export async function startLive(request: string, onRun: (runId: string) => void, onEvent: (e: QuorumEvent) => void, onDone: () => void, onError: (m: string) => void): Promise<StopFn> {
+  let res: Response
+  try {
+    res = await fetch(asset("api/runs"), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ request, mode: "live" }) })
+  } catch (err) {
+    onError(`Could not reach the Quorum server: ${err instanceof Error ? err.message : String(err)}`)
+    return () => {}
+  }
+  if (!res.ok) { onError(await failureText(res, "POST /api/runs")); return () => {} }
+  const { runId } = (await res.json()) as { runId?: string }
+  if (!runId) { onError("POST /api/runs did not return a runId"); return () => {} }
+  onRun(runId)
+  return followRun(runId, onEvent, onDone, onError)
+}
+
+export type RecipeSummary = { id: string; site: string; intent: string; version: number; endpoint: string; health: { ok: boolean; note?: string | null } | null }
+
+export async function listRecipes(): Promise<{ recipes: RecipeSummary[] } | { problem: string }> {
+  try {
+    const res = await fetch(asset("api/recipes"))
+    if (!res.ok) return { problem: await failureText(res, "GET /api/recipes") }
+    const body = (await res.json()) as unknown
+    return { recipes: Array.isArray(body) ? (body as RecipeSummary[]) : [] }
+  } catch (err) {
+    return { problem: `Could not reach the Quorum server: ${err instanceof Error ? err.message : String(err)}` }
+  }
+}
+
+export async function runRecipe(id: string, onRun: (runId: string) => void, onEvent: (e: QuorumEvent) => void, onDone: () => void, onError: (m: string) => void): Promise<StopFn> {
+  let res: Response
+  try {
+    res = await fetch(asset(`api/recipes/${encodeURIComponent(id)}/run`), { method: "POST", headers: { "content-type": "application/json" }, body: "{}" })
+  } catch (err) {
+    onError(`Could not reach the Quorum server: ${err instanceof Error ? err.message : String(err)}`)
+    return () => {}
+  }
+  if (!res.ok) { onError(await failureText(res, `POST /api/recipes/${id}/run`)); return () => {} }
+  const { runId } = (await res.json()) as { runId?: string }
+  if (!runId) { onError("The recipe run did not return a runId"); return () => {} }
+  onRun(runId)
+  return followRun(runId, onEvent, onDone, onError)
 }
