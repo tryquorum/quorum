@@ -18,6 +18,8 @@ import { ASIDE_BIN } from "./executors/aside"
 import { CODEX_BIN } from "./executors/codex"
 import { GBRAIN_BIN, searchMemory } from "./executors/gbrain"
 import { asideRunner, listRecipes, runRecipe } from "./recipes"
+import { createWorkspace } from "./workspace/api"
+import { engineExecute } from "./workspace/council"
 
 export const VERSION = "0.2.0"
 const json = (data: unknown, status = 200) =>
@@ -44,6 +46,8 @@ export type AppDeps = {
   mcpPropose?: boolean
   /** 로컬 리스너의 /api/me 이메일(QUORUM_LOCAL_USER). 없으면 null */
   localUser?: string | null
+  /** Workspace(/api/ws/*). src/workspace/api.ts */
+  workspace?: (req: Request, parts: string[]) => Promise<Response>
 }
 
 export async function liveHealth(board: BoardClient): Promise<Health> {
@@ -151,6 +155,7 @@ export function createApp(d: AppDeps, listener: Listener = "local", pub?: Public
       return mcpHandler({ store: d.store, start: (request) => d.runs.start(request).runId, memory: d.memory, allowPropose: !!d.mcpPropose, version: VERSION }, req)
     }
     if (parts[0] !== "api") return serveStatic(d.siteRoot, url.pathname)
+    if (parts[1] === "ws" && d.workspace) return d.workspace(req, parts)
 
     if (parts[1] === "health" && m === "GET") return json({ ok: true, version: VERSION, executors: await d.health() })
     if (parts[1] === "me" && parts.length === 2 && m === "GET") return json({ email: user?.email ?? null, listener })
@@ -234,6 +239,10 @@ if (import.meta.main) {
   if (interrupted.length) console.log("[quorum] closed " + interrupted.length + " interrupted run(s)")
   const board = new BoardClient()
   const runs = new RunManager(store, liveDeps(stateDir, board))
+  const engineDeps = liveDeps(stateDir, board)
+  const boardBase = process.env.QUORUM_BOARD_IMPORT === "0" ? undefined : process.env.QUORUM_BOARD_IMPORT_URL || "http://127.0.0.1:3070"
+  const workspace = createWorkspace({ path: join(stateDir, "workspace.db"), engine: store, execute: engineExecute(runs, (id) => engineDeps(id).executors), boardBase })
+  workspace.board?.start()
   const deps: AppDeps = {
     store,
     runs,
@@ -243,6 +252,7 @@ if (import.meta.main) {
     recipes: async () => liveRecipes,
     mcpPropose: process.env.QUORUM_MCP_PROPOSE === "1",
     localUser: process.env.QUORUM_LOCAL_USER || null,
+    workspace: workspace.handle,
   }
   Bun.serve({ port: PORT, hostname: process.env.QUORUM_HOST || "127.0.0.1", idleTimeout: 255, fetch: createApp(deps, "local") })
   console.log("quorum on http://localhost:" + PORT + " (board write " + (board.writeEnabled ? "on" : "off") + ")")
