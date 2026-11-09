@@ -7,7 +7,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type { QuorumEvent } from "../contract"
 import { asideRunner, buildDiscoverScript, parseProbes, RESULT_PREFIX, type AsideRunner } from "./aside"
-import { templatize } from "./call"
+import { fixedSegments, templatize } from "./call"
 import { GbrainMemory, MemoryError, repairNote, type Memory } from "./memory"
 import { listRecipes, runRecipe } from "./runner"
 import { RecipeStore } from "./store"
@@ -239,6 +239,21 @@ describe("runRecipe", () => {
     expect(hits).toContain("/event/get-blasts?event_api_id=evt-my-event")
   })
 
+  test("recalled candidate on another declared host does not get the main request's cookie", async () => {
+    const def = blasts([])
+    def.request.headers = { cookie: "{{env.QUORUM_TEST_COOKIE}}" }
+    def.discover.http = { candidates: [{ request: { method: "GET", url: `http://localhost:${server.port}/never?event_api_id={{eventApiId}}` } }] }
+    await useDef(def)
+    const note = `- new endpoint: GET http://localhost:${server.port}/event/get-blasts?event_api_id={{eventApiId}}`
+    const mem: Memory = { put: memory.put, search: async () => [{ slug: "recipes/t-blasts-v3", score: 1, snippet: note }] }
+    process.env.QUORUM_TEST_COOKIE = "session=secret"
+    try {
+      const out = await runRecipe("t-blasts", ctx({ memory: mem }), emit)
+      expect(out).toMatchObject({ ok: true, version: 2 })
+      expect(store.current("t-blasts").request.headers).toBeUndefined()
+    } finally { delete process.env.QUORUM_TEST_COOKIE }
+  })
+
   test("memory: null is reported, never silently skipped", async () => {
     await useDef(blasts(["/event/get-blasts"]))
     await runRecipe("t-blasts", ctx({ memory: null }), emit)
@@ -299,6 +314,9 @@ describe("helpers", () => {
   test("templatize puts vars back; parseProbes skips noise", () => {
     expect(templatize("https://x/a?event_api_id=evt-123&u=my%20e", { eventApiId: "evt-123", slug: "my e" })).toBe("https://x/a?event_api_id={{eventApiId}}&u={{slug}}")
     expect(parseProbes(`\x1b[32mhi\x1b[0m\n${RESULT_PREFIX}{"url":"u","status":200}\n${RESULT_PREFIX}{bad`)).toEqual([{ url: "u", status: 200 }])
+    // 정확히 같은 조각만: slug "event" 가 /event/ 경로를 바꾸지 않고, 짧은 값(2자)도 바꿔요
+    expect(templatize("https://h/event/get-blasts?event_api_id=ab&x=event", { eventApiId: "ab", slug: "event" }, fixedSegments(["https://h/event/get-posts?event_api_id={{eventApiId}}"]))).toBe("https://h/event/get-blasts?event_api_id={{eventApiId}}&x={{slug}}")
+    expect(templatize("https://h/e/my-event/posts", { slug: "my-event" })).toBe("https://h/e/{{slug}}/posts")
     expect(buildDiscoverScript("https://luma.com/x", "api2", ["https://api2/x"])).toContain("openTab")
   })
 

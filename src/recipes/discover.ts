@@ -1,7 +1,7 @@
 // 깨진 레시피의 새 경로 찾기. http 후보를 순서대로 시도하고, 모두 실패하면 (있을 때만) Aside 로 실제 페이지에서 찾아요.
 // 후보는 검증(verify)을 통과해야만 채택해요. 실패한 후보와 이유는 모두 돌려줘서 이벤트·기억에 남겨요.
 import { buildDiscoverScript, parseProbes } from "./aside"
-import { callRecipe, checkBody, templatize } from "./call"
+import { callRecipe, checkBody, fixedSegments, templatize } from "./call"
 import { classifyRunError, RecipeError, RUN_ERROR_MESSAGE } from "./errors"
 import { endpointOf, fill } from "./spec"
 import type { Candidate, RecipeCtx, RecipeDef } from "./types"
@@ -45,8 +45,9 @@ export async function discover(def: RecipeDef, ctx: RecipeCtx & { vars: Record<s
   }
   const probesOut = parseProbes(run.stdout)
   if (!probesOut.length) return { found: null, attempts, asideError: "Aside 가 후보를 하나도 보내지 않았어요" }
+  const fixed = fixedSegments([def.request.url, a.startUrl, ...(def.discover.http?.candidates || []).map((c) => c.request.url)])
   for (const p of probesOut) {
-    const url = templatize(p.url, ctx.vars)
+    const url = templatize(p.url, ctx.vars, fixed)
     const candidate: Candidate = { request: { method: a.method || "GET", url, ...(a.headers ? { headers: a.headers } : {}) }, parse: a.parse || def.parse, note: "aside" }
     const endpoint = endpointOf(candidate.request)
     if (endpoint === broken && p.status >= 400) { note({ via: "aside", endpoint, ok: false, status: p.status, reason: `HTTP ${p.status}` }); continue }

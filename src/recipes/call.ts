@@ -37,13 +37,36 @@ export async function callRecipe(spec: { request: RequestSpec; parse: ParseSpec;
   catch (e) { if (e instanceof RecipeError) throw new RecipeError(e.kind, e.message, res.status); throw e }
 }
 
-/** 찾은 URL 의 vars 값 자리를 다시 {{name}} 으로 바꿔 다음 호출에도 쓰게 해요 */
-export function templatize(url: string, vars: Record<string, string>): string {
-  let out = url
-  for (const [name, value] of Object.entries(vars).sort((a, b) => b[1].length - a[1].length)) {
-    if (!value || value.length < 3) continue
-    out = out.split(encodeURIComponent(value)).join(`{{${name}}}`)
-    out = out.split(value).join(`{{${name}}}`)
+/**
+ * 찾은 URL 의 vars 값 자리를 다시 {{name}} 으로 바꿔 다음 호출에도 쓰게 해요.
+ * 질의 값과 경로 조각이 값과 정확히 같을 때만 바꿔요(부분 문자열을 바꾸면 slug "event" 가 /event/ 경로를 망가뜨려요).
+ * fixed: 레시피에 선언된 URL 템플릿의 경로 조각. 고정 단어라 값과 같아도 바꾸지 않아요.
+ */
+export function templatize(url: string, vars: Record<string, string>, fixed: string[] = []): string {
+  let u: URL
+  try { u = new URL(url) } catch { return url }
+  const nameOf = (raw: string): string | null => {
+    let v = raw
+    try { v = decodeURIComponent(raw) } catch { /* 그대로 비교 */ }
+    for (const [name, value] of Object.entries(vars)) if (value && value === v) return name
+    return null
   }
-  return out
+  const path = u.pathname.split("/").map((seg) => { const n = seg && !fixed.includes(seg) ? nameOf(seg) : null; return n ? `{{${n}}}` : seg }).join("/")
+  const query = u.search ? "?" + u.search.slice(1).split("&").map((pair) => {
+    const eq = pair.indexOf("=")
+    if (eq < 0) return pair
+    const n = nameOf(pair.slice(eq + 1).replace(/\+/g, " "))
+    return n ? `${pair.slice(0, eq)}={{${n}}}` : pair
+  }).join("&") : ""
+  return `${u.protocol}//${u.host}${path}${query}`
+}
+
+/** 템플릿 URL 들의 고정 경로 조각({{..}} 아닌 것) */
+export function fixedSegments(urls: string[]): string[] {
+  const out = new Set<string>()
+  for (const url of urls) {
+    const path = url.replace(/^[a-z]+:\/\/[^/]+/i, "").split("?")[0]
+    for (const seg of path.split("/")) if (seg && !seg.includes("{{")) out.add(seg)
+  }
+  return [...out]
 }

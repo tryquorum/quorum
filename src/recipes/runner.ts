@@ -95,14 +95,18 @@ async function recall(id: string, def: RecipeDef, ctx: Resolved, ev: ReturnType<
       { recipeId: id, version: def.version, endpoint: endpointOf(def.request), hits: hits.map((h) => ({ id: h.slug, summary: h.snippet.split("\n")[0].slice(0, 120), decision: "repair", score: h.score })) })
     // 기록은 바깥 자료라, 레시피에 이미 적힌 호스트로 가는 경로만 써요(쿠키 머리글이 다른 곳으로 새지 않게)
     const hostOf = (u: string) => { try { return new URL(u).host } catch { return "" } }
-    const allowed = new Set([def.request, ...(def.discover.http?.candidates || []).map((c) => c.request)].map((q) => hostOf(q.url)).filter(Boolean))
+    const declared = [def.request, ...(def.discover.http?.candidates || []).map((c) => c.request)]
+    const allowed = new Set(declared.map((q) => hostOf(q.url)).filter(Boolean))
+    // 머리글(쿠키)은 같은 호스트로 선언된 요청의 것만 붙여요
+    const headersFor = (url: string) => declared.find((q) => q.headers && hostOf(q.url) === hostOf(url))?.headers
     const seen = new Set<string>()
     const out: Candidate[] = []
     for (const h of hits) for (const e of endpointsFromNote(h.snippet)) {
       const key = `${e.method} ${e.url}`
       if (seen.has(key) || !allowed.has(hostOf(e.url))) continue
       seen.add(key)
-      out.push({ request: { method: e.method, url: e.url, ...(def.request.headers ? { headers: def.request.headers } : {}) }, note: "gbrain" })
+      const headers = headersFor(e.url)
+      out.push({ request: { method: e.method, url: e.url, ...(headers ? { headers } : {}) }, note: "gbrain" })
     }
     return out
   } catch (e) {
