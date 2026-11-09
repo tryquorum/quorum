@@ -4,7 +4,7 @@ import { Check, CircleAlert, ExternalLink, Gavel, Loader2, MessageSquareText, X 
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { Area, Item, Signal } from "./api"
-import { ALERT } from "./tone"
+import { ALERT, LATE } from "./tone"
 import { W } from "./when"
 
 const pad = (n: number) => String(n).padStart(2, "0")
@@ -62,7 +62,7 @@ export function ItemRow({ item, area, selected, busy, onSelect, onOpen, onDone, 
           </p>
         )}
       </div>
-      {when && <span className={cn("mt-0.5 shrink-0 num font-mono text-2xs text-muted-foreground", late && "rounded px-1 " + ALERT)}>{dueLabel(when)}</span>}
+      {when && <span className={cn("mt-0.5 shrink-0 num font-mono text-2xs text-muted-foreground", late && LATE)}>{dueLabel(when)}</span>}
       {onAsk && !item.runId && !item.done && (
         <Button type="button" variant="outline" size="xs" className="shrink-0 rounded-full max-sm:px-1.5" onClick={onAsk} disabled={busy} title="Ask the council (Q)" aria-label={"Ask the council: " + item.text}>
           <Gavel /><span className="max-sm:hidden">Ask the council</span>

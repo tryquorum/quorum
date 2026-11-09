@@ -7,7 +7,7 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from "./ui/sidebar"
 import { TooltipProvider } from "./ui/tooltip"
 import { cn } from "@/lib/utils"
 import { ws, type Item, type Meta, type NowView, type Signal } from "./api"
-import { ALERT } from "./tone"
+import { ALERT, DECIDE } from "./tone"
 import { CaptureBar } from "./capture-bar"
 import { CommandPalette } from "./command-palette"
 import { Detail, type Open } from "./detail"
@@ -213,7 +213,7 @@ export function Workspace() {
                 {s.title && (
                   <h2 className="mb-1 flex items-baseline gap-2 px-3">
                     <span className={cn("text-xs font-semibold tracking-wide uppercase", "text-foreground")}>{s.title}</span>
-                    {s.rows.length > 0 && <span className={cn("num font-mono text-2xs", s.tone === "decide" ? "rounded-full px-1.5 " + ALERT : "text-muted-foreground")}>{s.rows.length}</span>}
+                    {s.rows.length > 0 && <span className={cn("num font-mono text-2xs", s.tone === "decide" ? "rounded-full px-1.5 " + DECIDE : "text-muted-foreground")}>{s.rows.length}</span>}
                     {s.hint && <span className="truncate text-2xs text-muted-foreground max-sm:hidden">{s.hint}</span>}
                   </h2>
                 )}

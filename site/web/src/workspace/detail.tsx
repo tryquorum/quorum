@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils"
 import type { Proposal } from "@/console/stream"
 import { call, ws, type Area, type GoalView, type Item, type Note, type Signal } from "./api"
 import { Md } from "./md"
-import { ALERT, CHIP } from "./tone"
+import { ALERT, CHIP, DECIDE, LATE } from "./tone"
 import { SourceChip, dueLabel, isLate, whenOf } from "./rows"
 import { useMemory, useRunWatch } from "./run-watch"
 import { dday } from "./views"
@@ -22,8 +22,8 @@ const AUTO = new Set(["agent", "goat", "system"])
 const ROLES = [["ceo", "CEO"], ["reviewer", "Reviewer"], ["qa", "QA"], ["cso", "CSO"]] as const
 const when = (ms: number) => new Date(ms).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
 // 판정·반박 칩: 보류와 escalate 만 빨간 바탕에 흰 글씨, 나머지는 한 톤(./tone)
-const DECISION = { pass: "border border-border text-foreground", hold: ALERT, reject: CHIP } as const
-const STANCE = { keep: "border-border text-foreground", cut: "border-border text-muted-foreground", escalate: "border-transparent " + ALERT } as const
+const DECISION = { pass: "border border-border text-foreground", hold: DECIDE, reject: CHIP } as const
+const STANCE = { keep: "border-border text-foreground", cut: "border-border text-muted-foreground", escalate: "border-transparent " + DECIDE } as const
 
 function requestFor(d: Loaded, goal: GoalView | null): string {
   if (d.kind === "signal") return [d.signal.title, d.signal.body ?? ""].filter(Boolean).join("\n\n").slice(0, 4000)
@@ -107,7 +107,7 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf }: {
               <div className="flex flex-wrap items-center gap-1.5 pr-8 text-2xs">
                 <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 font-medium text-muted-foreground">{head.icon}{head.kind}</span>
                 <SourceChip item={data.kind === "item" ? data.item : data.signal} />
-                {head.when && <span className={cn("rounded-full border px-2 py-0.5 font-mono", head.late && "border-transparent " + ALERT)}>{head.when}</span>}
+                {head.when && <span className={cn("rounded-full border px-2 py-0.5 font-mono", head.late && LATE)}>{head.when}</span>}
                 {head.area && <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5"><span className="size-1.5 rounded-full" style={{ background: head.area.color }} />{head.area.name}</span>}
                 {head.status && <span className="rounded-full border px-2 py-0.5 text-muted-foreground">{head.status}</span>}
               </div>
@@ -246,10 +246,10 @@ function RunPanel({ run, signals, act, onDone }: { run: NonNullable<ReturnType<t
   return (
     <div className="flex flex-col gap-2.5">
       <p className="flex items-center gap-2 text-2xs text-muted-foreground">
-        {live ? <Loader2 className="size-3 animate-spin" /> : run.status === "error" ? <CircleAlert className={"size-3.5 rounded-full " + ALERT} /> : <Check className="size-3 text-foreground" />}
+        {live ? <Loader2 className="size-3 animate-spin" /> : run.status === "error" ? <CircleAlert className={"size-3.5 text-red-400"} /> : <Check className="size-3 text-foreground" />}
         <span className="font-mono">{run.runId}</span>
         <span>{live ? (props.length ? "council is arguing…" : run.recall ? "proposing…" : "recalling memory…") : run.end?.text ?? run.status}</span>
-        {replay && <span className={"rounded px-1 font-mono font-semibold " + ALERT}>REPLAY</span>}
+        {replay && <span className={"rounded px-1 font-mono font-semibold " + CHIP}>REPLAY</span>}
       </p>
       {run.failure && <p role="alert" className={"rounded-lg px-2.5 py-1.5 text-xs " + ALERT}>{run.failure}</p>}
       {props.map((p) => <ProposalCard key={p.id} p={p} signal={signals.find((s) => s.meta?.proposalId === p.id) ?? null} act={act} onDone={onDone} />)}

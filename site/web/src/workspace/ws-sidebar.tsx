@@ -13,7 +13,7 @@ import { QuorumMark } from "@/components/wordmark"
 import { cn } from "@/lib/utils"
 import type { Area, Item, Meta, NowView } from "./api"
 import { dueLabel, isLate, whenOf } from "./rows"
-import { ALERT } from "./tone"
+import { ALERT, LATE } from "./tone"
 
 export type View = "now" | "inbox" | "goals" | "signals" | "list"
 export const VIEWS: readonly View[] = ["now", "inbox", "goals", "signals", "list"]
@@ -98,7 +98,7 @@ export function WsSidebar({ view, onView, onSearch, meta, now, items, space, onS
               {views.map(([v, label, Icon, n]) => (
                 <SidebarMenuItem key={v}>
                   <SidebarMenuButton isActive={view === v} onClick={() => go(() => onView(v))}><Icon /><span>{label}</span></SidebarMenuButton>
-                  {n > 0 && <SidebarMenuBadge className={cn(v === "now" && "rounded-full bg-red-600 px-1.5 !text-white")}>{n}</SidebarMenuBadge>}
+                  {n > 0 && <SidebarMenuBadge className={cn(v === "now" && "rounded-full bg-foreground px-1.5 !text-background")}>{n}</SidebarMenuBadge>}
                 </SidebarMenuItem>
               ))}
               <SidebarMenuItem>
@@ -145,7 +145,7 @@ export function WsSidebar({ view, onView, onSearch, meta, now, items, space, onS
                     <li key={t.id}>
                       <button type="button" onClick={() => go(() => onOpenItem(t.id))} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-sidebar-accent max-md:min-h-11">
                         <span className="min-w-0 flex-1 truncate">{t.text.split("\n")[0]}</span>
-                        {w && <span className={cn("shrink-0 num font-mono text-2xs text-muted-foreground", isLate(w) && "rounded px-1 " + ALERT)}>{dueLabel(w)}</span>}
+                        {w && <span className={cn("shrink-0 num font-mono text-2xs text-muted-foreground", isLate(w) && LATE)}>{dueLabel(w)}</span>}
                       </button>
                     </li>
                   )
