@@ -188,7 +188,7 @@ export function Console() {
         <div role="status" className="sticky top-0 z-40 border-b bg-background/85 px-4 py-2 text-sm backdrop-blur-xl">
           <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-3 gap-y-1.5">
             <span className={"rounded-full px-2 font-mono text-xs font-semibold tracking-widest " + DECIDE}>REPLAY</span>
-            <span className="min-w-0 flex-1">
+            <span className="min-w-0 flex-1 basis-48">
               <span className="sm:hidden">Recorded earlier, not live</span>
               <span className="hidden sm:inline">{fixture === "seoul" ? "Recorded live at c0mpiled-17 Seoul, 9 Nov 2026, 11:31 KST." : "Scripted sample run."} Nothing is running now{demo ? "; paced for viewing" : ""}.</span>
             </span>

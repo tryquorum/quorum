@@ -22,8 +22,8 @@ export function createDemoServer(now = Date.now()): Transport {
   const base = { log: [], textBy: "person" as const, by: "you", localEdited: false, source: "capture" as const, seq: 1 }
   const items: Item[] = [
     { ...base, id: "ship", type: "goal", text: "Ship Quorum at c0mpiled-17 Seoul", done: false, due: today, createdAt: t0, updatedAt: t0 },
-    { ...base, id: "seoul-ask", type: "todo", text: SEOUL_REQUEST_EN, raw: SEOUL_REQUEST, done: false, due: today, goalId: "ship", createdAt: t0 + 60e3, updatedAt: t0 + 60e3 },
     { ...base, id: "demo-video", type: "todo", text: "Submit the demo video and the repo link", done: false, due: today, goalId: "ship", createdAt: t0 + 120e3, updatedAt: t0 + 120e3 },
+    { ...base, id: "seoul-ask", type: "todo", text: SEOUL_REQUEST_EN, raw: SEOUL_REQUEST, done: false, due: today, goalId: "ship", createdAt: t0 + 60e3, updatedAt: t0 + 60e3 },
     { ...base, id: "check-in", type: "todo", text: "Check in at COEX 2F", done: true, doneAt: t0 + 30e3, due: today, goalId: "ship", createdAt: t0, updatedAt: t0 + 30e3 },
     { ...base, id: "credits", type: "todo", text: "Credit Aside, gbrain (MIT), gstack (MIT) and Direction Board in the README", done: false, due: null, createdAt: t0 + 180e3, updatedAt: t0 + 180e3 },
   ]

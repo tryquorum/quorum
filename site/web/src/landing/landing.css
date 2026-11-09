@@ -46,5 +46,7 @@ html:not(.dark) { color-scheme: light; }
 /* The workspace capture: one floating panel, the only large shadow on the page (trygoat.ai's app mock). */
 .lp-capture { overflow: hidden; border-radius: 20px; border: 1px solid var(--lp-ring); background: var(--background);
   box-shadow: 0 30px 80px -20px var(--lp-shadow), 0 4px 14px rgb(11 11 12 / 0.06); }
+/* Phones: the workspace preview runs edge to edge, so the real /w gets the full screen width it is designed for. */
+@media (max-width: 639px) { .lp-capture { margin-inline: calc(var(--lp-gutter) * -1); border-radius: 0; border-inline: 0; } }
 @media (prefers-reduced-motion: reduce) { .lp *, .lp *::before, .lp *::after { transition: none !important; } }
 }
