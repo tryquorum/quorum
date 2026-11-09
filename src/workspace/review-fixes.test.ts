@@ -207,3 +207,73 @@ describe("7 · 승인 맥락은 울타리 안의 데이터예요", () => {
     expect(approvalTask(ws.db, (await call(ws, "GET", "/api/ws/signals/" + hold.id)).body.signal)).toBe(text)
   })
 })
+
+
+// ---- 10 · 시험 공백 ----
+import { createBoardImport } from "./board-import"
+import { logItem } from "./items"
+
+describe("10 · 3070 은 실제 fetch 로도 GET 만 받아요", () => {
+  test("로컬 서버가 받은 요청의 method 를 모두 기록하면 GET 뿐이에요", async () => {
+    const seen: string[] = []
+    let seq = 5
+    const server = Bun.serve({ port: 0, hostname: "127.0.0.1", fetch(req) {
+      const u = new URL(req.url)
+      seen.push(req.method + " " + u.pathname + u.search)
+      const json = (d: unknown) => new Response(JSON.stringify(d), { headers: { "content-type": "application/json" } })
+      if (u.pathname === "/api/state") return json({ me: { email: "x@example.test" }, seq, boards: [], spaces: [], items: [{ id: "t1", boardId: "b1", type: "todo", text: "Fake", done: false, updatedAt: 1 }] })
+      if (u.pathname === "/api/changes") return json({ seq: ++seq, boards: [], items: [] })
+      if (u.pathname === "/api/signals") return json({ signals: [] })
+      return new Response("nope", { status: 404 })
+    } })
+    try {
+      const db = openWorkspaceDb(join(dir, "w.db"))
+      const imp = createBoardImport(db, { base: "http://127.0.0.1:" + server.port, now: () => NOW })
+      expect((await imp.tick(true)).ok).toBe(true)
+      expect((await imp.tick(true)).ok).toBe(true)
+      expect(seen).toEqual(["GET /api/state", "GET /api/signals", "GET /api/changes?since=5", "GET /api/signals"])
+    } finally { server.stop(true) }
+  })
+})
+
+describe("10 · 사람 글 보호 — 승인·가져오기 길", () => {
+  test("사람이 쓴 사건 노트는 승인 실행 결과가 붙어도 앞부분 그대로예요", async () => {
+    const store = new Store(join(dir, "q.db"))
+    seedHold(store, "r10")
+    const ws = createWorkspace({ path: join(dir, "w.db"), engine: store, execute: () => ({ runId: "rx10", done: Promise.resolve({ ok: true, summary: "결과" }) }), now: () => NOW })
+    const hold = (await call(ws, "GET", "/api/ws/now")).body.needsYou[0]
+    putNote(ws.db, "signal:" + hold.id, "사람이 쓴 판단 근거", NOW)
+    await call(ws, "POST", "/api/ws/signals/" + hold.id + "/approve")
+    await ws.settle()
+    const md = getNote(ws.db, "signal:" + hold.id)!.md
+    expect(md.startsWith("사람이 쓴 판단 근거")).toBe(true)
+    expect(md).toContain("## 실행 결과 (codex)")
+  })
+  test("가져온 사본에 사람이 남긴 기록은 위에서 바뀐 값을 다시 가져와도 남아요", async () => {
+    let text = "Fake upstream"
+    const get = async (url: string) => url.endsWith("/api/state") ? { me: null, seq: 1, boards: [], spaces: [], items: [{ id: "t1", boardId: "b1", type: "todo", text, done: false, updatedAt: text.length }] } : url.includes("/api/changes") ? { seq: 2, boards: [], items: [{ id: "t1", boardId: "b1", type: "todo", text, done: false, updatedAt: 99 }] } : { signals: [] }
+    const ws = createWorkspace({ path: join(dir, "w.db"), boardBase: "http://board.test", boardGet: get, now: () => NOW })
+    await ws.board!.tick(false)
+    const copy = (await call(ws, "GET", "/api/ws/items")).body[0]
+    logItem(ws.db, copy.id, { by: "person", text: "내가 확인했어요" }, NOW)
+    text = "Fake upstream changed"
+    await ws.board!.tick(false)
+    const after = (await call(ws, "GET", "/api/ws/items/" + copy.id)).body.item
+    expect(after.log.map((l: any) => l.text)).toEqual(["내가 확인했어요"])
+  })
+})
+
+describe("10 · 실행을 시작하지 못하면 502, 사건은 Retry 할 수 있게 돌아와요", () => {
+  test("실행기가 바로 던지면 502 이고 사건은 Needs you(error)로 돌아와요", async () => {
+    const store = new Store(join(dir, "q.db"))
+    seedHold(store, "r11")
+    let calls = 0
+    const ws = createWorkspace({ path: join(dir, "w.db"), engine: store, execute: () => { calls++; if (calls === 1) throw new Error("spawn failed"); return { runId: "rx11", done: Promise.resolve({ ok: true, summary: "두 번째엔 됐어요" }) } }, now: () => NOW })
+    const hold = (await call(ws, "GET", "/api/ws/now")).body.needsYou[0]
+    expect((await call(ws, "POST", "/api/ws/signals/" + hold.id + "/approve")).status).toBe(502)
+    expect((await call(ws, "GET", "/api/ws/signals/" + hold.id)).body.signal).toMatchObject({ status: "open", lane: "decide", kind: "error" })
+    expect((await call(ws, "POST", "/api/ws/signals/" + hold.id + "/approve")).status).toBe(202)
+    await ws.settle()
+    expect((await call(ws, "GET", "/api/ws/signals/" + hold.id)).body.signal).toMatchObject({ lane: "review", kind: "done" })
+  })
+})
