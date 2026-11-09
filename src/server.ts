@@ -1,7 +1,9 @@
-// Quorum HTTP API (기본 포트 4317). 계약: docs/contract.md
-// 출처: board/apps/server/server.ts 의 json()/err() 응답 도우미(no-store), 경로를 parts 로 나눠 고르는 방식, 저장소 초기화 순서,
-// 그리고 board runs.ts 의 "재시작 때 하는 중인 실행 닫기". 바꾼 점: 사람 인증 대신 이 맥 전용(기본 HOST 127.0.0.1)으로 열고,
-// 실행 이벤트를 SSE 로 흘려요.
+// Quorum HTTP API. 계약: docs/contract.md
+// 리스너 두 개 (board/apps/server/server.ts 의 serve("local"|"public") 구조 그대로):
+//   local  127.0.0.1:4317 (QUORUM_PORT) — 이 맥 안에서 온 요청만(local-guard, board auth.ts localRequestAllowed)
+//   public 127.0.0.1:4318 (QUORUM_PUBLIC_PORT) — Cloudflare 터널 뒤 quorum.lidgeai.com. Access JWT 가 유효하고 ALLOWED_EMAILS 에 있는 사람만
+//          /api·/mcp·정적 파일을 써요. 쓰기 요청은 PUBLIC_ORIGIN 에서 온 것만(publicCsrfAllowed). ACCESS_AUD·ALLOWED_EMAILS 가 없으면 열지 않아요.
+// 출처: board server.ts 의 json()/err(), parts 라우팅, PUBLIC_PORT 검사·"public listener disabled" 처리, 공개 /api/health 예외, 재시작 정리(runs.ts initRuns).
 import { join, normalize } from "node:path"
 import { PORT, type QuorumEvent } from "./contract"
 import { Store } from "./engine/store"
@@ -9,23 +11,27 @@ import { RunManager } from "./engine/runs"
 import { liveDeps } from "./engine/live"
 import type { Emit } from "./engine/council"
 import { localRequestAllowed } from "./engine/local-guard"
+import { createAccess, parseAllowed, publicCsrfAllowed, type User } from "./engine/access"
 import { mcpHandler } from "./engine/mcp"
 import { BoardClient } from "./executors/board"
 import { ASIDE_BIN } from "./executors/aside"
 import { CODEX_BIN } from "./executors/codex"
 import { GBRAIN_BIN, searchMemory } from "./executors/gbrain"
+import { asideRunner, listRecipes, runRecipe } from "./recipes"
 
-export const VERSION = "0.1.0"
+export const VERSION = "0.2.0"
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } })
 const err = (status: number, message: string) => json({ error: message }, status)
 const str = (v: unknown, n: number) => (typeof v === "string" ? v.trim().slice(0, n) : "")
 
+export type Listener = "local" | "public"
 export type Health = { aside: boolean; codex: boolean; gbrain: boolean; board: boolean }
 export type RecipesModule = {
-  listRecipes?: () => unknown
-  runRecipe?: (id: string, ctx: Record<string, unknown>, emit: Emit) => Promise<unknown>
+  listRecipes: () => unknown
+  runRecipe: (id: string, vars: Record<string, string>, emit: Emit) => Promise<{ ok?: boolean; reason?: string } | unknown>
 }
+export type PublicAuth = { who: (req: Request) => Promise<User | null>; origin: string }
 
 export type AppDeps = {
   store: Store
@@ -36,6 +42,8 @@ export type AppDeps = {
   recipes: () => Promise<RecipesModule | null>
   /** QUORUM_MCP_PROPOSE=1 일 때만 MCP 로 의회를 열 수 있어요 */
   mcpPropose?: boolean
+  /** 로컬 리스너의 /api/me 이메일(QUORUM_LOCAL_USER). 없으면 null */
+  localUser?: string | null
 }
 
 export async function liveHealth(board: BoardClient): Promise<Health> {
@@ -97,20 +105,44 @@ function sse(d: AppDeps, runId: string, afterSeq: number): Response {
   return new Response(stream, { headers: { "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-store", connection: "keep-alive" } })
 }
 
-export function createApp(d: AppDeps): (req: Request) => Promise<Response> {
+/** 레시피 POST 본문에서 vars 만 꺼내요(함수·저장소 같은 ctx 값은 본문으로 받지 않아요) */
+function recipeVars(body: Record<string, unknown>): Record<string, string> {
+  const src = body.vars && typeof body.vars === "object" && !Array.isArray(body.vars) ? (body.vars as Record<string, unknown>) : body
+  const out: Record<string, string> = {}
+  for (const [k, v] of Object.entries(src)) if (typeof v === "string" && /^[A-Za-z0-9_]{1,40}$/.test(k)) out[k] = v.slice(0, 400)
+  return out
+}
+
+export function createApp(d: AppDeps, listener: Listener = "local", pub?: PublicAuth): (req: Request) => Promise<Response> {
+  if (listener === "public" && !pub) throw new Error("public listener needs Access auth")
   return async (req) => {
     const url = new URL(req.url)
     const m = req.method
     const parts = url.pathname.split("/").filter(Boolean)
-    if (parts[0] === "api" || parts[0] === "mcp") {
-      if (!localRequestAllowed(req)) return err(403, "이 맥 안에서 온 요청만 받아요")
+    const guarded = parts[0] === "api" || parts[0] === "mcp"
+
+    let user: User | null
+    if (listener === "local") {
+      if (guarded && !localRequestAllowed(req)) return err(403, "이 맥 안에서 온 요청만 받아요")
+      user = d.localUser ? { email: d.localUser } : null
+    } else {
+      const p = pub as PublicAuth // justified: checked when the app was created
+      if (!publicCsrfAllowed(req, p.origin)) return err(403, "origin not allowed")
+      user = await p.who(req)
+      if (!user) {
+        // 터널 상태 확인용으로 health 만 열어 두되, 실행기 상태는 로그인한 사람에게만 보여요 (board 공개 리스너와 같음)
+        if (url.pathname === "/api/health" && m === "GET") return json({ ok: true, version: VERSION })
+        return guarded ? err(401, "login required (Cloudflare Access)") : new Response("login required", { status: 401 })
+      }
     }
+
     if (parts[0] === "mcp" && parts.length === 1) {
       return mcpHandler({ store: d.store, start: (request) => d.runs.start(request).runId, memory: d.memory, allowPropose: !!d.mcpPropose, version: VERSION }, req)
     }
     if (parts[0] !== "api") return serveStatic(d.siteRoot, url.pathname)
 
     if (parts[1] === "health" && m === "GET") return json({ ok: true, version: VERSION, executors: await d.health() })
+    if (parts[1] === "me" && parts.length === 2 && m === "GET") return json({ email: user?.email ?? null, listener })
 
     if (parts[1] === "runs") {
       if (parts.length === 2 && m === "GET") return json(d.store.listRuns(Math.min(200, Number(url.searchParams.get("limit")) || 50)))
@@ -145,17 +177,18 @@ export function createApp(d: AppDeps): (req: Request) => Promise<Response> {
 
     if (parts[1] === "recipes") {
       const mod = await d.recipes()
-      const runRecipe = mod?.runRecipe
-      if (!mod || !runRecipe) return err(501, "recipes lane not merged yet (src/recipes/index.ts runRecipe)")
-      if (parts.length === 2 && m === "GET") return json(mod.listRecipes ? await mod.listRecipes() : [])
+      if (!mod) return err(501, "recipes are not available")
+      if (parts.length === 2 && m === "GET") return json(await mod.listRecipes())
       if (parts.length === 4 && parts[3] === "run" && m === "POST") {
-        const ctx = ((await req.json().catch(() => ({}))) || {}) as Record<string, unknown>
         const recipeId = parts[2]
+        if (!/^[a-z0-9-]{1,60}$/.test(recipeId)) return err(400, "recipe id must be [a-z0-9-]")
+        const vars = recipeVars(((await req.json().catch(() => ({}))) || {}) as Record<string, unknown>)
         const { runId } = d.runs.startCustom("recipe: " + recipeId, async (emit) => {
           emit("run.start", "recipe:" + recipeId, "레시피 실행: " + recipeId, { recipeId })
-          await runRecipe(recipeId, ctx, emit)
-          emit("run.end", "recipe:" + recipeId, "레시피가 끝났어요", { status: "done", recipeId })
-          return "done"
+          const out = (await mod.runRecipe(recipeId, vars, emit)) as { ok?: boolean; reason?: string } | undefined
+          const ok = out?.ok !== false
+          emit("run.end", "recipe:" + recipeId, ok ? "레시피가 끝났어요" : "레시피가 실패했어요: " + (out?.reason || ""), { status: ok ? "done" : "error", recipeId })
+          return ok ? "done" : "error"
         })
         return json({ runId }, 201)
       }
@@ -164,28 +197,57 @@ export function createApp(d: AppDeps): (req: Request) => Promise<Response> {
   }
 }
 
-async function loadRecipes(): Promise<RecipesModule | null> {
-  const path = join(import.meta.dir, "recipes", "index.ts")
-  if (!(await Bun.file(path).exists())) return null
-  return (await import(path)) as RecipesModule
+/** 실제 레시피 레인(src/recipes). 이 맥에서는 Aside 로 수리할 수 있게 asideRunner 를 넘겨요(QUORUM_RECIPE_ASIDE=0 이면 끔) */
+export const liveRecipes: RecipesModule = {
+  listRecipes: () => listRecipes(),
+  runRecipe: (id, vars, emit) => runRecipe(id, { vars, aside: process.env.QUORUM_RECIPE_ASIDE === "0" ? null : asideRunner() }, emit),
+}
+
+/** 공개 포트: 빈 값이면 끔, 기본 4318. 잘못된 값이면 어떤 리스너도 열지 않고 끝내요 (board PUBLIC_PORT 검사와 같음) */
+export function publicPortFrom(raw: string | undefined, localPort: number): number | null | "invalid" {
+  const v = raw === undefined ? "4318" : raw.trim()
+  if (v === "") return null
+  const n = Number(v)
+  return Number.isInteger(n) && n >= 1 && n <= 65535 && n !== localPort ? n : "invalid"
 }
 
 if (import.meta.main) {
+  const publicPort = publicPortFrom(process.env.QUORUM_PUBLIC_PORT, PORT)
+  if (publicPort === "invalid") {
+    console.error("[quorum] QUORUM_PUBLIC_PORT must be a valid port different from QUORUM_PORT")
+    process.exit(1)
+  }
   const stateDir = process.env.QUORUM_STATE_DIR || join(import.meta.dir, "..", ".quorum")
   const store = new Store(join(stateDir, "quorum.db"))
   const interrupted = store.interruptRunning(new Date().toISOString())
   if (interrupted.length) console.log("[quorum] closed " + interrupted.length + " interrupted run(s)")
   const board = new BoardClient()
   const runs = new RunManager(store, liveDeps(stateDir, board))
-  const app = createApp({
+  const deps: AppDeps = {
     store,
     runs,
     siteRoot: join(import.meta.dir, "..", "site"),
     health: cached(() => liveHealth(board), 15_000),
     memory: (q) => searchMemory(q, 10).then((hits) => hits.map((h) => ({ slug: h.slug, title: h.title, snippet: h.snippet, score: h.score }))),
-    recipes: loadRecipes,
+    recipes: async () => liveRecipes,
     mcpPropose: process.env.QUORUM_MCP_PROPOSE === "1",
-  })
-  Bun.serve({ port: PORT, hostname: process.env.QUORUM_HOST || "127.0.0.1", idleTimeout: 255, fetch: app })
+    localUser: process.env.QUORUM_LOCAL_USER || null,
+  }
+  Bun.serve({ port: PORT, hostname: process.env.QUORUM_HOST || "127.0.0.1", idleTimeout: 255, fetch: createApp(deps, "local") })
   console.log("quorum on http://localhost:" + PORT + " (board write " + (board.writeEnabled ? "on" : "off") + ")")
+  if (publicPort !== null) {
+    const aud = (process.env.ACCESS_AUD || "").trim()
+    const allowed = parseAllowed(process.env.ALLOWED_EMAILS)
+    if (!aud || !allowed.length) console.error("[quorum] public listener disabled: ACCESS_AUD and ALLOWED_EMAILS are required")
+    else {
+      const access = createAccess({ team: process.env.ACCESS_TEAM || "lidgeai.cloudflareaccess.com", aud, allowed })
+      const origin = process.env.PUBLIC_ORIGIN || "https://quorum.lidgeai.com"
+      try {
+        Bun.serve({ port: publicPort, hostname: "127.0.0.1", idleTimeout: 255, fetch: createApp(deps, "public", { who: access.who, origin }) })
+        console.log("[quorum] public listener on 127.0.0.1:" + publicPort + " for " + origin + " (" + allowed.length + " allowed)")
+      } catch (e) {
+        console.error("[quorum] public listener failed:", e)
+      }
+    }
+  }
 }
