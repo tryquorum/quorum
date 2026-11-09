@@ -1,0 +1,38 @@
+{
+  "name": "direction-board",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "zsh -c 'set -a; source .env.local; exec bun --watch apps/server/server.ts'",
+    "start": "zsh -c 'set -a; source .env.local; exec bun apps/server/server.ts'",
+    "web:dev": "bun run --filter @direction-board/web dev",
+    "build": "bun run --filter @direction-board/web build",
+    "typecheck": "bun run typecheck:server && bun run web:typecheck && bun run mobile:typecheck && bun run contracts:typecheck && bun run design-tokens:typecheck",
+    "seed": "zsh -c 'set -a; source .env.local; exec bun apps/server/scripts/seed-signals.ts'",
+    "lint": "oxlint .",
+    "typecheck:server": "bun tools/typecheck-budget/check.ts",
+    "web:typecheck": "bun run --filter @direction-board/web typecheck",
+    "mobile:typecheck": "bun run --filter @direction-board/mobile typecheck",
+    "mobile:test": "bun run --filter @direction-board/mobile test",
+    "mobile:testflight": "bun run --filter @direction-board/mobile testflight",
+    "mobile:ios": "bun run --filter @direction-board/mobile ios",
+    "contracts:typecheck": "bun run --filter @direction-board/contracts typecheck",
+    "design-tokens:typecheck": "bun run --filter @direction-board/design-tokens typecheck",
+    "test": "bun test tools/oxlint-plugin-direction-board && bun run --filter \"./apps/*\" --filter \"./packages/*\" --if-present test",
+    "knip": "knip",
+    "check": "bun run lint && bun run typecheck && bun run test && bun run knip",
+    "code-budgets:update": "bun tools/oxlint-plugin-direction-board/update-code-budgets.ts"
+  },
+  "devDependencies": {
+    "@oxlint/plugins": "1.92.0",
+    "@types/bun": "1.4.4",
+    "knip": "6.44.1",
+    "oxc-parser": "0.157.0",
+    "oxlint": "1.92.0",
+    "typescript": "~6.0.2"
+  }
+}

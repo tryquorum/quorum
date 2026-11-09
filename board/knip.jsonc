@@ -1,0 +1,30 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  // 기존 공개 함수와 타입은 사용처를 옮길 때 정리해요.
+  "rules": { "exports": "off", "types": "off", "nsExports": "off", "nsTypes": "off", "duplicates": "off" },
+  "workspaces": {
+    ".": {
+      "entry": ["tools/oxlint-plugin-direction-board/rules/*.test.ts"],
+      "project": ["tools/oxlint-plugin-direction-board/**/*.ts", "tools/typecheck-budget/**/*.ts"]
+    },
+    "apps/server": {
+      "entry": ["server/**/*.test.ts", "scripts/**/*.ts"],
+      "project": ["server/**/*.ts", "scripts/**/*.ts"]
+    },
+    "apps/web": {
+      "entry": ["src/**/*.test.ts"],
+      "project": ["src/**/*.{ts,tsx,css}"],
+      // 아직 연결하지 않은 UI 부품과 설정·CSS에서 쓰는 의존성이에요.
+      "ignore": ["src/components/ui/avatar.tsx", "src/components/ui/scroll-area.tsx", "src/components/ui/tabs.tsx"],
+      "ignoreDependencies": ["@floating-ui/dom", "@fontsource-variable/geist"]
+    },
+    "apps/mobile": {
+      "entry": ["scripts/**/*.{ts,tsx,js,mjs}"],
+      "project": ["**/*.{ts,tsx,js,mjs}"],
+      // Expo의 Babel 실행 시 필요한 의존성이에요.
+      "ignoreDependencies": ["@babel/core"]
+    },
+    "packages/contracts": { "project": ["src/**/*.ts"] },
+    "packages/design-tokens": { "entry": ["src/**/*.test.ts"], "project": ["src/**/*.ts"] }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "@direction-board/design-tokens",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test src"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.4",
+    "typescript": "~6.0.2"
+  }
+}

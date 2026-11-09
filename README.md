@@ -4,7 +4,7 @@
 
 Built at c0mpiled-17: Seoul (2026-11-09) for YC RFS **Multiplayer AI** and **Self-Maintaining APIs**.
 
-Built on: Aside, gbrain (MIT), gstack (MIT), Direction Board. Their code is not vendored here.
+Built on: Aside, gbrain (MIT), gstack (MIT), Direction Board. `board/` is the Direction Board codebase (commit 2ee6e8a), imported as the base and extended here; Aside, gbrain and gstack are used as external tools.
 
 ```bash
 bun run dev   # http://localhost:4317

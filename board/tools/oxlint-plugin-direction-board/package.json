@@ -1,0 +1,5 @@
+{
+  "name": "@direction-board/oxlint-plugin",
+  "private": true,
+  "type": "module"
+}

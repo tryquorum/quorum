@@ -1,0 +1,230 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/geist-mono";
+@import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+    --font-heading: var(--font-sans);
+    --font-sans: 'Inter Variable', 'Pretendard Variable', Pretendard, -apple-system, 'Apple SD Gothic Neo', system-ui, sans-serif;
+    --font-mono: 'Geist Mono Variable', ui-monospace, Menlo, monospace;
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar: var(--sidebar);
+    --color-ring: var(--ring);
+    --color-control: var(--control);
+    --color-ai-foreground: var(--ai-foreground);
+    --color-running-foreground: var(--running-foreground);
+    --color-done-foreground: var(--done-foreground);
+    --color-warn: var(--warn);
+    --color-warn-foreground: var(--warn-foreground);
+    --color-no-area: var(--no-area);
+    --text-2xs: 0.6875rem;
+    --text-2xs--line-height: 1rem;
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-decide: var(--decide);
+    --color-ai: var(--ai);
+    --color-running: var(--running);
+    --color-done: var(--done);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-foreground: var(--foreground);
+    --color-background: var(--background);
+    --color-overlay: var(--overlay);
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+    --background: #ffffff;
+    --foreground: #0a0a0a;
+    --card: #ffffff;
+    --card-foreground: #0a0a0a;
+    --popover: #ffffff;
+    --popover-foreground: #0a0a0a;
+    --primary: #171717;
+    --primary-foreground: #fafafa;
+    --secondary: #f5f5f5;
+    --secondary-foreground: #171717;
+    --muted: #f5f5f5;
+    --muted-foreground: #666666;
+    --accent: #f5f5f5;
+    --accent-foreground: #171717;
+    --border: #e5e5e5;
+    --input: #e5e5e5;
+    --control: #858585;
+    --ring: #171717;
+    --destructive: #c00008;
+    --decide: #c00008;
+    --ai: #8e51ff;
+    --ai-foreground: #6d28d9;
+    --running: #0284c7;
+    --running-foreground: #0369a1;
+    --done: #059669;
+    --done-foreground: #036b4d;
+    --warn: #b45309;
+    --warn-foreground: #a3480a;
+    --no-area: #858585;
+    --sidebar: #fafafa;
+    --sidebar-foreground: #0a0a0a;
+    --sidebar-primary: #171717;
+    --sidebar-primary-foreground: #fafafa;
+    --sidebar-accent: #f0f0f0;
+    --sidebar-accent-foreground: #171717;
+    --sidebar-border: #e5e5e5;
+    --sidebar-ring: #171717;
+    --scrollbar: #0a0a0a26;
+    --scrollbar-active: #0a0a0a73;
+    --overlay: #0a0a0a24;
+    --radius: 0.625rem;
+}
+
+.dark {
+    --background: #0a0a0a;
+    --foreground: #fafafa;
+    --card: #171717;
+    --card-foreground: #fafafa;
+    --popover: #171717;
+    --popover-foreground: #fafafa;
+    --primary: #e5e5e5;
+    --primary-foreground: #171717;
+    --secondary: #262626;
+    --secondary-foreground: #fafafa;
+    --muted: #262626;
+    --muted-foreground: #a1a1a1;
+    --accent: #262626;
+    --accent-foreground: #fafafa;
+    --border: #ffffff1a;
+    --input: #ffffff26;
+    --control: #8a8a8a;
+    --ring: #f5f5f5;
+    --destructive: #ff6467;
+    --decide: #ff6467;
+    --ai: #a684ff;
+    --ai-foreground: #a684ff;
+    --running: #38bdf8;
+    --running-foreground: #38bdf8;
+    --done: #34d399;
+    --done-foreground: #34d399;
+    --warn: #fbbf24;
+    --warn-foreground: #fbbf24;
+    --no-area: #8a8a8a;
+    --sidebar: #171717;
+    --sidebar-foreground: #fafafa;
+    --sidebar-primary: #e5e5e5;
+    --sidebar-primary-foreground: #171717;
+    --sidebar-accent: #262626;
+    --sidebar-accent-foreground: #fafafa;
+    --sidebar-border: #ffffff1a;
+    --sidebar-ring: #f5f5f5;
+    --scrollbar: #fafafa21;
+    --scrollbar-active: #fafafa66;
+    --overlay: #00000073;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring;
+    }
+  /* 포커스 표시: 따로 정하지 않은 요소는 2px 외곽선. 컴포넌트의 outline-none(utilities 층)이 이것을 이기고 대신 링을 써요 */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    }
+  body {
+    @apply bg-background text-foreground;
+    }
+  html {
+    @apply font-sans;
+    color-scheme: light;
+    /* Tab·앵커로 이동할 때 마지막 요소가 아래에 뜬 AI 정리 트레이(--tray-space) 위에 멈추게 */
+    scroll-padding-bottom: calc(2rem + var(--tray-space, 0px));
+    }
+  /* 다크에서 브라우저가 그리는 기본 조작(스크롤 막대·폼)도 어둡게 */
+  html.dark { color-scheme: dark; }
+  /* 스크롤 막대: 얇게, 바탕 없이, 평소엔 옅게. 가리킨 영역과 스크롤 중인 영역(data-scrolling, lib/scroll-activity)만 진하게.
+     scrollbar-width 는 상속되지 않아 모든 요소에 줘요. 문서 전체 막대는 가리키기로는 진해지지 않아요(늘 가리키고 있으니까).
+     표준 값이 있으면 Chromium 은 ::-webkit-scrollbar 를 보지 않고, Safari 는 macOS 오버레이 막대를 그대로 써요 */
+  * { scrollbar-width: thin; scrollbar-color: var(--scrollbar) transparent; }
+  :where(:not(html, body)):hover, [data-scrolling] { scrollbar-color: var(--scrollbar-active) transparent; }
+}
+
+/* ===== 요약 노트 (Tiptap) + AI 답 (markdown) ===== */
+.note-body{outline:none;min-height:320px;font-size:15px;line-height:1.7;color:var(--foreground)}
+.note-body .ask-mark{background-color:Highlight;border-radius:2px}
+.note-body .wiki-link{cursor:pointer;text-decoration:underline;text-decoration-color:color-mix(in oklab,currentColor 40%,transparent);text-underline-offset:3px;border-radius:2px}
+.note-body .wiki-link:hover{background-color:var(--muted)}
+.note-body > * + *, .md > * + *{margin-top:.6em}
+.note-body h1,.md h1{font-size:1.6em;font-weight:650;letter-spacing:-.015em;line-height:1.25;margin-top:1.1em}
+.note-body h2,.md h2{font-size:1.25em;font-weight:650;letter-spacing:-.01em;line-height:1.3;margin-top:1.1em}
+.note-body h3,.md h3{font-size:1.05em;font-weight:600;margin-top:1em}
+.note-body h4,.md h4{font-size:1em;font-weight:600;margin-top:.9em}
+.note-body h5,.note-body h6,.md h5,.md h6{font-size:.95em;font-weight:600;margin-top:.8em;color:var(--muted-foreground)}
+.note-body > :first-child,.md > :first-child{margin-top:0}
+.note-body ul,.md ul{list-style:disc;padding-left:1.4em}
+.note-body ol,.md ol{list-style:decimal;padding-left:1.4em}
+.note-body li > p,.md li > p{margin:0}
+.note-body li + li,.md li + li{margin-top:.2em}
+.note-body ul[data-type="taskList"]{list-style:none;padding-left:.2em}
+.note-body ul[data-type="taskList"] li{display:flex;gap:.65em;align-items:flex-start}
+.note-body ul[data-type="taskList"] li > label{margin-top:.32em;user-select:none}
+.note-body ul[data-type="taskList"] li > label input{width:15px;height:15px;accent-color:var(--foreground);cursor:pointer}
+.note-body ul[data-type="taskList"] li > div{flex:1}
+.note-body ul[data-type="taskList"] li[data-checked="true"] > div{color:var(--muted-foreground);text-decoration:line-through}
+.note-body ul[data-type="taskList"] li[data-checked="true"] > label input{accent-color:var(--muted-foreground)}
+/* 인용은 왼쪽 선 대신 옅은 바탕 블록 */
+.note-body blockquote,.md blockquote{background:var(--muted);border-radius:8px;padding:.5em .9em;color:var(--muted-foreground)}
+.note-body code,.md code{background:var(--muted);border-radius:5px;padding:.1em .35em;font-family:var(--font-mono);font-size:.86em}
+.note-body pre,.md pre{background:var(--muted);border-radius:10px;padding:.8em 1em;overflow-x:auto;font-size:.85em;line-height:1.55}
+.note-body pre code,.md pre code{background:none;padding:0}
+.note-body a,.md a{text-decoration:underline;text-underline-offset:2px}
+.note-body hr,.md hr{border:0;border-top:1px solid var(--border);margin:1.2em 0}
+.note-body img,.md img{display:block;max-width:100%;height:auto;border-radius:10px;border:1px solid var(--border)}
+.note-body img.ProseMirror-selectednode{outline:2px solid var(--ring);outline-offset:2px}
+/* 벤토 칸 안 스크롤: 얇은 막대, 끝에 닿아도 페이지가 같이 밀리지 않게, 아래 끝은 살짝 흐리게 */
+.bento-scroll{overscroll-behavior:contain;mask-image:linear-gradient(to bottom,#000 calc(100% - 20px),transparent);padding-bottom:12px}
+/* 일 상세·문서의 독립 스크롤 칸: 끝에 닿아도 바깥이 끌려 움직이지 않고, 클래식 막대가 생기고 사라질 때 폭이 흔들리지 않게 */
+.scroll-pane{overscroll-behavior:contain;scrollbar-gutter:stable}
+/* 로딩 자리 표시는 250ms 지나도 못 받았을 때만 보여요. 금방 오는 내용 앞에 회색 상자가 번쩍였다 사라지지 않게(움직임 줄이기에서도 지연은 그대로) */
+@keyframes delayed-show { from { visibility: hidden } }
+.delayed-show { animation: delayed-show 0s linear .25s backwards; }
+.note-body p.is-empty::before,.note-body h1.is-empty::before,.note-body h2.is-empty::before,.note-body h3.is-empty::before{content:attr(data-placeholder);color:var(--muted-foreground);opacity:.6;float:left;height:0;pointer-events:none}
+.md{font-size:14.5px;line-height:1.7}
+.md table{border-collapse:collapse;font-size:.92em;display:block;overflow-x:auto}
+.md th,.md td{border:1px solid var(--border);padding:.35em .7em;text-align:left}
+.md th{background:var(--muted);font-weight:600}
+.md strong{font-weight:600}
+
+.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+/* 한국어가 섞인 날짜·시각: 본문 글꼴 + 같은 폭 숫자 */
+.tnum { font-variant-numeric: tabular-nums; }
+/* 편집 본문: 포인터로 누르면 깜박이는 커서만(쓰는 동안 테두리가 방해돼요). 키보드로 들어오면 본문 둘레에 기본 링과 같은 2px 외곽선 (note-editor 의 data-focus-via) */
+.note-body[data-focus-via="keyboard"]:focus-visible { outline: 2px solid var(--ring); outline-offset: 4px; border-radius: var(--radius-md); }
+@media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: 1ms !important; transition-duration: 1ms !important; } }

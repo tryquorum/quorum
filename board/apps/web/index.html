@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
+    <!-- 첫 칠하기 전에 테마를 정해요(React 가 뜨기 전 밝은 화면이 번쩍이지 않게). 저장한 "light"/"dark"(theme-provider 의 "theme" 키)가 이기고, 그 밖(없음·"system"·읽을 수 없는 값)은 provider 처럼 기기 설정 -->
+    <script>try{var t=localStorage.getItem("theme");var d=t==="dark"||(t!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.classList.add(d?"dark":"light")}catch(e){}</script>
+    <link rel="icon" type="image/png" sizes="16x16" href="/brand/favicon-16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/brand/favicon-32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/brand/apple-touch-icon.png" />
+    <title>방향판</title>
+    <script src="/legacy/when.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

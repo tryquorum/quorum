@@ -1,0 +1,5 @@
+{
+  "no-direct-fetch": {},
+  "no-live-data-path": {},
+  "no-hardcoded-origin": {}
+}

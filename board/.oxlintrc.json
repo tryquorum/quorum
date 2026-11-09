@@ -1,0 +1,13 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "jsPlugins": [{ "name": "direction-board", "specifier": "./tools/oxlint-plugin-direction-board/index.ts" }],
+  "categories": { "correctness": "warn" },
+  "rules": {
+    "direction-board/code-budget": "error",
+    "direction-board/no-live-data-path": "error",
+    "direction-board/no-hardcoded-origin": "error",
+    "direction-board/no-direct-fetch": "error",
+    "direction-board/no-raw-style": "error"
+  },
+  "ignorePatterns": ["**/node_modules/**", "**/dist/**", "apps/mobile/ios/**", "apps/mobile/android/**", "devlog/**"]
+}

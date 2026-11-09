@@ -1,0 +1,87 @@
+{
+  "apps/server/scripts/seed-signals.ts": {
+    "asAny": 1
+  },
+  "apps/server/server.ts": {
+    "nonNull": 2,
+    "asAny": 6
+  },
+  "apps/server/server/auth.ts": {
+    "nonNull": 1
+  },
+  "apps/server/server/docs/api.ts": {
+    "nonNull": 3,
+    "asAny": 1
+  },
+  "apps/server/server/docs/document.ts": {
+    "nonNull": 5
+  },
+  "apps/server/server/docs/meta.ts": {
+    "nonNull": 2
+  },
+  "apps/server/server/docs/search.ts": {
+    "nonNull": 1
+  },
+  "apps/server/server/ops.ts": {
+    "asAny": 5
+  },
+  "apps/server/server/runs.ts": {
+    "nonNull": 1,
+    "asAny": 13
+  },
+  "apps/server/server/signals.ts": {
+    "asAny": 7
+  },
+  "apps/server/server/vault/html-to-markdown.test.ts": {
+    "lines": 690
+  },
+  "apps/server/server/vault/html-to-markdown.ts": {
+    "lines": 811,
+    "nonNull": 14
+  },
+  "apps/server/server/vault/index.ts": {
+    "nonNull": 1
+  },
+  "apps/server/server/vault/journal.ts": {
+    "nonNull": 1
+  },
+  "apps/server/server/vault/vault.test.ts": {
+    "lines": 774
+  },
+  "apps/server/server/works.ts": {
+    "asAny": 4
+  },
+  "apps/web/src/App.tsx": {
+    "nonNull": 1
+  },
+  "apps/web/src/components/chat-pane.tsx": {
+    "nonNull": 3
+  },
+  "apps/web/src/components/command-dock.tsx": {
+    "nonNull": 3
+  },
+  "apps/web/src/components/document-page.tsx": {
+    "nonNull": 1
+  },
+  "apps/web/src/components/home.tsx": {
+    "nonNull": 2
+  },
+  "apps/web/src/components/model-picker.tsx": {
+    "nonNull": 1
+  },
+  "apps/web/src/components/ui/sidebar.tsx": {
+    "lines": 717
+  },
+  "apps/web/src/components/work-view.tsx": {
+    "nonNull": 1
+  },
+  "apps/web/src/lib/document-write.ts": {
+    "nonNull": 5
+  },
+  "apps/web/src/main.tsx": {
+    "nonNull": 1
+  },
+  "packages/contracts/src/note-save.ts": {
+    "nonNull": 2
+  }
+}

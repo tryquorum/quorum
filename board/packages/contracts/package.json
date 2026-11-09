@@ -1,0 +1,39 @@
+{
+  "name": "@direction-board/contracts",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./docs": "./src/docs.ts",
+    "./api": "./src/api.ts",
+    "./order": "./src/order.ts",
+    "./text": "./src/text.ts",
+    "./settings": "./src/settings.ts",
+    "./note-save": "./src/note-save.ts",
+    "./models": "./src/models.ts",
+    "./palette": "./src/palette.ts",
+    "./palette-rank": "./src/palette-rank.ts",
+    "./settings-registry": "./src/settings-registry.ts",
+    "./ops-labels": "./src/ops-labels.ts",
+    "./ops-prompt": "./src/ops-prompt.ts",
+    "./mcp-snippets": "./src/mcp-snippets.ts",
+    "./run-labels": "./src/run-labels.ts",
+    "./doc-tree": "./src/doc-tree.ts",
+    "./wiki-links": "./src/wiki-links.ts",
+    "./quick-add": "./src/quick-add.ts",
+    "./quick-recovery": "./src/quick-recovery.ts",
+    "./slot-store": "./src/slot-store.ts",
+    "./capture": "./src/capture.ts",
+    "./tasks": "./src/tasks.ts",
+    "./when": "./src/when.ts",
+    "./board-text": "./src/board-text.ts",
+    "./road-agenda": "./src/road-agenda.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test src"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.2"
+  }
+}

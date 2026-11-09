@@ -4,7 +4,7 @@ Quorum은 여러 봇이 할 일을 제안하고 서로 반박해서 필요한 �
 
 ## 해커톤 규칙 (c0mpiled-17 Seoul, 2026-11-09)
 
-- 이 저장소의 모든 코드는 2026-11-09 10:00 KST 이후에 작성해요. 방향판(direction-board) 저장소 코드나 이전 프로토타입 코드를 복사하지 말고, 실행 중인 서비스·CLI로 호출해요.
+- board/ 는 방향판(direction-board, 2ee6e8a) 코드예요. 먼저 읽고 최대한 가져다 쓰고, 복사해서 Quorum에 맞게 더 낫게 고쳐요. 출처는 README에 적혀 있어요.
 - Aside, gbrain(MIT), gstack(MIT), 방향판은 외부 도구예요. README에 출처를 밝혀요.
 - force-push, 이력 재작성 금지. 레인 브랜치에만 커밋하고 main 병합은 통합 담당(최상위 스레드)이 해요.
 

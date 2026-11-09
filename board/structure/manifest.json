@@ -1,0 +1,163 @@
+{
+  "version": 2,
+  "sizeBudgetLines": 300,
+  "generatedPaths": [],
+  "absentPaths": [],
+  "tiers": [
+    {
+      "id": 1,
+      "name": "기반",
+      "purpose": "제품과 원본"
+    },
+    {
+      "id": 2,
+      "name": "계약",
+      "purpose": "입구 사이 계약"
+    },
+    {
+      "id": 3,
+      "name": "서버",
+      "purpose": "서버와 도메인"
+    },
+    {
+      "id": 4,
+      "name": "클라이언트",
+      "purpose": "웹과 모바일"
+    },
+    {
+      "id": 5,
+      "name": "로컬 상태",
+      "purpose": "DB와 거울"
+    }
+  ],
+  "docs": [
+    {
+      "path": "overview.md",
+      "tier": 1,
+      "title": "전체 구조",
+      "scope": "제품 경계와 원본",
+      "documents": [
+        "apps/server/server.ts",
+        "apps/server/server/",
+        "apps/web/"
+      ]
+    },
+    {
+      "path": "contracts.md",
+      "tier": 2,
+      "title": "계약",
+      "scope": "문서와 웹 계약 및 워크스페이스",
+      "documents": [
+        "packages/contracts/src/docs.ts",
+        "apps/web/src/lib/api.ts",
+        "package.json",
+        "packages/contracts/src/",
+        "packages/design-tokens/src/"
+      ]
+    },
+    {
+      "path": "server.md",
+      "tier": 3,
+      "title": "서버",
+      "scope": "서버 입구와 중복 처리",
+      "documents": [
+        "apps/server/server.ts",
+        "apps/server/server/signals.ts",
+        "apps/server/server/ops.ts",
+        "apps/server/server/runs.ts",
+        "apps/server/server/mcp/handler.ts",
+        "apps/server/server/actions.ts",
+        "apps/server/server/dedup.ts",
+        "apps/server/server/settings.ts",
+        "apps/server/server/spaces.ts",
+        "apps/server/server/pilot.ts",
+        "apps/server/server/google-auth.ts",
+        "apps/server/server/access.ts",
+        "apps/server/server/issues.ts"
+      ]
+    },
+    {
+      "path": "web.md",
+      "tier": 4,
+      "title": "웹",
+      "scope": "웹 진입과 대화",
+      "documents": [
+        "apps/web/src/App.tsx",
+        "apps/web/src/components/command-dock.tsx",
+        "apps/web/src/components/docs-view.tsx",
+        "apps/web/src/components/settings/"
+      ]
+    },
+    {
+      "path": "mobile.md",
+      "tier": 4,
+      "title": "모바일",
+      "scope": "모바일 앱, 정보 구조와 빌드 도구",
+      "documents": [
+        "apps/mobile/",
+        "apps/mobile/src/",
+        "apps/mobile/scripts/",
+        "apps/mobile/src/navigation/",
+        "apps/mobile/src/ui/",
+        "apps/mobile/src/api/query.ts",
+        "apps/mobile/src/notes/"
+      ]
+    },
+    {
+      "path": "local-state.md",
+      "tier": 5,
+      "title": "로컬 상태",
+      "scope": "DB와 거울",
+      "documents": [
+        "apps/server/server.ts",
+        "apps/server/server/vault/"
+      ]
+    }
+  ],
+  "decisions": [
+    {
+      "path": "decisions/ADR-0001-document-layer.md",
+      "owner": "overview.md"
+    },
+    {
+      "path": "decisions/ADR-0002-metadata.md",
+      "owner": "contracts.md"
+    },
+    {
+      "path": "decisions/ADR-0003-dedup.md",
+      "owner": "server.md"
+    },
+    {
+      "path": "decisions/ADR-0004-new-conversation.md",
+      "owner": "web.md"
+    },
+    {
+      "path": "decisions/ADR-0005-monorepo.md",
+      "owner": "contracts.md"
+    },
+    {
+      "path": "decisions/ADR-0006-ios.md",
+      "owner": "mobile.md"
+    },
+    {
+      "path": "decisions/ADR-0007-mcp-tokens.md",
+      "owner": "server.md"
+    },
+    {
+      "path": "decisions/ADR-0008-doc-hierarchy.md",
+      "owner": "contracts.md"
+    },
+    {
+      "path": "decisions/ADR-0010-mobile-ia.md",
+      "owner": "mobile.md"
+    },
+    {
+      "path": "decisions/ADR-0011-spaces.md",
+      "owner": "server.md"
+    },
+    {
+      "path": "decisions/ADR-0012-pilot-google-login.md",
+      "owner": "server.md"
+    }
+  ]
+}

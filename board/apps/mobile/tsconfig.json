@@ -1,0 +1,20 @@
+{
+  "extends": "expo/tsconfig.base.json",
+  "compilerOptions": {
+    "strict": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "types": [
+      "bun",
+      "node",
+      "react"
+    ]
+  },
+  "include": [
+    "index.ts",
+    "app.config.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "scripts/**/*.ts"
+  ]
+}
