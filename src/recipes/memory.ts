@@ -4,6 +4,8 @@ export type MemoryHit = { slug: string; score: number; snippet: string }
 export interface Memory {
   put(slug: string, markdown: string, reason?: string): Promise<void>
   search(query: string, limit?: number): Promise<MemoryHit[]>
+  /** 페이지 읽기. 없으면 null (같은 슬러그 충돌 때 같은 수리인지 보려고 써요) */
+  get?(slug: string): Promise<string | null>
 }
 
 /** gbrain 호출 실패. code 는 프로세스 종료 코드(스폰 실패·타임아웃이면 null) */
@@ -12,6 +14,9 @@ export class MemoryError extends Error {
     super(message)
     this.name = "MemoryError"
   }
+  /** 같은 슬러그 페이지가 이미 있어 쓰기가 거절됨 (gbrain put: revision_required) */
+  get conflict(): boolean { return /revision_required|expected_revision|conflict/i.test(this.stderr) }
+  get notFound(): boolean { return /page_not_found/i.test(this.stderr) }
 }
 
 const TAIL = 300
@@ -128,6 +133,11 @@ export class GbrainMemory implements Memory {
     return parseHits(stdout, stderr)
   }
 
+  async get(slug: string): Promise<string | null> {
+    try { return (await this.run("get", ["get", slug])).stdout }
+    catch (e) { if (e instanceof MemoryError && e.notFound) return null; throw e }
+  }
+
   private async run(label: string, args: string[], input?: string): Promise<{ stdout: string; stderr: string }> {
     let proc: ReturnType<typeof Bun.spawn>
     try {
@@ -203,4 +213,18 @@ export function repairNote(input: {
     `- at: ${oneLine(input.at)}`,
     "",
   ].join("\n")
+}
+
+/** repairNote 가 쓴 "- new endpoint: GET <url>" 줄에서 경로를 다시 읽어요 */
+export function endpointsFromNote(text: string): { method: "GET" | "POST"; url: string }[] {
+  const out: { method: "GET" | "POST"; url: string }[] = []
+  for (const m of text.matchAll(/new endpoint:\s*(GET|POST)\s+(\S+)/g)) out.push({ method: m[1] as "GET" | "POST", url: m[2] })
+  return out
+}
+
+/** 두 수리 기록이 같은 수리인지: 이전·새 경로 줄을 board dedup 의 같은 제목 규칙(normTitle)으로 비교해요 */
+export function sameRepair(a: string, b: string): boolean {
+  const key = (s: string) => normTitle(s.split("\n").filter((l) => /^- (previous|new) endpoint:/.test(l.trim())).join("\n"))
+  const ka = key(a)
+  return ka.length > 0 && ka === key(b)
 }

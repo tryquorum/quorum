@@ -10,12 +10,13 @@ export type Attempt = { via: "http" | "aside"; endpoint: string; ok: boolean; st
 export type Found = { candidate: Candidate; result: unknown; via: "http" | "aside"; status: number }
 export type DiscoverOut = { found: Found | null; attempts: Attempt[]; asideError?: string }
 
-export async function discover(def: RecipeDef, ctx: RecipeCtx, onAttempt: (a: Attempt) => void): Promise<DiscoverOut> {
+/** recalled: gbrain 에서 회상한 지난 수리 경로. 정의에 적힌 후보보다 먼저 시도해요 */
+export async function discover(def: RecipeDef, ctx: RecipeCtx, onAttempt: (a: Attempt) => void, recalled: Candidate[] = []): Promise<DiscoverOut> {
   const attempts: Attempt[] = []
   const note = (a: Attempt) => { attempts.push(a); onAttempt(a) }
   const broken = endpointOf(def.request)
   const tried = new Set<string>([broken])
-  for (const c of def.discover.http?.candidates || []) {
+  for (const c of [...recalled, ...(def.discover.http?.candidates || [])]) {
     const endpoint = endpointOf(c.request)
     if (tried.has(endpoint)) continue
     tried.add(endpoint)

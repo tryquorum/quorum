@@ -4,9 +4,9 @@ import type { EventType, QuorumEvent } from "../contract"
 import { callRecipe } from "./call"
 import { discover, type Attempt } from "./discover"
 import { RecipeError } from "./errors"
-import { noteSlug, repairNote } from "./memory"
+import { endpointsFromNote, MemoryError, noteSlug, repairNote, sameRepair, type Memory } from "./memory"
 import { endpointOf } from "./spec"
-import type { Emit, RecipeCtx, RecipeDef, RunOutcome } from "./types"
+import type { Candidate, Emit, RecipeCtx, RecipeDef, RunOutcome } from "./types"
 
 type Data = Record<string, unknown>
 
@@ -23,6 +23,41 @@ const countOf = (r: unknown) => (Array.isArray(r) ? r.length : r && typeof r ===
 
 export async function runRecipe(id: string, ctx: RecipeCtx, emit: Emit): Promise<RunOutcome> {
   const ev = recipeEmitter(ctx, emit)
+  try { return await run(id, ctx, ev) }
+  catch (e) {
+    // 예상하지 못한 오류(DB·코드 오류)도 조용히 던지지 않고 이벤트로 남겨요
+    const msg = String((e as Error)?.message || e)
+    ev.send("error", `recipe:${id}`, `레시피 실행 중 오류: ${msg.slice(0, 200)}`, { recipeId: id, reason: msg })
+    return { ok: false, version: 0, endpoint: "", reason: msg, nextSeq: ev.next() }
+  }
+}
+
+/** gbrain 에서 이 레시피의 지난 수리 기록을 찾아 recall 이벤트로 보여 주고, 기록된 새 경로를 후보로 돌려줘요 */
+async function recall(id: string, def: RecipeDef, ctx: RecipeCtx, ev: ReturnType<typeof recipeEmitter>): Promise<Candidate[]> {
+  if (!ctx.memory) return []
+  try {
+    const hits = (await ctx.memory.search(`recipes/${id}`, 5)).filter((h) => h.slug.startsWith(`recipes/${id}-v`))
+    ev.send("recall", "gbrain", hits.length ? `지난 수리 기록 ${hits.length}개를 찾았어요` : "지난 수리 기록이 없어요",
+      { recipeId: id, version: def.version, endpoint: endpointOf(def.request), hits: hits.map((h) => ({ id: h.slug, summary: h.snippet.split("\n")[0].slice(0, 120), decision: "repair", score: h.score })) })
+    // 기록은 바깥 자료라, 레시피에 이미 적힌 호스트로 가는 경로만 써요(쿠키 머리글이 다른 곳으로 새지 않게)
+    const hostOf = (u: string) => { try { return new URL(u).host } catch { return "" } }
+    const allowed = new Set([def.request, ...(def.discover.http?.candidates || []).map((c) => c.request)].map((q) => hostOf(q.url)).filter(Boolean))
+    const seen = new Set<string>()
+    const out: Candidate[] = []
+    for (const h of hits) for (const e of endpointsFromNote(h.snippet)) {
+      const key = `${e.method} ${e.url}`
+      if (seen.has(key) || !allowed.has(hostOf(e.url))) continue
+      seen.add(key)
+      out.push({ request: { method: e.method, url: e.url, ...(def.request.headers ? { headers: def.request.headers } : {}) }, note: "gbrain" })
+    }
+    return out
+  } catch (e) {
+    ev.send("error", "gbrain", `지난 수리 기록을 찾지 못했어요: ${String((e as Error).message).slice(0, 200)}`, { recipeId: id, version: def.version, endpoint: endpointOf(def.request), reason: String((e as Error).message) })
+    return []
+  }
+}
+
+async function run(id: string, ctx: RecipeCtx, ev: ReturnType<typeof recipeEmitter>): Promise<RunOutcome> {
   const actor = `recipe:${id}`
   let def: RecipeDef
   try { def = ctx.store.current(id) }
@@ -52,7 +87,7 @@ export async function runRecipe(id: string, ctx: RecipeCtx, emit: Emit): Promise
   const onAttempt = (a: Attempt) =>
     ev.send("recipe.run", a.via === "aside" ? "aside" : actor, a.ok ? `후보 통과: ${a.endpoint}` : `후보 탈락: ${a.endpoint} — ${a.reason}`,
       { recipeId: id, version: def.version, endpoint: a.endpoint, status: a.status, reason: a.reason, phase: "discover", via: a.via, ok: a.ok })
-  const out = await discover(def, ctx, onAttempt)
+  const out = await discover(def, ctx, onAttempt, await recall(id, def, ctx, ev))
   if (out.asideError) ev.send("error", "aside", `Aside 로 새 경로를 찾지 못했어요: ${out.asideError}`, base(def, { reason: out.asideError }))
   if (!out.found) {
     const why = `검증을 통과한 새 경로가 없어요 (후보 ${out.attempts.length}개)`
@@ -72,13 +107,30 @@ export async function runRecipe(id: string, ctx: RecipeCtx, emit: Emit): Promise
   if (!ctx.memory) {
     ev.send("error", "gbrain", "기억 저장소가 연결되지 않아 수리 기록을 남기지 못했어요", { recipeId: id, version: next.version, endpoint: endpointOf(next.request), reason: "memory disabled" })
   } else {
+    const note = repairNote({ recipeId: id, site: def.site, intent: def.intent, fromVersion: def.version, toVersion: next.version, previousEndpoint, endpoint: endpointOf(next.request), reason, at: new Date().toISOString() })
+    const where = { recipeId: id, version: next.version, endpoint: endpointOf(next.request) }
     try {
-      await ctx.memory.put(slug, repairNote({ recipeId: id, site: def.site, intent: def.intent, fromVersion: def.version, toVersion: next.version, previousEndpoint, endpoint: endpointOf(next.request), reason, at: new Date().toISOString() }), `recipe ${id} repaired v${def.version}->v${next.version}`)
-      ev.send("memory.saved", "gbrain", `수리 기록을 남겼어요: ${slug}`, { recipeId: id, version: next.version, endpoint: endpointOf(next.request), slug })
+      const saved = await saveNote(ctx.memory, slug, note, `recipe ${id} repaired v${def.version}->v${next.version}`, ctx.runId)
+      ev.send("memory.saved", "gbrain", saved.duplicate ? `같은 수리 기록이 이미 있어요: ${saved.slug}` : `수리 기록을 남겼어요: ${saved.slug}`, { ...where, slug: saved.slug, duplicate: saved.duplicate })
     } catch (e) {
       const msg = (e as Error).message
-      ev.send("error", "gbrain", `수리 기록을 남기지 못했어요: ${msg.slice(0, 200)}`, { recipeId: id, version: next.version, endpoint: endpointOf(next.request), reason: msg })
+      ev.send("error", "gbrain", `수리 기록을 남기지 못했어요: ${msg.slice(0, 200)}`, { ...where, reason: msg })
     }
   }
   return { ok: true, version: next.version, endpoint: endpointOf(next.request), result: out.found.result, repaired: true, reason, nextSeq: ev.next() }
+}
+
+/** 다른 기기가 같은 버전 번호로 먼저 기록했으면(슬러그 충돌) 같은 수리인지 보고, 같으면 중복으로, 다르면 실행 id 를 붙여 따로 남겨요 */
+async function saveNote(memory: Memory, slug: string, note: string, reason: string, runId: string): Promise<{ slug: string; duplicate: boolean }> {
+  try {
+    await memory.put(slug, note, reason)
+    return { slug, duplicate: false }
+  } catch (e) {
+    if (!(e instanceof MemoryError && e.conflict && memory.get)) throw e
+    const existing = await memory.get(slug)
+    if (existing !== null && sameRepair(existing, note)) return { slug, duplicate: true }
+    const alt = `${slug}-${runId.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 16) || Date.now().toString(36)}`
+    await memory.put(alt, note, reason)
+    return { slug: alt, duplicate: false }
+  }
 }
