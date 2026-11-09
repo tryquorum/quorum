@@ -183,7 +183,9 @@ if (import.meta.main) {
   const board = new BoardClient()
   const runs = new RunManager(store, liveDeps(stateDir, board))
   const engineDeps = liveDeps(stateDir, board)
-  const workspace = createWorkspace({ path: join(stateDir, "workspace.db"), engine: store, execute: engineExecute(runs, (id) => engineDeps(id).executors) })
+  const boardBase = process.env.QUORUM_BOARD_IMPORT === "0" ? undefined : process.env.QUORUM_BOARD_IMPORT_URL || "http://127.0.0.1:3070"
+  const workspace = createWorkspace({ path: join(stateDir, "workspace.db"), engine: store, execute: engineExecute(runs, (id) => engineDeps(id).executors), boardBase })
+  workspace.board?.start()
   const app = createApp({
     store,
     runs,

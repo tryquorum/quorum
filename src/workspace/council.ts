@@ -118,8 +118,10 @@ export function approveSignal(db: Database, id: string, execute: ExecuteFn | und
   const done = started.done.then((out) => {
     const at = Date.now()
     if (out.ok) {
-      moveSignal(db, id, ["running"], { status: "open", lane: "review", kind: "done", reason: "승인한 일을 실행했어요 · 결과를 봐 주세요", body: out.summary.slice(0, 8000) }, at)
-      appendNote(db, "signal:" + id, "## 실행 결과 (" + m.executor + ")\n\n" + out.summary.slice(0, 8000), "agent", at)
+      // 실행기가 요약 없이 끝나면 빈 결과를 성공처럼 보이지 않게 그렇다고 적어요
+      const summary = out.summary.trim() || "(실행기가 요약을 남기지 않았어요 · 콘솔의 실행 " + started.runId + " 을 확인해 주세요)"
+      moveSignal(db, id, ["running"], { status: "open", lane: "review", kind: "done", reason: "승인한 일을 실행했어요 · 결과를 봐 주세요", body: summary.slice(0, 8000) }, at)
+      appendNote(db, "signal:" + id, "## 실행 결과 (" + m.executor + ")\n\n" + summary.slice(0, 8000), "agent", at)
     } else {
       moveSignal(db, id, ["running"], { status: "open", lane: "decide", kind: "error", reason: "승인한 일이 실패했어요: " + firstLine(out.error), meta: { execError: out.error } }, at)
       appendNote(db, "signal:" + id, "## 실행 실패 (" + m.executor + ")\n\n" + out.error.slice(0, 8000), "agent", at)

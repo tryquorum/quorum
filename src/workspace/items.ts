@@ -8,9 +8,14 @@ import { normTitle } from "./text"
 import { parse as parseWhen } from "./when"
 import { findSameTodo } from "./dedup"
 
-export type ItemData = { type: "todo"; text: string; raw?: string; done: boolean; due: string | null; log: LogLine[]; runId?: string; textBy: "person" | "council"; source?: string }
-export type Item = ItemData & { id: string; by: string; createdAt: number; updatedAt: number; seq: number }
-type Row = { id: string; data: string; by: string; created_at: number; updated_at: number; deleted: number; seq: number; client_key: string | null }
+export type ItemData = {
+  type: "todo" | "goal"; text: string; raw?: string; done: boolean; due: string | null; log: LogLine[]; runId?: string; textBy: "person" | "council"
+  /** capture = Quorum 빠른 기록, direction-board = 3070 에서 읽어 온 사본 */
+  source?: "capture" | "direction-board"; sourceId?: string
+  remindAt?: string; area?: string; boardId?: string; space?: string; goalId?: string; placed?: boolean; doneAt?: number
+}
+export type Item = ItemData & { id: string; by: string; createdAt: number; updatedAt: number; seq: number; localEdited: boolean }
+type Row = { id: string; data: string; by: string; created_at: number; updated_at: number; deleted: number; seq: number; client_key: string | null; source: string | null; source_id: string | null; local_edited: number }
 export type Fail = { status: number; error: string }
 
 const WHEN = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/
@@ -20,11 +25,12 @@ export const TEXT_MAX = 2000
 
 export function initItems(db: Database) {
   db.exec(`CREATE TABLE IF NOT EXISTS items(id TEXT PRIMARY KEY, data TEXT NOT NULL, by TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL,
-  deleted INTEGER NOT NULL DEFAULT 0, seq INTEGER NOT NULL DEFAULT 1, client_key TEXT);
-CREATE UNIQUE INDEX IF NOT EXISTS items_client_key ON items(client_key) WHERE client_key IS NOT NULL;`)
+  deleted INTEGER NOT NULL DEFAULT 0, seq INTEGER NOT NULL DEFAULT 1, client_key TEXT, source TEXT, source_id TEXT, local_edited INTEGER NOT NULL DEFAULT 0);
+CREATE UNIQUE INDEX IF NOT EXISTS items_client_key ON items(client_key) WHERE client_key IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS items_source ON items(source, source_id) WHERE source_id IS NOT NULL;`)
 }
 
-const pub = (r: Row): Item => ({ ...(JSON.parse(r.data) as ItemData), id: r.id, by: r.by, createdAt: r.created_at, updatedAt: r.updated_at, seq: r.seq })
+const pub = (r: Row): Item => ({ ...(JSON.parse(r.data) as ItemData), id: r.id, by: r.by, createdAt: r.created_at, updatedAt: r.updated_at, seq: r.seq, localEdited: !!r.local_edited })
 const rid = () => crypto.randomUUID().replace(/-/g, "").slice(0, 12)
 
 export function getItem(db: Database, id: string): Item | null {
@@ -32,16 +38,17 @@ export function getItem(db: Database, id: string): Item | null {
   return r ? pub(r) : null
 }
 export function listItems(db: Database, opts: { done?: boolean } = {}): Item[] {
-  const rows = db.query("SELECT * FROM items WHERE deleted=0 ORDER BY created_at DESC LIMIT 500").all() as Row[]
+  const rows = db.query("SELECT * FROM items WHERE deleted=0 ORDER BY created_at DESC LIMIT 2000").all() as Row[]
   return rows.map(pub).filter((i) => opts.done || !i.done)
 }
 export function itemByRun(db: Database, runId: string): Item | null {
   return listItems(db, { done: true }).find((i) => i.runId === runId) ?? null
 }
+/** 사람이 고치면 local_edited 를 켜요: 가져온 사본이라도 그 뒤로는 3070 의 값이 Quorum 에서 고친 것을 덮지 않아요 */
 function write(db: Database, id: string, data: ItemData, by: string, now: number) {
-  db.query("UPDATE items SET data=?, by=?, updated_at=?, seq=seq+1 WHERE id=?").run(JSON.stringify(data), by, now, id)
+  db.query("UPDATE items SET data=?, by=?, updated_at=?, seq=seq+1, local_edited=CASE WHEN ?='person' THEN 1 ELSE local_edited END WHERE id=?").run(JSON.stringify(data), by, now, by, id)
 }
-const strip = ({ id: _i, by: _b, createdAt: _c, updatedAt: _u, seq: _s, ...d }: Item): ItemData => d
+const strip = ({ id: _i, by: _b, createdAt: _c, updatedAt: _u, seq: _s, localEdited: _l, ...d }: Item): ItemData => d
 
 /**
  * 빠른 기록. 사람 글을 그대로 받아 날짜만 읽어 내요(when.ts). due 를 주면 그걸 써요.
@@ -100,7 +107,7 @@ export function patchItem(db: Database, id: string, body: Record<string, unknown
       if (body.due !== null && !(typeof body.due === "string" && WHEN.test(body.due))) return { status: 400, error: "due must be YYYY-MM-DD or YYYY-MM-DDTHH:MM" }
       d.due = (body.due as string | null) ?? null
     }
-    if (body.done !== undefined) d.done = !!body.done
+    if (body.done !== undefined) { d.done = !!body.done; if (d.done) d.doneAt = now; else delete d.doneAt }
     if (body.runId !== undefined) {
       if (!(typeof body.runId === "string" && RUN.test(body.runId))) return { status: 400, error: "bad runId" }
       d.runId = body.runId

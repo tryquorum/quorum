@@ -229,3 +229,81 @@ describe("의회 연결", () => {
     expect((await call(ws, "GET", "/api/ws/signals?all=1")).body).toEqual([])
   })
 })
+
+
+describe("방향판(3070) 읽기 전용 가져오기 — 가짜 데이터", () => {
+  const state = (seq: number, items: any[]) => ({
+    me: { email: "owner@example.test", agent: false }, seq,
+    boards: [{ id: "b1", name: "나", kind: "personal", mine: true, deleted: false, areas: [{ id: "a1", name: "Area A", color: "#f00" }] }],
+    spaces: [{ id: "personal", kind: "personal", name: "Personal" }], items,
+  })
+  const todo = (id: string, more: Record<string, unknown> = {}) => ({ id, boardId: "b1", type: "todo", text: "Fake todo " + id, done: false, updatedAt: 1, deleted: false, space: "personal", x: 0, y: 0, w: 200, h: 100, z: 1, placed: false, ...more })
+  function fake(routes: Record<string, unknown[]>) {
+    const calls: { url: string; method: string }[] = []
+    const get = async (url: string, init: { method: "GET" }) => {
+      calls.push({ url, method: init.method })
+      const path = url.replace("http://board.test", "").replace(/\?.*$/, "")
+      const queue = routes[path]
+      if (!queue?.length) throw new Error("no fake for " + url)
+      return queue.length > 1 ? queue.shift() : queue[0]
+    }
+    return { calls, get }
+  }
+
+  test("처음엔 /api/state, 그 뒤엔 /api/changes?since=seq. GET 만 부르고 지운 항목과 메모·선은 빼요", async () => {
+    const f = fake({
+      "/api/state": [state(10, [todo("t1", { remindAt: "2026-11-09T09:00", area: "a1" }), todo("t2"), { id: "s1", boardId: "b1", type: "sticky", text: "memo" }, todo("t3", { deleted: true }), { id: "g1", boardId: "b1", type: "goal", text: "Fake goal", due: "2026-12-01", done: false }, todo("t4", { goalId: "g1", done: true }), todo("t5", { goalId: "g1", remindAt: "2026-11-20" })])],
+      "/api/changes": [{ seq: 12, boards: [], items: [todo("t2", { deleted: true }), todo("t6", { text: "Fake new" })] }],
+      "/api/signals": [{ signals: [
+        { id: "x1", title: "Fake decision", kind: "question", lane: "decide", status: "open", source: "goat" },
+        { id: "x2", title: "Fake done", kind: "done", lane: "auto", status: "resolved", source: "goat" },
+        { id: "x3", title: "Fake review", kind: "done", lane: "review", status: "open", source: "goat" },
+      ] }],
+    })
+    const ws = createWorkspace({ path: join(dir, "workspace.db"), boardBase: "http://board.test", boardGet: f.get, now: () => NOW })
+    const s1 = await ws.board!.tick(true)
+    expect(s1).toMatchObject({ ok: true, seq: 10, items: 5 })
+    const v = (await call(ws, "GET", "/api/ws/now")).body
+    expect(v.dueToday.map((i: any) => i.sourceId)).toEqual(["b1:t1"])
+    expect(v.dueToday[0]).toMatchObject({ source: "direction-board", area: "a1", textBy: "person" })
+    expect(v.inbox.map((i: any) => i.sourceId)).toEqual(["b1:t2"])
+    expect(v.goals.map((g: any) => [g.goal.text, g.done, g.total, g.next])).toEqual([["Fake goal", 1, 2, "2026-11-20"]])
+    expect(v.needsYou.map((s: any) => [s.title, s.source, s.meta.from])).toEqual([["Fake decision", "direction-board", "direction-board"]])
+    expect(v.review.map((s: any) => s.title)).toEqual(["Fake review"])
+    const meta = (await call(ws, "GET", "/api/ws/meta")).body
+    expect(meta.boards[0].areas).toEqual([{ id: "a1", name: "Area A", color: "#f00" }])
+    expect(meta.me).toEqual({ email: "owner@example.test" })
+
+    const s2 = await ws.board!.tick(false)
+    expect(s2.seq).toBe(12)
+    const v2 = (await call(ws, "GET", "/api/ws/now")).body
+    expect(v2.inbox.map((i: any) => i.sourceId).sort()).toEqual(["b1:t6"])
+    expect(f.calls.every((c) => c.method === "GET")).toBe(true)
+    expect(f.calls.map((c) => c.url)).toEqual(["http://board.test/api/state", "http://board.test/api/signals", "http://board.test/api/changes?since=10"])
+  })
+
+  test("Quorum 에서 사람이 고친 사본은 3070 의 새 값이 덮지 않아요. 실패하면 다음엔 전체부터 다시 읽어요", async () => {
+    let n = 0
+    const get = async (url: string) => {
+      n++
+      if (url.endsWith("/api/state")) return state(20 + n, [todo("t1", { text: n > 1 ? "Changed upstream" : "Fake todo t1", updatedAt: n })])
+      if (url.includes("/api/changes")) throw new Error("HTTP 500")
+      return { signals: [] }
+    }
+    const ws = createWorkspace({ path: join(dir, "workspace.db"), boardBase: "http://board.test", boardGet: get, now: () => NOW })
+    await ws.board!.tick(false)
+    const it = (await call(ws, "GET", "/api/ws/now")).body.inbox[0]
+    await call(ws, "PATCH", "/api/ws/items/" + it.id, { text: "Edited in Quorum" })
+    expect((await ws.board!.tick(false)).ok).toBe(false)
+    expect((await ws.board!.tick(false)).ok).toBe(true)
+    const after = (await call(ws, "GET", "/api/ws/items/" + it.id)).body.item
+    expect(after).toMatchObject({ text: "Edited in Quorum", localEdited: true })
+  })
+
+  test("3070 이 꺼져 있으면 가져오기 상태에 오류를 보이고, 그 전 사본은 그대로 둬요", async () => {
+    const ws = createWorkspace({ path: join(dir, "workspace.db"), boardBase: "http://board.test", boardGet: async () => { throw new Error("connect ECONNREFUSED") }, now: () => NOW })
+    const s = await ws.board!.tick(true)
+    expect(s).toMatchObject({ ok: false, error: "connect ECONNREFUSED" })
+    expect((await call(ws, "GET", "/api/ws/meta")).body.import).toMatchObject({ ok: false })
+  })
+})

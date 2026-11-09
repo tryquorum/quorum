@@ -8,6 +8,7 @@ import { approveSignal, initCouncilSync, rejectSignal, resolveSignal, syncCounci
 import { archiveItem, createItem, getItem, initItems, listItems, logItem, patchItem, type Item } from "./items"
 import { appendNote, getNote, initNotes, putNote } from "./notes"
 import { getSignal, ingestSignal, initSignals, listSignals, type Signal } from "./signals"
+import { createBoardImport, initBoardImport, readMeta, type GetJson } from "./board-import"
 
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } })
@@ -15,16 +16,22 @@ const err = (status: number, message: string) => json({ error: message }, status
 const failed = (r: unknown): r is { status: number; error: string } => !!r && typeof r === "object" && "error" in r && "status" in r
 const REF = /^(item|signal):[A-Za-z0-9_-]{1,40}$/
 
-export type WorkspaceDeps = { path: string; engine?: EngineStore; execute?: ExecuteFn; now?: () => number }
+export type WorkspaceDeps = {
+  path: string; engine?: EngineStore; execute?: ExecuteFn; now?: () => number
+  /** 방향판 읽기 전용 가져오기(예: http://127.0.0.1:3070). 없으면 가져오지 않아요 */
+  boardBase?: string; boardGet?: GetJson
+}
+export type GoalView = { goal: Item; total: number; done: number; open: Item[]; next: string | null }
 export type NowView = {
   today: string
   needsYou: Signal[]
   running: Signal[]
   dueToday: Item[]
+  goals: GoalView[]
   review: Signal[]
   inbox: Item[]
   later: Item[]
-  counts: { needsYou: number; dueToday: number; review: number; inbox: number; running: number }
+  counts: { needsYou: number; dueToday: number; review: number; inbox: number; running: number; goals: number }
 }
 
 export function openWorkspaceDb(path: string): Database {
@@ -36,6 +43,7 @@ export function openWorkspaceDb(path: string): Database {
   initSignals(db)
   initNotes(db)
   initCouncilSync(db)
+  initBoardImport(db)
   return db
 }
 
@@ -45,25 +53,43 @@ export const localDay = (ms: number) => {
   return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate())
 }
 
-/** "Now" 대시보드: Needs you → Due today → Review → Inbox 순서로, 바로 처리할 것만 */
+/** 할 일의 날짜: 목표는 due, 할 일은 due 또는 미리알림(remindAt). 로컬(이 맥, KST) 날짜로 비교해요 */
+export const whenOf = (i: Item) => i.due ?? i.remindAt ?? null
+const goalKey = (g: Item) => (g.source === "direction-board" && g.sourceId ? g.sourceId.split(":").pop()! : g.id)
+
+/** 목표마다 이어진 할 일과 진행률. 출처: board goal-view.tsx 의 done/total 진행률과 다음 할 일 */
+export function goalViews(all: Item[]): GoalView[] {
+  return all.filter((g) => g.type === "goal" && !g.done).map((goal) => {
+    const key = goalKey(goal)
+    const todos = all.filter((t) => t.type === "todo" && t.goalId === key && (t.source ?? "capture") === (goal.source ?? "capture"))
+    const open = todos.filter((t) => !t.done).sort((a, b) => String(whenOf(a) ?? "9").localeCompare(String(whenOf(b) ?? "9")))
+    return { goal, total: todos.length, done: todos.length - open.length, open, next: open[0] ? whenOf(open[0]) : null }
+  }).sort((a, b) => String(a.goal.due ?? "9").localeCompare(String(b.goal.due ?? "9")))
+}
+
+/** "Now" 대시보드: Needs you → Due today/overdue → Goals → Review → Inbox 순서로, 바로 처리할 것만(끝낸 일은 빼요) */
 export function nowView(db: ReturnType<typeof openWorkspaceDb>, now: number): NowView {
   const today = localDay(now)
   const open = listSignals(db, { open: true })
-  const items = listItems(db)
+  const all = listItems(db, { done: true })
+  const items = all.filter((i) => !i.done && i.type === "todo")
   const needsYou = open.filter((s) => s.status === "open" && (s.lane === "decide" || s.lane === "now" || s.lane === "main"))
-    .sort((a, b) => (a.lane === "now" ? -1 : 0) - (b.lane === "now" ? -1 : 0) || b.updated_at - a.updated_at)
+    .sort((a, b) => (a.lane === "now" ? 0 : 1) - (b.lane === "now" ? 0 : 1) || (a.source === "quorum" ? 0 : 1) - (b.source === "quorum" ? 0 : 1) || b.updated_at - a.updated_at)
   const running = open.filter((s) => s.status === "running" || s.lane === "running")
   const review = open.filter((s) => s.status === "open" && s.lane === "review")
-  const dueToday = items.filter((i) => i.due && i.due.slice(0, 10) <= today).sort((a, b) => String(a.due).localeCompare(String(b.due)))
-  const inbox = items.filter((i) => !i.due)
-  const later = items.filter((i) => i.due && i.due.slice(0, 10) > today).sort((a, b) => String(a.due).localeCompare(String(b.due)))
-  return { today, needsYou, running, dueToday, review, inbox, later, counts: { needsYou: needsYou.length, dueToday: dueToday.length, review: review.length, inbox: inbox.length, running: running.length } }
+  const byWhen = (a: Item, b: Item) => String(whenOf(a)).localeCompare(String(whenOf(b)))
+  const dueToday = items.filter((i) => { const w = whenOf(i); return !!w && w.slice(0, 10) <= today }).sort(byWhen)
+  const inbox = items.filter((i) => !whenOf(i) && !i.placed)
+  const later = items.filter((i) => { const w = whenOf(i); return !!w && w.slice(0, 10) > today }).sort(byWhen)
+  const goals = goalViews(all)
+  return { today, needsYou, running, dueToday, goals, review, inbox, later, counts: { needsYou: needsYou.length, dueToday: dueToday.length, review: review.length, inbox: inbox.length, running: running.length, goals: goals.length } }
 }
 
 export function createWorkspace(deps: WorkspaceDeps) {
   const db = openWorkspaceDb(deps.path)
   const clock = deps.now ?? Date.now
   const sync = () => { if (deps.engine) { try { syncCouncil(db, deps.engine, clock()) } catch (e) { console.error("[workspace] council sync failed:", e) } } }
+  const board = deps.boardBase ? createBoardImport(db, { base: deps.boardBase, get: deps.boardGet, now: clock }) : null
   /** 시험이 승인 실행을 기다릴 때 써요 */
   const pending = new Set<Promise<void>>()
 
@@ -74,6 +100,17 @@ export function createWorkspace(deps: WorkspaceDeps) {
     const [, , res, id, action] = parts // api ws <res> <id> <action>
 
     if (res === "now" && m === "GET") { sync(); return json(nowView(db, clock())) }
+    if (res === "meta" && m === "GET") {
+      // 로그인 이메일: Cloudflare Access 가 붙여 주는 머리글, 없으면 방향판이 알려 준 주인
+      const meta = readMeta(db)
+      const email = req.headers.get("cf-access-authenticated-user-email") || meta.me?.email || null
+      return json({ ...meta, me: email ? { email } : null, import: board?.status() ?? null })
+    }
+    if (res === "import" && id === "sync" && m === "POST") {
+      if (!board) return err(501, "방향판 가져오기가 꺼져 있어요")
+      return json(await board.tick(true))
+    }
+    if (res === "goals" && m === "GET") return json(goalViews(listItems(db, { done: true })))
 
     if (res === "items") {
       if (!id && m === "GET") return json(listItems(db, { done: url.searchParams.get("done") === "1" }))
@@ -150,5 +187,5 @@ export function createWorkspace(deps: WorkspaceDeps) {
     return err(404, "unknown route " + m + " " + url.pathname)
   }
 
-  return { db, handle, sync, settle: () => Promise.all([...pending]) }
+  return { db, handle, sync, board, settle: () => Promise.all([...pending]) }
 }
