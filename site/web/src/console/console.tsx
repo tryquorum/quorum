@@ -145,11 +145,11 @@ export function Console() {
     stopRef.current = await startLive(req, (runId) => setView((v) => ({ ...v, runId })), push, finish, fail)
   }, [fail, finish, push, setUrl, stop])
 
-  const startRecipe = useCallback(async (id: string) => {
+  const startRecipe = useCallback(async (id: string, vars: Record<string, string> = {}) => {
     stop()
     setFixture(null); setSource("recipe"); setUrl(null)
     setView({ ...emptyRun(), status: "connecting", mode: "live", request: `recipe: ${id}` })
-    stopRef.current = await runRecipe(id, (runId) => setView((v) => ({ ...v, runId })), push, finish, fail)
+    stopRef.current = await runRecipe(id, (runId) => setView((v) => ({ ...v, runId })), push, finish, fail, vars)
   }, [fail, finish, push, setUrl, stop])
 
   useEffect(() => {
@@ -282,7 +282,7 @@ export function Console() {
             <RecallPanel view={view} />
             <RecipePanel steps={view.recipe} />
             <OutcomePanel view={view} />
-            <div id="recipes" className="scroll-mt-4"><RecipesPanel disabledReason={STATIC ? "Recipes run against your signed-in browser, so they only run locally." : undefined} busy={busy} onRun={(id) => void startRecipe(id)} /></div>
+            <div id="recipes" className="scroll-mt-4"><RecipesPanel disabledReason={STATIC ? "Recipes run against your signed-in browser, so they only run locally." : undefined} busy={busy} onRun={(id, vars) => void startRecipe(id, vars)} /></div>
             <Panel title="Event stream" icon={Terminal} aside={<span className="num text-2xs text-muted-foreground">{view.events.length}</span>}>
               {view.events.length ? <EventLog events={view.events} /> : <p className="text-sm text-muted-foreground">Raw contract events, in order.</p>}
             </Panel>
