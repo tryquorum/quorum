@@ -89,4 +89,36 @@ Caption pace rule: words / (dur − 0.4) ≤ 2.3 for every caption (A-audit wp1)
 
 ## Runs used
 
-(filled in wp2)
+Recorded 2026-11-09 on an isolated demo server (`video/final/demo-env.sh`: port 4331, fresh state dir, Direction Board unreachable, its own empty gbrain brain
+outside the repo, Aside account u0 on). Board data is fictional (`video/final/seed.ts`); the request reads only the public page ycombinator.com/rfs.
+Numbers come from `/api/runs/<id>/events` via `video/final/runs.json`.
+
+| Run | What happened | Measured |
+|---|---|---|
+| rmw8so82i1b6857 (first) | gbrain: nothing similar. 3 proposals; CEO, Reviewer, QA and CSO critiqued each (12 critiques). Verdicts: pass 1 (shortlist YC RFS, Aside), hold 2 (draft the Northwind reply: outbound, people decide; board note: keep 2 · cut 2 tie). Aside read the RFS page (11 items) and shortlisted 4. gbrain saved quorum/verdicts/rmw8so82i1b6857. | verdicts at 35.2 s, Aside result at 78.8 s |
+| rmw8ssbpf4d4ade (same request) | gbrain: 1 similar verdict, 100 % → reused; no bots asked; same pass 1 · hold 2; Aside ran the passed item again. | verdicts at 0.9 s, Aside result at 25.9 s |
+| rmw8phbj41fbe4b (recipe, recorded earlier, lane/video) | luma-blasts v2 get-posts 404 → http 401 → Aside → v3 REPAIRED (7 items). Shown as a recording, labelled with its run id. | — |
+
+The bots answer in Korean; the English side panels translate what is on screen. Nothing was sent: the reply stayed on hold.
+
+## Reproduce
+
+Captures (`captures/*.vid2cap`), `media/`, `../tmp/` and `../out/` are gitignored. `vid2` = `node ~/Developer/new/700_projects/vid2-gen/bin/vid2.js` (0.6.0).
+
+```bash
+mkdir -p ~/.cache/quorum-video-demo/gbrain-home-film && video/final/gbrain-demo.sh init --pglite   # empty demo brain outside the repo
+QVF_STATE=$PWD/video/tmp/state-new; set -a; source video/final/demo-env.sh; set +a; bun run src/server.ts   # port 4331
+bun video/final/seed.ts                                    # fictional board
+cd video/final/captures
+vid2 capture web --url http://127.0.0.1:4331/  --steps ../flows/landing.steps.json --size 1440x900 --scale 1.5 --browser chrome -o landing
+vid2 capture web --url http://127.0.0.1:4331/  --steps ../flows/story.steps.json   --size 1440x900 --scale 1.5 --browser chrome -o story
+vid2 capture web --url http://127.0.0.1:4331/w --steps ../flows/council.steps.json --size 1440x900 --scale 1.5 --browser chrome --record-text -o council   # paid Aside run
+vid2 capture web --url http://127.0.0.1:4331/w --steps ../flows/reuse.steps.json   --size 1440x900 --scale 1.5 --browser chrome --record-text -o reuse
+cp -R <lane/video>/video/recipe4.vid2cap .                 # recorded recipe run
+cd .. && node render-scenes.mjs && node build-timeline.mjs --final
+vid2 render timeline.json -o ../out/quorum-final.mp4 --hw-accel if-possible
+vid2 qa ../out/quorum-final.mp4 --timeline timeline.json --expect-audio && node check.mjs --film ../out/quorum-final.mp4
+```
+
+`captures.json` holds the in-points for these specific recordings and `runs.json` the measured numbers; a new recording needs both updated
+(`runs.json` from `/api/runs/<id>/events`).

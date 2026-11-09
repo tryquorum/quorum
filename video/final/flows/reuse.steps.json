@@ -1,0 +1,40 @@
+[
+ {
+  "goto": "http://127.0.0.1:4331/w"
+ },
+ {
+  "wait": 1500
+ },
+ {
+  "mark": "now"
+ },
+ {
+  "click": "main button:has-text(\"Shortlist YC\")",
+  "label": "open"
+ },
+ {
+  "wait": 3500
+ },
+ {
+  "mark": "memory"
+ },
+ {
+  "click": "[role=dialog] button:has-text(\"Send to agent again\")",
+  "label": "send"
+ },
+ {
+  "mark": "sent"
+ },
+ {
+  "eval": "new Promise((res)=>{const t0=Date.now();const iv=setInterval(()=>{const d=document.querySelector('[role=dialog]');const tx=d?d.innerText:'';if(/재사용|reused/i.test(tx)&&(tx.match(/\\b(pass|hold|reject)\\b/g)||[]).length>=3||Date.now()-t0>180000){clearInterval(iv);res(1)}},250)})"
+ },
+ {
+  "mark": "reused"
+ },
+ {
+  "wait": 5000
+ },
+ {
+  "mark": "end"
+ }
+]

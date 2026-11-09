@@ -13,6 +13,7 @@ const FINAL = process.argv.includes("--final");
 const outArg = process.argv.indexOf("--out");
 const OUT = outArg > 0 ? process.argv[outArg + 1] : join(HERE, "timeline.json");
 const LIME = "#D9F99D", INK = "#FAFAFA", CREAM = "#F4ECD2", DARK = "#0A0A0A", CANVAS = "#F3F3F4";
+const EYEBROW = { landing: "QUORUM.LIDGEAI.COM", story: "THE STORY ON THE LANDING PAGE", workspace: "YOUR BOARD", council: "GSTACK · FOUR ROLES ARGUE", execute: "ASIDE · RUNS ONLY WHAT PASSED", reuse: "GBRAIN · REMEMBERS THE VERDICT", heal: "RECIPES · RECORDED RUN RMW8PHBJ41FBE4B · NOV 9" };
 const SYNTH = new Set(["hook", "boatmen", "fleet", "spin", "rocks", "mountain", "buried", "judgment", "converge", "mcp", "built", "cta"]);
 
 // product beats → capture session + where in it (event label or seconds) + playback speed; filled in wp2 after recording
@@ -33,6 +34,10 @@ function caption(b) {
   const color = light ? DARK : serif ? CREAM : INK;
   const accentWords = { judgment: ["your", "judgment."], converge: ["Quorum."], hook: ["broth."] }[b.id] ?? [];
   const tokens = text.split(/\s+/).map((w, i, all) => ({ text: w, ...(accentWords.includes(w) ? { color: LIME } : {}), ...(b.id === "judgment" && w === "your" ? { newline: true } : {}) }));
+  if (light) {
+    const lx = ["council", "execute", "reuse"].includes(b.id) ? 100 : 272;
+    return { ...base, x: lx, align: "left", y: 150, size: 46, maxWidth: 1400, gap: 0.26, font: "sans", weight: "semibold", color: INK, states: [{ at, tokens }] };
+  }
   const layout = {
     hook: { y: 260, size: 116, maxWidth: 1500 }, boatmen: { y: 215, size: 84, maxWidth: 1500 }, judgment: { y: 500, size: 104, maxWidth: 1300 },
     converge: { y: 250, size: 120, maxWidth: 1400 }, built: { y: 330, size: 56, maxWidth: 1600 },
@@ -40,41 +45,60 @@ function caption(b) {
   return { ...base, ...layout, gap: serif ? 0.2 : 0.26, font: serif ? "serif" : "sans", weight: serif ? "regular" : "semibold", color, states: [{ at, tokens }] };
 }
 
-function badge(kind, dur) {
-  // award beats: a lit badge that names the tool doing the work (gstack's four roles / gbrain's recall), stage nodes in the top-right
-  const nodes = [], tracks = [];
-  const x = 1480, y = 250;
-  nodes.push({ kind: "rect", key: "bg", x, y, width: 520, height: kind === "gstack" ? 176 : 150, radius: 22, fill: "#0F1117F2", stroke: "#FFFFFF22", strokeWidth: 1.5, opacity: 0 });
-  nodes.push({ kind: "image", key: "logo", source: kind + "Logo", x: x - 200, y: y - 40, width: 56, height: 56, radius: 12, opacity: 0 });
-  nodes.push({ kind: "text", key: "title", text: kind, font: "sans", weight: "bold", size: 40, color: INK, x: x - 150, y: y - 40, anchorX: 0, opacity: 0 });
-  for (const k of ["bg", "logo", "title"]) tracks.push({ node: k, prop: "opacity", keys: [{ at: "0.3s", value: 0 }, { at: "0.6s", value: 1, ease: "out" }] });
-  tracks.push({ node: "bg", prop: "scale", keys: [{ at: "0.3s", value: 0.94 }, { at: "0.6s", value: 1, ease: "spring" }] });
-  if (kind === "gstack") {
-    ["CEO", "Reviewer", "QA", "CSO"].forEach((r, i) => {
-      const key = "r" + i, at = 1.0 + i * 1.1;
-      nodes.push({ kind: "text", key, text: r, font: "mono", weight: "bold", size: 26, color: "#6B6F7C", x: x - 210 + [0, 92, 248, 314][i], y: y + 36, anchorX: 0, opacity: 0 });
-      tracks.push({ node: key, prop: "opacity", keys: [{ at: "0.6s", value: 0 }, { at: "0.8s", value: 1 }] });
-      tracks.push({ node: key, prop: "color", keys: [{ at: at.toFixed(2) + "s", value: "#6B6F7C" }, { at: (at + 0.25).toFixed(2) + "s", value: LIME, ease: "out" }] });
-    });
-  } else {
-    const line1 = RUNS ? "recalled " + RUNS.memoryPage : "recalled quorum/verdicts/<run>";
-    const line2 = RUNS ? "first run " + RUNS.firstSeconds + " s  →  reused " + RUNS.reuseSeconds + " s" : "first run — s  →  reused — s";
-    nodes.push({ kind: "text", key: "l1", text: line1, font: "mono", weight: "regular", size: 22, color: "#C9CBD3", x: x - 210, y: y + 22, anchorX: 0, opacity: 0 });
-    nodes.push({ kind: "text", key: "l2", text: line2, font: "mono", weight: "bold", size: 24, color: LIME, x: x - 210, y: y + 56, anchorX: 0, opacity: 0 });
-    tracks.push({ node: "l1", prop: "opacity", keys: [{ at: "0.9s", value: 0 }, { at: "1.2s", value: 1 }] });
-    tracks.push({ node: "l2", prop: "opacity", keys: [{ at: "1.6s", value: 0 }, { at: "1.9s", value: 1 }] });
+// Side panel for split product beats: names the tool doing the work and translates the Korean UI text on screen into English.
+// Times are scene seconds; every number comes from runs.json (measured on the demo server).
+function panel(kind, dur) {
+  const nodes = [], tracks = [], X = 1330, W = 500, top = 250;
+  let y = top;
+  const show = (key, at) => tracks.push({ node: key, prop: "opacity", keys: [{ at: at.toFixed(2) + "s", value: 0 }, { at: (at + 0.3).toFixed(2) + "s", value: 1, ease: "out" }] },
+    { node: key, prop: "y", keys: [{ at: at.toFixed(2) + "s", value: nodes.find((n) => n.key === key).y + 12 }, { at: (at + 0.35).toFixed(2) + "s", value: nodes.find((n) => n.key === key).y, ease: "out" }] });
+  const text = (key, t, at, o = {}) => { nodes.push({ kind: "text", key, text: t, font: o.font ?? "sans", weight: o.weight ?? "semibold", size: o.size ?? 28, color: o.color ?? INK, x: X + (o.dx ?? 0), y, anchorX: 0, opacity: 0 }); show(key, at); y += o.gap ?? 44; };
+  const logo = { gstack: "gstackLogo", gbrain: "gbrainLogo", aside: "asideLogo" }[kind];
+  if (kind === "gbrain") { nodes.push({ kind: "image", key: "logo", source: logo, x: X, y: y + 4, width: 200, height: 52, fit: "contain", anchorX: 0, opacity: 0 }); show("logo", 0.2); }
+  else {
+    nodes.push({ kind: "image", key: "logo", source: logo, x: X + 28, y: y + 4, width: 56, height: 56, radius: 12, opacity: 0 }); show("logo", 0.2);
+    nodes.push({ kind: "text", key: "name", text: kind, font: "sans", weight: "bold", size: 44, color: INK, x: X + 72, y: y + 4, anchorX: 0, opacity: 0 }); show("name", 0.25);
   }
-  return { type: "stage", start: "0s", end: dur + "s", nodes, tracks, events: [{ at: "0.6s", kind: "token" }] };
+  y += 76;
+  if (kind === "gstack") {
+    text("sub", "four roles question every proposal", 0.4, { size: 24, weight: "regular", color: "#9CA3AF", gap: 56 });
+    ["CEO", "Reviewer", "QA", "CSO"].forEach((r, i) => {
+      const key = "r" + i, x = X + [0, 96, 250, 322][i];
+      nodes.push({ kind: "text", key, text: r, font: "mono", weight: "bold", size: 26, color: "#4B5060", x, y, anchorX: 0, opacity: 0 }); show(key, 0.5);
+      tracks.push({ node: key, prop: "color", keys: [{ at: (3.9 + i * 0.12).toFixed(2) + "s", value: "#4B5060" }, { at: (4.15 + i * 0.12).toFixed(2) + "s", value: LIME, ease: "out" }] });
+    });
+    y += 70;
+    const V = [["pass", "Shortlist YC RFS that fit Quorum", LIME], ["hold", "Draft the Northwind reply (not sent)", "#FBBF24"], ["hold", "Note the pricing call on your board", "#FBBF24"]];
+    V.forEach(([d, t, c], i) => { text("vd" + i, d.toUpperCase(), 4.5 + i * 0.25, { font: "mono", weight: "bold", size: 24, color: c, gap: 0 }); y -= 0; nodes.at(-1).x = X; text("vt" + i, t, 4.5 + i * 0.25, { size: 26, dx: 96, gap: 50 }); });
+  } else if (kind === "aside") {
+    text("sub", "runs only what passed", 0.4, { size: 24, weight: "regular", color: "#9CA3AF", gap: 64 });
+    text("a1", "PASS · aside is reading", 0.6, { font: "mono", weight: "bold", size: 24, color: LIME, gap: 40 });
+    text("a2", "ycombinator.com/rfs", 0.7, { size: 28, gap: 64 });
+    text("h1", "HOLD · the reply waits for you", 1.0, { font: "mono", weight: "bold", size: 24, color: "#FBBF24", gap: 40 });
+    text("h2", "Approve or Reject. Nothing sent.", 1.1, { size: 28, gap: 64 });
+    text("r1", "RESULT", 2.5, { font: "mono", weight: "bold", size: 24, color: LIME, gap: 40 });
+    text("r2", "11 RFS read, 4 shortlisted", 2.6, { size: 28, gap: 44 });
+  } else {
+    text("sub", "remembers the verdict", 0.4, { size: 24, weight: "regular", color: "#9CA3AF", gap: 64 });
+    text("m1", "RECALLED", 0.6, { font: "mono", weight: "bold", size: 24, color: LIME, gap: 40 });
+    text("m2", RUNS ? RUNS.memoryPage : "quorum/verdicts/…", 0.7, { font: "mono", weight: "regular", size: 22, gap: 72 });
+    text("t1", "FIRST RUN", 2.6, { font: "mono", weight: "bold", size: 24, color: "#9CA3AF", gap: 40 });
+    text("t2", RUNS ? RUNS.firstSeconds + " s to verdicts" : "— s", 2.7, { size: 34, weight: "bold", gap: 60 });
+    text("t3", "SAME REQUEST AGAIN", 2.9, { font: "mono", weight: "bold", size: 24, color: LIME, gap: 40 });
+    text("t4", RUNS ? RUNS.reuseSeconds + " s, verdicts reused" : "— s", 3.0, { size: 34, weight: "bold", color: LIME, gap: 60 });
+  }
+  return { type: "stage", start: "0s", end: dur + "s", nodes, tracks, events: [{ at: "0.25s", kind: "token" }] };
 }
 
 const list = beats();
 const sources = {
   gstackLogo: { type: "image", path: "media/logos/credit-gstack.png" },
   gbrainLogo: { type: "image", path: "media/logos/gbrain-mark.png" },
+  asideLogo: { type: "image", path: "media/logos/aside-mark.png" },
 };
 const missing = RUNS ? [] : ["runs.json (award badge numbers from the real run)"];
 const scenes = list.map((b) => {
-  const scene = { id: b.id, duration: b.dur + "s", background: SYNTH.has(b.id) ? "#08080A" : CANVAS, layers: [], notes: "beat " + b.n + ": " + b.picture.slice(0, 120) };
+  const scene = { id: b.id, duration: b.dur + "s", background: "#08080A", layers: [], notes: "beat " + b.n + ": " + b.picture.slice(0, 120) };
   if (SYNTH.has(b.id)) {
     const src = "sc_" + b.id; sources[src] = { type: "video", path: "media/sc-" + b.id + ".mp4", muted: true };
     if (!existsSync(join(HERE, "media/sc-" + b.id + ".mp4"))) missing.push("media/sc-" + b.id + ".mp4");
@@ -82,23 +106,32 @@ const scenes = list.map((b) => {
   } else {
     const cap = CAPTURES[b.id];
     if (cap && existsSync(join(HERE, cap.session))) {
-      const src = "cap_" + b.id; sources[src] = cap.kind === "video" ? { type: "video", path: cap.session, muted: true } : { type: "capture", session: cap.session };
-      scene.layers.push({ type: "media", source: src, fit: "cover", ...(cap.in ? { in: cap.in } : {}), ...(cap.speed ? { speed: cap.speed } : {}), ...(cap.camera ? { camera: cap.camera } : {}), ...(cap.cursor ? { cursor: cap.cursor } : {}),
-        window: cap.window ?? { x: 264, y: 176, width: 1392, height: 870, radius: 20, shadow: true, border: true } });
+      const src = "cap_" + cap.session.replace(/\W+/g, "_");
+      sources[src] = { type: "capture", session: cap.session };
+      const win = cap.split ? { x: 100, y: 250, width: 1200, height: 675, radius: 20, shadow: true, border: true } : { x: 272, y: 214, width: 1376, height: 774, radius: 20, shadow: true, border: true }; // 16:9 so cover never crops the footage
+      const parts = cap.parts ?? [{ in: cap.in }];
+      let t = 0;
+      parts.forEach((p, k) => {
+        const end = k === parts.length - 1 ? b.dur : t + p.dur;
+        scene.layers.push({ type: "media", source: src, fit: "cover", start: +t.toFixed(3), end: +end.toFixed(3), in: p.in, ...(cap.speed ? { speed: cap.speed } : {}), ...(cap.camera ? { camera: cap.camera } : {}), ...(cap.cursor ? { cursor: cap.cursor } : {}), window: win });
+        t = end;
+      });
     } else {
       missing.push("capture " + b.id);
       scene.layers.push({ type: "text", text: "CAPTURE PENDING · " + b.id, x: "center", y: 560, align: "center", font: "mono", weight: "bold", size: 44, color: "#9CA3AF" });
     }
-    if (b.id === "council") scene.layers.push(badge("gstack", b.dur));
-    if (b.id === "reuse") scene.layers.push(badge("gbrain", b.dur));
+    if (b.id === "council") scene.layers.push(panel("gstack", b.dur));
+    if (b.id === "execute") scene.layers.push(panel("aside", b.dur));
+    if (b.id === "reuse") scene.layers.push(panel("gbrain", b.dur));
   }
+  if (EYEBROW[b.id]) scene.layers.push({ type: "text", text: EYEBROW[b.id], x: ["council", "execute", "reuse"].includes(b.id) ? 100 : 272, y: 82, align: "left", font: "mono", weight: "bold", size: 22, color: LIME, animation: "fade", start: b.id === "landing" ? "0.45s" : "0.05s" });
   const c = caption(b); if (c) scene.layers.push(c);
   return scene;
 });
 // dark → light when the product appears, light → dark for the close
 const idx = (id) => scenes.findIndex((s) => s.id === id);
-scenes[idx("landing")].transition = { type: "fadewhite", duration: "0.4s" };
-scenes[idx("mcp")].transition = { type: "fade", duration: "0.3s" };
+// a scene transition is the cut into the next scene (vid2): night to product, product to night
+scenes[idx("converge")].transition = { type: "fadewhite", duration: "0.4s" }; scenes[idx("heal")].transition = { type: "fade", duration: "0.3s" };
 
 const at = (id) => list.find((b) => b.id === id).at;
 const timeline = {
@@ -108,6 +141,7 @@ const timeline = {
   beat: { bpm: 112 },
   sources,
   scenes,
+  qa: { waive: [{ check: "contrast", from: +(at("converge") + 4.0).toFixed(2), to: +(at("landing") + 0.5).toFixed(2), reason: "fadewhite from the night close-up into the light landing capture: text is sampled while the frame is washing to white" }] },
   audio: {
     music: { synth: { preset: "launch", key: "Am", sections: [{ at: 0, energy: "intro" }, { at: at("fleet"), energy: "build" }, { at: at("judgment"), energy: "break" }, { at: +(at("converge") + 3.3).toFixed(2), energy: "drop" }, { at: at("built"), energy: "outro" }] }, volume: 0.75, fadeOut: "1.5s" },
     autoCues: true,

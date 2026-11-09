@@ -1,0 +1,34 @@
+{
+ "first": {
+  "runId": "rmw8so82i1b6857",
+  "verdictSeconds": 35.2,
+  "counts": {
+   "pass": 1,
+   "hold": 2,
+   "reject": 0
+  },
+  "executeSeconds": 78.8,
+  "totalSeconds": 79.7,
+  "reusedFrom": null,
+  "recall": "비슷한 판정이 없어요",
+  "memorySaved": "quorum/verdicts/rmw8so82i1b6857"
+ },
+ "reuse": {
+  "runId": "rmw8ssbpf4d4ade",
+  "verdictSeconds": 0.9,
+  "counts": {
+   "pass": 1,
+   "hold": 2,
+   "reject": 0
+  },
+  "executeSeconds": 25.9,
+  "totalSeconds": 26.6,
+  "reusedFrom": "quorum/verdicts/rmw8so82i1b6857",
+  "recall": "비슷한 판정 1개 · 가장 가까운 것 100% → 재사용",
+  "memorySaved": "quorum/verdicts/rmw8ssbpf4d4ade"
+ },
+ "memoryPage": "quorum/verdicts/rmw8so82i1b6857",
+ "firstSeconds": 35,
+ "reuseSeconds": 0.9,
+ "note": "measured from /api/runs/<id>/events on the demo server (port 4331); verdictSeconds = run.start to last verdict"
+}
