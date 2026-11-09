@@ -4,7 +4,7 @@
 import { Database } from "bun:sqlite"
 import { mkdirSync } from "node:fs"
 import { dirname } from "node:path"
-import { approvalPreview, approveSignal, initCouncilSync, recoverRunning, rejectSignal, resolveSignal, syncCouncil, type EngineStore, type ExecuteFn, type HostedApprove } from "./council"
+import { approvalPreview, approveSignal, cancelQueued, initCouncilSync, recoverRunning, rejectSignal, resolveSignal, syncCouncil, type EngineStore, type ExecuteFn, type HostedApprove } from "./council"
 import { archiveItem, createItem, getItem, initItems, listItems, logItem, patchItem, type Item } from "./items"
 import { appendNote, getNote, initNotes, noteOverflow, NoteRejected, putNote } from "./notes"
 import { getSignal, ingestSignal, initSignals, listSignals, type Signal } from "./signals"
@@ -18,7 +18,7 @@ const REF = /^(item|signal):[A-Za-z0-9_-]{1,40}$/
 /** 이 프로세스에서 결과를 기다리는 승인 실행 id(모든 Workspace 인스턴스가 같이 써요) */
 const LIVE_EXEC = new Set<string>()
 /** 밖에서 보낸 사건이 넣을 수 없는 meta 열쇠: 실행을 가리키거나 사람의 결정을 흉내 내는 것(리뷰 지적 6) */
-const RESERVED_META = ["runId", "proposalId", "executor", "execRunId", "askRunId", "decidedBy", "decidedAt", "decision", "resolvedBy", "fence", "itemId"]
+const RESERVED_META = ["runId", "proposalId", "executor", "execRunId", "askRunId", "decidedBy", "decidedAt", "decision", "resolvedBy", "fence", "itemId", "taskId"]
 
 export type WorkspaceDeps = {
   path: string; engine?: EngineStore; execute?: ExecuteFn; now?: () => number
@@ -187,7 +187,8 @@ export function createWorkspace(deps: WorkspaceDeps) {
         // 다른 봇도 방향판처럼 "시작/에러/끝/승인 필요"를 보낼 수 있어요
         const b = await body()
         // 의회 판정(quorum:)과 방향판 사본(board:) ref 는 서버만 만들어요. 실행 열쇠는 지우고, 할 일(task)은 사람이 볼 수 있게 본문에 적어요
-        const ref = typeof b?.ref === "string" ? b.ref : ""
+        // ingestSignal 처럼 앞뒤 공백을 지운 뒤에 검사해요(" quorum:" 로 비켜 가지 못하게)
+        const ref = typeof b?.ref === "string" ? b.ref.trim() : ""
         if (/^(quorum|board):/.test(ref)) return err(400, "ref prefix quorum: and board: are reserved for the server")
         const meta = b?.meta && typeof b.meta === "object" && !Array.isArray(b.meta) ? Object.fromEntries(Object.entries(b.meta as Record<string, unknown>).filter(([k]) => !RESERVED_META.includes(k))) : {}
         const task = typeof meta.task === "string" ? meta.task.trim().slice(0, 2000) : ""
@@ -210,10 +211,23 @@ export function createWorkspace(deps: WorkspaceDeps) {
       }
       if (action === "reject" && m === "POST") {
         const b = await body()
-        const r = rejectSignal(db, id, typeof b?.why === "string" ? b.why.trim().slice(0, 500) : "", clock())
+        const cur = getSignal(db, id)
+        const r = db.transaction(() => {
+          const out = rejectSignal(db, id, typeof b?.why === "string" ? b.why.trim().slice(0, 500) : "", clock())
+          if (out.status === 200 && cur) cancelQueued(db, cur, deps.hosted, clock())
+          return out
+        })()
         return json(r.body, r.status)
       }
-      if (action === "resolve" && m === "POST") { const r = resolveSignal(db, id, clock()); return json(r.body, r.status) }
+      if (action === "resolve" && m === "POST") {
+        const cur = getSignal(db, id)
+        const r = db.transaction(() => {
+          const out = resolveSignal(db, id, clock())
+          if (out.status === 200 && cur) cancelQueued(db, cur, deps.hosted, clock())
+          return out
+        })()
+        return json(r.body, r.status)
+      }
       if (action === "link" && m === "POST") {
         // 팝업의 "Send to agent": 이 사건을 의회에 보낸 실행을 사건에 이어 둬요(사건 내용은 바꾸지 않아요)
         const b = await body()

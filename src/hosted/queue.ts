@@ -9,7 +9,7 @@
 import type { Database } from "bun:sqlite"
 
 export type TaskKind = "opinion" | "browser" | "code"
-export type TaskStatus = "queued" | "leased" | "done" | "failed" | "expired"
+export type TaskStatus = "queued" | "leased" | "done" | "failed" | "expired" | "cancelled"
 export type Task = {
   id: string; kind: TaskKind; ref: string; runId: string | null; proposalId: string | null; actor: string | null; executor: string | null
   title: string; prompt: string; request: string | null; status: TaskStatus; leaseUntil: number | null; attempts: number
@@ -191,14 +191,23 @@ export function createQueue(db: Database, o: { now?: () => number; leaseMs?: num
   function counts() {
     sweep()
     const rows = db.query("SELECT status, COUNT(*) AS n FROM tasks GROUP BY status").all() as { status: TaskStatus; n: number }[]
-    const c: Record<TaskStatus, number> = { queued: 0, leased: 0, done: 0, failed: 0, expired: 0 }
+    const c: Record<TaskStatus, number> = { queued: 0, leased: 0, done: 0, failed: 0, expired: 0, cancelled: 0 }
     for (const r of rows) c[r.status] = r.n
     return c
   }
   function recent(limit = 20): Task[] {
     return (db.query("SELECT * FROM tasks ORDER BY updated_at DESC LIMIT ?").all(limit) as Row[]).map(pub)
   }
+  /**
+   * 사람이 사건을 닫았어요. 아직 아무도 안 가져간 일은 취소해서 실행되지 않게 하고(cancelled),
+   * 이미 가져간 일은 멈출 수 없어서 그대로 두고 상태만 알려 줘요(결과가 오면 Workspace 에 다시 보여요)
+   */
+  function cancel(taskId: string): "cancelled" | TaskStatus | "missing" {
+    const changed = db.query("UPDATE tasks SET status='cancelled', updated_at=? WHERE id=? AND status='queued'").run(now(), taskId).changes
+    if (changed) return "cancelled"
+    return get(taskId)?.status ?? "missing"
+  }
 
-  return { enqueue, lease, report, waitFor, waitForWork, sweep, onReport: (fn: (task: Task, ok: boolean, text: string) => void) => { reportHooks.push(fn) }, counts, recent, get }
+  return { enqueue, lease, report, waitFor, waitForWork, sweep, cancel, onReport: (fn: (task: Task, ok: boolean, text: string) => void) => { reportHooks.push(fn) }, counts, recent, get }
 }
 export type TaskQueue = ReturnType<typeof createQueue>

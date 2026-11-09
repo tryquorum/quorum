@@ -22,9 +22,10 @@ async function passedTask(clock: { t: number }) {
   const call = async (method: string, path: string) => (await g.workspace!(new Request("http://x" + path, { method }), path.split("?")[0].split("/").filter(Boolean), "judge@example.com")).json() as Promise<any>
   const running = (await call("GET", "/api/ws/now")).running[0]
   expect(running.title).toBe("Read the page")
-  // 사람이 Aside 가 끝내기 전에 "Mark handled" 로 닫아요
+  // Aside 가 일을 가져간 뒤, 끝내기 전에 사람이 "Mark handled" 로 닫아요(가져가기 전에 닫으면 취소돼요: review-r6)
+  const lease = g.tasks.lease({})!
   expect((await call("POST", "/api/ws/signals/" + running.id + "/resolve")).signal.status).toBe("resolved")
-  return { g, call, id: running.id, done: () => rmSync(dir, { recursive: true, force: true }) }
+  return { g, call, id: running.id, lease, done: () => rmSync(dir, { recursive: true, force: true }) }
 }
 
 describe("review round 3 fix", () => {
@@ -32,7 +33,7 @@ describe("review round 3 fix", () => {
     const clock = { t: Date.now() }
     const s = await passedTask(clock)
     try {
-      const l = s.g.tasks.lease({})!
+      const l = s.lease
       expect(s.g.tasks.report({ taskId: l.task.id, leaseId: l.leaseId, ok: true, text: "done https://x" }).status).toBe(200)
       const now = await s.call("GET", "/api/ws/now")
       expect(now.review.map((x: { id: string; body: string }) => [x.id, x.body])).toEqual([[s.id, "done https://x"]])
@@ -42,7 +43,6 @@ describe("review round 3 fix", () => {
     const clock = { t: Date.now() }
     const s = await passedTask(clock)
     try {
-      s.g.tasks.lease({})
       clock.t += 31 * 60_000
       s.g.tasks.sweep()
       const now = await s.call("GET", "/api/ws/now")

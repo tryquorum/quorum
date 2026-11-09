@@ -39,7 +39,8 @@ export function browserTaskPrompt(task: string, request: string): string {
     "Person's request:",
     fence(request.length > 2000 ? request.slice(0, 2000) + "\n[… cut at 2000 characters]" : request),
     "Task:",
-    fence(task.length > 6000 ? task.slice(0, 6000) + "\n[… cut at 6000 characters]" : task),
+    // 승인 지시(approvalTask)는 지시 2000자 + 맥락 4000자 안팎이라 12000자면 안쪽 DATA 구분자까지 다 들어가요
+    fence(task.length > 12_000 ? task.slice(0, 12_000) + "\n[… cut at 12000 characters]" : task),
     "",
     "Rules:",
     "- Read and summarize only. Do not send messages or email, pay, submit, sign up, merge, push, delete or post publicly. Draft at most, and say what is left for the person.",
@@ -69,6 +70,11 @@ export function makeGuestTenant(c: GuestConfig): GuestTenant {
         const t = q().enqueue({ kind: "browser", ref: p.ref, title: p.title, prompt: p.prompt, executor: p.executor, runId: p.runId, proposalId: p.proposalId, request: p.request })
         c.hosted.audit(c.email, "task.queue", "approved " + t.id + " " + p.title.slice(0, 80))
         return { taskId: t.id, prompt: t.prompt }
+      },
+      cancel: (taskId) => {
+        const out = q().cancel(taskId)
+        if (out === "cancelled") c.hosted.audit(c.email, "task.cancel", taskId)
+        return out
       },
     },
   })

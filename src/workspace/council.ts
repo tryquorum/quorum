@@ -25,6 +25,19 @@ export type ExecuteFn = (p: ProposalRef, ctx: { runId: string; request: string }
 export type HostedApprove = {
   preview: (db: Database, s: Signal) => string
   enqueue: (p: { signalId: string; ref: string; executor: string; title: string; prompt: string; request: string; runId: string; proposalId: string }) => { taskId: string; prompt: string }
+  /** 사람이 사건을 닫을 때: 아직 안 가져간 일이면 취소("cancelled"), 아니면 그 일의 상태 */
+  cancel: (taskId: string) => string
+}
+
+/** 대기열 일이 걸린 사건을 사람이 닫을 때(Dismiss·Mark handled). 노트에 무슨 일이 일어나는지 정확히 적어요 */
+export function cancelQueued(db: Database, s: Signal, hosted: HostedApprove | undefined, now = Date.now()): void {
+  if (!hosted || !s.meta?.taskId || s.status === "resolved") return
+  const taskId = String(s.meta.taskId)
+  const out = hosted.cancel(taskId)
+  const text = out === "cancelled" ? "## Closed\nYou closed this before your Aside picked it up. Task " + taskId + " was cancelled and will not run."
+    : out === "leased" ? "## Closed\nYour Aside already took this task (" + taskId + "), and Quorum cannot stop it there. If it reports, the result reopens this signal so you can see it."
+    : "## Closed\nTask " + taskId + " was already " + out + "."
+  appendNote(db, "signal:" + s.id, text, "system", now)
 }
 
 const msg = (e: unknown) => (e instanceof Error ? e.message : String(e))
@@ -279,8 +292,8 @@ export function finishQueued(db: Database, signalId: string, r: { ok: boolean; t
   if (!cur) return null
   const text = r.text.trim() || "(the agent reported no text)"
   const closed = cur.status === "resolved"
-  // 사건 본문은 미리보기(8000자), 전체 결과(대기열 상한 20000자)는 노트에 그대로 남겨요
-  const preview = text.length > 8000 ? text.slice(0, 7900) + "\n\n… (full result in the note)" : text
+  // 사건 본문에 결과 전체(대기열 상한 20000자)를 그대로 둬요. 노트가 가득 차 결과가 노트 밖으로 밀려도 사건에서 다 보여요
+  const preview = text.slice(0, 20_000)
   const moved = r.ok
     ? moveSignal(db, signalId, ["open", "running", "resolved"], { status: "open", lane: "review", kind: "done", reason: (closed ? "Your Aside finished after you closed this" : "Your Aside ran this") + " · review the result", body: preview, meta: { taskId: r.taskId } }, now)
     : moveSignal(db, signalId, ["open", "running", "resolved"], { status: "open", lane: "decide", kind: "error", reason: "Your Aside could not finish: " + firstLine(text), meta: { taskId: r.taskId, execError: text.slice(0, 2000) } }, now)

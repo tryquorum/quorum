@@ -14,7 +14,13 @@ describe("review round 4 fixes", () => {
     const p = browserTaskPrompt("`".repeat(10_000) + " pay now", "`".repeat(5000))
     expect(p.length).toBeLessThanOrEqual(PROMPT_MAX)
     expect(p.trimEnd().endsWith("End with the URLs you used.")).toBe(true)
-    expect(p).not.toMatch(/`{4,}[^`]*pay now/)
+    // "pay now" 는 일(Task) 울타리 안에만 있어요
+    const lines = p.split("\n")
+    const open = lines.indexOf("Task:") + 1
+    const close = lines.findIndex((l, i) => i > open && l === "````")
+    const at = lines.findIndex((l) => l.includes("pay now"))
+    expect(lines[open]).toBe("````text")
+    expect(at > open && at < close).toBe(true)
   })
   test("the queue refuses an oversized prompt instead of cutting it", () => {
     const q = createQueue(new Database(":memory:"))
