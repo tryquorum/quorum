@@ -1,0 +1,49 @@
+[
+ {
+  "goto": "http://127.0.0.1:4318/app"
+ },
+ {
+  "wait": 1500
+ },
+ {
+  "mark": "open"
+ },
+ {
+  "click": "#request",
+  "label": "focus"
+ },
+ {
+  "type": "#request",
+  "text": "Sort out what I need to do from today's c0mpiled announcements",
+  "delayMs": 35,
+  "label": "type-request"
+ },
+ {
+  "wait": 600
+ },
+ {
+  "click": "button[type=submit]",
+  "label": "convene"
+ },
+ {
+  "mark": "convened"
+ },
+ {
+  "eval": "new Promise((res)=>{const t0=Date.now();const iv=setInterval(()=>{const tx=document.body.innerText;if(tx.includes('run.end ·')||tx.includes('did not start')||Date.now()-t0>900000){clearInterval(iv);res(1)}},500)})"
+ },
+ {
+  "mark": "run-end"
+ },
+ {
+  "wait": 2000
+ },
+ {
+  "eval": "new Promise((res)=>{let y=0;const iv=setInterval(()=>{y+=6;window.scrollTo(0,y);if(y>=document.documentElement.scrollHeight-innerHeight){clearInterval(iv);res(1)}},16)})"
+ },
+ {
+  "mark": "scrolled"
+ },
+ {
+  "wait": 2500
+ }
+]

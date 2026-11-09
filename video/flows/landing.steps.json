@@ -1,0 +1,1 @@
+[{"goto":"http://127.0.0.1:4330/"},{"wait":500},{"mark":"landing"},{"wait":7000},{"mark":"end"}]

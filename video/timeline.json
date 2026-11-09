@@ -1,0 +1,1082 @@
+{
+ "version": 1,
+ "output": {
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "background": "#0A0A0A"
+ },
+ "beat": {
+  "bpm": 112
+ },
+ "sources": {
+  "live": {
+   "type": "capture",
+   "session": "live1.vid2cap"
+  },
+  "reuse": {
+   "type": "capture",
+   "session": "reuse1.vid2cap"
+  },
+  "recipe": {
+   "type": "capture",
+   "session": "recipe4.vid2cap"
+  },
+  "landing": {
+   "type": "capture",
+   "session": "landing1.vid2cap"
+  },
+  "floor": {
+   "type": "image",
+   "path": "media/cso_86.3.png"
+  }
+ },
+ "scenes": [
+  {
+   "id": "hook",
+   "duration": "3s",
+   "layers": [
+    {
+     "type": "text",
+     "text": "Your agents should argue",
+     "x": "center",
+     "y": 450,
+     "align": "center",
+     "font": "sans",
+     "weight": "black",
+     "size": 104,
+     "color": "#F4F2EC",
+     "animation": "slam",
+     "start": "0.1s"
+    },
+    {
+     "type": "text",
+     "text": "before they act.",
+     "x": "center",
+     "y": 640,
+     "align": "center",
+     "font": "sans",
+     "weight": "bold",
+     "size": 96,
+     "color": "#FBBF24",
+     "animation": "rise",
+     "start": "0.9s"
+    }
+   ]
+  },
+  {
+   "id": "noise",
+   "duration": "2.6s",
+   "layers": [
+    {
+     "type": "text",
+     "text": "scout: pull my to-dos",
+     "x": 160,
+     "y": 200,
+     "align": "left",
+     "font": "mono",
+     "weight": "bold",
+     "size": 38,
+     "color": "#9AA0AA",
+     "animation": "pop",
+     "start": "0.05s",
+     "box": {
+      "color": "#141414F0",
+      "padding": 14
+     }
+    },
+    {
+     "type": "text",
+     "text": "scout: draft replies to every form",
+     "x": 980,
+     "y": 150,
+     "align": "left",
+     "font": "mono",
+     "weight": "bold",
+     "size": 38,
+     "color": "#F87171",
+     "animation": "pop",
+     "start": "0.2s",
+     "box": {
+      "color": "#141414F0",
+      "padding": 14
+     }
+    },
+    {
+     "type": "text",
+     "text": "builder: write a script for it",
+     "x": 260,
+     "y": 420,
+     "align": "left",
+     "font": "mono",
+     "weight": "bold",
+     "size": 38,
+     "color": "#FBBF24",
+     "animation": "pop",
+     "start": "0.35s",
+     "box": {
+      "color": "#141414F0",
+      "padding": 14
+     }
+    },
+    {
+     "type": "text",
+     "text": "builder: make another to-do list",
+     "x": 1060,
+     "y": 380,
+     "align": "left",
+     "font": "mono",
+     "weight": "bold",
+     "size": 38,
+     "color": "#F87171",
+     "animation": "pop",
+     "start": "0.5s",
+     "box": {
+      "color": "#141414F0",
+      "padding": 14
+     }
+    },
+    {
+     "type": "text",
+     "text": "keeper: post it to the board",
+     "x": 620,
+     "y": 600,
+     "align": "left",
+     "font": "mono",
+     "weight": "bold",
+     "size": 38,
+     "color": "#FBBF24",
+     "animation": "pop",
+     "start": "0.65s",
+     "box": {
+      "color": "#141414F0",
+      "padding": 14
+     }
+    },
+    {
+     "type": "text",
+     "text": "More agents, more noise.",
+     "x": "center",
+     "y": 880,
+     "align": "center",
+     "font": "sans",
+     "weight": "bold",
+     "size": 72,
+     "color": "#F4F2EC",
+     "animation": "rise",
+     "start": "0.6s"
+    }
+   ]
+  },
+  {
+   "id": "again",
+   "duration": "2.6s",
+   "layers": [
+    {
+     "type": "text",
+     "text": "REJECTED yesterday: write a script",
+     "x": 420,
+     "y": 330,
+     "align": "left",
+     "font": "mono",
+     "weight": "bold",
+     "size": 38,
+     "color": "#F87171",
+     "animation": "pop",
+     "start": "0.05s",
+     "box": {
+      "color": "#141414F0",
+      "padding": 14
+     }
+    },
+    {
+     "type": "text",
+     "text": "PROPOSED AGAIN today: write a script",
+     "x": 620,
+     "y": 470,
+     "align": "left",
+     "font": "mono",
+     "weight": "bold",
+     "size": 38,
+     "color": "#FBBF24",
+     "animation": "pop",
+     "start": "0.5s",
+     "box": {
+      "color": "#141414F0",
+      "padding": 14
+     }
+    },
+    {
+     "type": "text",
+     "text": "They re-propose what you already rejected.",
+     "x": "center",
+     "y": 880,
+     "align": "center",
+     "font": "sans",
+     "weight": "bold",
+     "size": 64,
+     "color": "#F4F2EC",
+     "animation": "rise",
+     "start": "0.3s"
+    }
+   ]
+  },
+  {
+   "id": "breaks",
+   "duration": "2.6s",
+   "layers": [
+    {
+     "type": "text",
+     "text": "GET api2.luma.com/event/get-posts  →  404",
+     "x": "center",
+     "y": 430,
+     "align": "center",
+     "font": "mono",
+     "weight": "bold",
+     "size": 46,
+     "color": "#F87171",
+     "animation": "type",
+     "start": "0.1s",
+     "animationDuration": "0.7s"
+    },
+    {
+     "type": "text",
+     "text": "And the unofficial APIs they use break silently.",
+     "x": "center",
+     "y": 880,
+     "align": "center",
+     "font": "sans",
+     "weight": "bold",
+     "size": 60,
+     "color": "#F4F2EC",
+     "animation": "rise",
+     "start": "0.6s"
+    }
+   ],
+   "transition": {
+    "type": "fade",
+    "duration": "0.3s"
+   }
+  },
+  {
+   "id": "title",
+   "duration": "3.2s",
+   "layers": [
+    {
+     "type": "media",
+     "source": "landing",
+     "in": "1.0s",
+     "camera": [
+      {
+       "at": 0,
+       "zoom": 1.25,
+       "x": 0.5,
+       "y": 0.3,
+       "ease": "inout"
+      },
+      {
+       "at": "3.2s",
+       "zoom": 1.15,
+       "x": 0.5,
+       "y": 0.32,
+       "ease": "inout"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "request",
+   "duration": "3.6s",
+   "layers": [
+    {
+     "type": "media",
+     "source": "live",
+     "in": "1.3s",
+     "camera": [
+      {
+       "at": 0,
+       "zoom": 1.9,
+       "x": 0.3,
+       "y": 0.16,
+       "ease": "inout"
+      },
+      {
+       "at": "2.6s",
+       "zoom": 1.9,
+       "x": 0.3,
+       "y": 0.16,
+       "ease": "inout"
+      },
+      {
+       "at": "3.6s",
+       "zoom": 1.6,
+       "x": 0.32,
+       "y": 0.24,
+       "ease": "inout"
+      }
+     ],
+     "cursor": {
+      "style": "arrow",
+      "ripple": true
+     }
+    },
+    {
+     "type": "text",
+     "text": "YC RFS · MULTIPLAYER AI",
+     "x": 110,
+     "y": 100,
+     "align": "left",
+     "font": "mono",
+     "weight": "bold",
+     "size": 24,
+     "color": "#FBBF24",
+     "animation": "fade",
+     "start": "0.1s",
+     "box": {
+      "color": "#141414F0",
+      "padding": 10
+     }
+    },
+    {
+     "type": "shape",
+     "shape": "rect",
+     "x": 0,
+     "y": 850,
+     "width": 1920,
+     "height": 230,
+     "color": "#0A0A0AE8"
+    },
+    {
+     "type": "text",
+     "text": "One request. A live council of bots.",
+     "x": "center",
+     "y": 930,
+     "align": "center",
+     "font": "sans",
+     "weight": "bold",
+     "size": 60,
+     "color": "#F4F2EC",
+     "animation": "rise",
+     "start": "0.3s"
+    }
+   ]
+  },
+  {
+   "id": "propose",
+   "duration": "3.2s",
+   "layers": [
+    {
+     "type": "media",
+     "source": "live",
+     "in": "19.9s",
+     "camera": [
+      {
+       "at": 0,
+       "zoom": 1.35,
+       "x": 0.38,
+       "y": 0.62,
+       "ease": "inout"
+      },
+      {
+       "at": "3.2s",
+       "zoom": 1.42,
+       "x": 0.38,
+       "y": 0.6,
+       "ease": "inout"
+      }
+     ]
+    },
+    {
+     "type": "shape",
+     "shape": "rect",
+     "x": 0,
+     "y": 850,
+     "width": 1920,
+     "height": 230,
+     "color": "#0A0A0AE8"
+    },
+    {
+     "type": "text",
+     "text": "Five bots propose five tasks.",
+     "x": "center",
+     "y": 915,
+     "align": "center",
+     "font": "sans",
+     "weight": "bold",
+     "size": 60,
+     "color": "#F4F2EC",
+     "animation": "rise",
+     "start": "0.2s"
+    },
+    {
+     "type": "text",
+     "text": "pull my to-dos · draft replies · write a script · another to-do list · note it on the board",
+     "x": "center",
+     "y": 1010,
+     "align": "center",
+     "font": "mono",
+     "weight": "regular",
+     "size": 30,
+     "color": "#9AA0AA",
+     "animation": "fade",
+     "start": "0.5s"
+    }
+   ]
+  },
+  {
+   "id": "argue",
+   "duration": "3.6s",
+   "layers": [
+    {
+     "type": "media",
+     "source": "live",
+     "in": "27.4s",
+     "camera": [
+      {
+       "at": 0,
+       "zoom": 1,
+       "x": 0.5,
+       "y": 0.5,
+       "ease": "inout"
+      },
+      {
+       "at": "1.2s",
+       "zoom": 1,
+       "x": 0.5,
+       "y": 0.5,
+       "ease": "inout"
+      },
+      {
+       "at": "3.6s",
+       "zoom": 1.7,
+       "x": 0.8,
+       "y": 0.42,
+       "ease": "inout"
+      }
+     ]
+    },
+    {
+     "type": "shape",
+     "shape": "rect",
+     "x": 0,
+     "y": 850,
+     "width": 1920,
+     "height": 230,
+     "color": "#0A0A0AE8"
+    },
+    {
+     "type": "text",
+     "text": "CEO, reviewer, QA and CSO argue: 20 critiques.",
+     "x": "center",
+     "y": 930,
+     "align": "center",
+     "font": "sans",
+     "weight": "bold",
+     "size": 60,
+     "color": "#F4F2EC",
+     "animation": "rise",
+     "start": "0.3s"
+    }
+   ]
+  },
+  {
+   "id": "cut-hold",
+   "duration": "5.4s",
+   "layers": [
+    {
+     "type": "media",
+     "source": "floor",
+     "fit": "cover",
+     "camera": [
+      {
+       "at": 0,
+       "zoom": 1,
+       "x": 0.5,
+       "y": 0.5,
+       "ease": "inout"
+      },
+      {
+       "at": "0.8s",
+       "zoom": 1.5,
+       "x": 0.36,
+       "y": 0.8,
+       "ease": "inout"
+      },
+      {
+       "at": "5.4s",
+       "zoom": 1.56,
+       "x": 0.36,
+       "y": 0.82,
+       "ease": "inout"
+      }
+     ]
+    },
+    {
+     "type": "shape",
+     "shape": "rect",
+     "x": 0,
+     "y": 850,
+     "width": 1920,
+     "height": 230,
+     "color": "#0A0A0AE8"
+    },
+    {
+     "type": "text",
+     "text": "The CEO cuts what you didn't ask for.",
+     "x": "center",
+     "y": 915,
+     "align": "center",
+     "font": "sans",
+     "weight": "bold",
+     "size": 60,
+     "color": "#F4F2EC",
+     "animation": "rise",
+     "start": "0.3s",
+     "end": "2.7s"
+    },
+    {
+     "type": "text",
+     "text": "CEO: cut 4 of 5 — out of scope or duplicate",
+     "x": "center",
+     "y": 1010,
+     "align": "center",
+     "font": "mono",
+     "weight": "regular",
+     "size": 30,
+     "color": "#9AA0AA",
+     "animation": "fade",
+     "start": "0.5s",
+     "end": "2.7s"
+    },
+    {
+     "type": "text",
+     "text": "The CSO holds anything a web form could hijack.",
+     "x": "center",
+     "y": 915,
+     "align": "center",
+     "font": "sans",
+     "weight": "bold",
+     "size": 60,
+     "color": "#F4F2EC",
+     "animation": "rise",
+     "start": "2.8s"
+    },
+    {
+     "type": "text",
+     "text": "CSO escalate: form text could act like instructions (prompt injection)",
+     "x": "center",
+     "y": 1010,
+     "align": "center",
+     "font": "mono",
+     "weight": "regular",
+     "size": 30,
+     "color": "#FBBF24",
+     "animation": "fade",
+     "start": "3.0s"
+    }
+   ]
+  },
+  {
+   "id": "verdict",
+   "duration": "5.2s",
+   "layers": [
+    {
+     "type": "media",
+     "source": "live",
+     "in": "82.7s",
+     "speed": 0.35,
+     "camera": [
+      {
+       "at": 0,
+       "zoom": 1.9,
+       "x": 0.81,
+       "y": 0.47,
+       "ease": "inout"
+      },
+      {
+       "at": "2.2s",
+       "zoom": 1.9,
+       "x": 0.81,
+       "y": 0.47,
+       "ease": "inout"
+      },
+      {
+       "at": "3.0s",
+       "zoom": 1.55,
+       "x": 0.36,
+       "y": 0.62,
+       "ease": "inout"
+      },
+      {
+       "at": "5.2s",
+       "zoom": 1.6,
+       "x": 0.36,
+       "y": 0.64,
+       "ease": "inout"
+      }
+     ]
+    },
+    {
+     "type": "shape",
+     "shape": "rect",
+     "x": 0,
+     "y": 850,
+     "width": 1920,
+     "height": 230,
+     "color": "#0A0A0AE8"
+    },
+    {
+     "type": "text",
+     "text": "Pass 2 · Hold 1 · Reject 2. Only what passed runs.",
+     "x": "center",
+     "y": 915,
+     "align": "center",
+     "font": "sans",
+     "weight": "bold",
+     "size": 60,
+     "color": "#F4F2EC",
+     "animation": "rise",
+     "start": "0.3s",
+     "end": "2.6s"
+    },
+    {
+     "type": "text",
+     "text": "Aside reads the event page in my signed-in browser.",
+     "x": "center",
+     "y": 915,
+     "align": "center",
+     "font": "sans",
+     "weight": "bold",
+     "size": 60,
+     "color": "#F4F2EC",
+     "animation": "rise",
+     "start": "2.7s"
+    },
+    {
+     "type": "text",
+     "text": "result: 1 new announcement today (Wi-Fi, no action) · due today: demo video + repo",
+     "x": "center",
+     "y": 1010,
+     "align": "center",
+     "font": "mono",
+     "weight": "regular",
+     "size": 30,
+     "color": "#9AA0AA",
+     "animation": "fade",
+     "start": "2.9s"
+    }
+   ]
+  },
+  {
+   "id": "gate",
+   "duration": "3s",
+   "layers": [
+    {
+     "type": "media",
+     "source": "live",
+     "in": "88.6s",
+     "speed": 0.75,
+     "camera": [
+      {
+       "at": 0,
+       "zoom": 1.8,
+       "x": 0.27,
+       "y": 0.68,
+       "ease": "inout"
+      },
+      {
+       "at": "3s",
+       "zoom": 1.85,
+       "x": 0.27,
+       "y": 0.7,
+       "ease": "inout"
+      }
+     ]
+    },
+    {
+     "type": "shape",
+     "shape": "rect",
+     "x": 0,
+     "y": 850,
+     "width": 1920,
+     "height": 230,
+     "color": "#0A0A0AE8"
+    },
+    {
+     "type": "text",
+     "text": "Writes to Direction Board stay off until you allow them.",
+     "x": "center",
+     "y": 930,
+     "align": "center",
+     "font": "sans",
+     "weight": "bold",
+     "size": 56,
+     "color": "#F4F2EC",
+     "animation": "rise",
+     "start": "0.2s"
+    }
+   ],
+   "transition": {
+    "type": "fade",
+    "duration": "0.3s"
+   }
+  },
+  {
+   "id": "reuse",
+   "duration": "6.4s",
+   "layers": [
+    {
+     "type": "media",
+     "source": "reuse",
+     "in": "3.6s",
+     "camera": [
+      {
+       "at": 0,
+       "zoom": 1.6,
+       "x": 0.3,
+       "y": 0.2,
+       "ease": "inout"
+      },
+      {
+       "at": "1.0s",
+       "zoom": 1.6,
+       "x": 0.3,
+       "y": 0.2,
+       "ease": "inout"
+      },
+      {
+       "at": "1.8s",
+       "zoom": 1.6,
+       "x": 0.3,
+       "y": 0.47,
+       "ease": "inout"
+      },
+      {
+       "at": "3.3s",
+       "zoom": 1.6,
+       "x": 0.3,
+       "y": 0.47,
+       "ease": "inout"
+      },
+      {
+       "at": "4.3s",
+       "zoom": 1.7,
+       "x": 0.8,
+       "y": 0.5,
+       "ease": "inout"
+      },
+      {
+       "at": "6.4s",
+       "zoom": 1.75,
+       "x": 0.8,
+       "y": 0.5,
+       "ease": "inout"
+      }
+     ]
+    },
+    {
+     "type": "shape",
+     "shape": "rect",
+     "x": 0,
+     "y": 850,
+     "width": 1920,
+     "height": 230,
+     "color": "#0A0A0AE8"
+    },
+    {
+     "type": "text",
+     "text": "Ask again. gbrain remembers the verdict.",
+     "x": "center",
+     "y": 915,
+     "align": "center",
+     "font": "sans",
+     "weight": "bold",
+     "size": 60,
+     "color": "#F4F2EC",
+     "animation": "rise",
+     "start": "0.3s",
+     "end": "3.2s"
+    },
+    {
+     "type": "text",
+     "text": "Reused gbrain verdict … no debate needed",
+     "x": "center",
+     "y": 1010,
+     "align": "center",
+     "font": "mono",
+     "weight": "regular",
+     "size": 30,
+     "color": "#A78BFA",
+     "animation": "fade",
+     "start": "0.6s",
+     "end": "3.2s"
+    },
+    {
+     "type": "text",
+     "text": "No debate: 77.7 s → 29.0 s.",
+     "x": "center",
+     "y": 930,
+     "align": "center",
+     "font": "sans",
+     "weight": "bold",
+     "size": 64,
+     "color": "#A78BFA",
+     "animation": "rise",
+     "start": "3.3s"
+    }
+   ],
+   "transition": {
+    "type": "fade",
+    "duration": "0.3s"
+   }
+  },
+  {
+   "id": "heal",
+   "duration": "10s",
+   "layers": [
+    {
+     "type": "media",
+     "source": "recipe",
+     "in": "3.6s",
+     "camera": [
+      {
+       "at": 0,
+       "zoom": 1,
+       "x": 0.5,
+       "y": 0.5,
+       "ease": "inout"
+      },
+      {
+       "at": "10s",
+       "zoom": 1.04,
+       "x": 0.5,
+       "y": 0.47,
+       "ease": "inout"
+      }
+     ]
+    },
+    {
+     "type": "text",
+     "text": "YC RFS · SELF-MAINTAINING APIS",
+     "x": 1810,
+     "y": 100,
+     "align": "right",
+     "font": "mono",
+     "weight": "bold",
+     "size": 24,
+     "color": "#FBBF24",
+     "animation": "fade",
+     "start": "0.1s",
+     "box": {
+      "color": "#141414F0",
+      "padding": 10
+     }
+    },
+    {
+     "type": "text",
+     "text": "Luma's get-posts endpoint broke: 404.",
+     "x": "center",
+     "y": 800,
+     "align": "center",
+     "font": "sans",
+     "weight": "bold",
+     "size": 58,
+     "color": "#F4F2EC",
+     "animation": "rise",
+     "start": "1.5s",
+     "end": "4.4s"
+    },
+    {
+     "type": "text",
+     "text": "Aside retries in my signed-in browser and finds get-blasts.",
+     "x": "center",
+     "y": 800,
+     "align": "center",
+     "font": "sans",
+     "weight": "bold",
+     "size": 52,
+     "color": "#F4F2EC",
+     "animation": "rise",
+     "start": "4.5s",
+     "end": "8.2s"
+    },
+    {
+     "type": "text",
+     "text": "Verified, saved as recipe v3, remembered in gbrain.",
+     "x": "center",
+     "y": 800,
+     "align": "center",
+     "font": "sans",
+     "weight": "bold",
+     "size": 56,
+     "color": "#34D399",
+     "animation": "rise",
+     "start": "8.3s"
+    },
+    {
+     "type": "text",
+     "text": "live run rmw8phbj41fbe4b · 7 announcements · announcement text never printed",
+     "x": "center",
+     "y": 1000,
+     "align": "center",
+     "font": "mono",
+     "weight": "regular",
+     "size": 30,
+     "color": "#9AA0AA",
+     "animation": "fade",
+     "start": "1.8s"
+    }
+   ]
+  },
+  {
+   "id": "built",
+   "duration": "3.4s",
+   "layers": [
+    {
+     "type": "text",
+     "text": "Built on",
+     "x": "center",
+     "y": 430,
+     "align": "center",
+     "font": "serif",
+     "weight": "italic",
+     "size": 64,
+     "color": "#9AA0AA",
+     "animation": "fade",
+     "start": "0.1s"
+    },
+    {
+     "type": "text",
+     "text": "Aside · gbrain · gstack · Direction Board · Codex",
+     "x": "center",
+     "y": 560,
+     "align": "center",
+     "font": "sans",
+     "weight": "bold",
+     "size": 56,
+     "color": "#F4F2EC",
+     "animation": "rise",
+     "start": "0.4s"
+    }
+   ],
+   "transition": {
+    "type": "fade",
+    "duration": "0.3s"
+   }
+  },
+  {
+   "id": "cta",
+   "duration": "4.6s",
+   "layers": [
+    {
+     "type": "text",
+     "text": "quorum",
+     "x": "center",
+     "y": 380,
+     "align": "center",
+     "font": "sans",
+     "weight": "black",
+     "size": 180,
+     "color": "#F4F2EC",
+     "animation": "slam",
+     "start": "0.1s"
+    },
+    {
+     "type": "text",
+     "text": "Only what survives the argument runs.",
+     "x": "center",
+     "y": 520,
+     "align": "center",
+     "font": "serif",
+     "weight": "italic",
+     "size": 58,
+     "color": "#FBBF24",
+     "animation": "fade",
+     "start": "0.6s"
+    },
+    {
+     "type": "text",
+     "text": "tryquorum.github.io/quorum",
+     "x": "center",
+     "y": 680,
+     "align": "center",
+     "font": "mono",
+     "weight": "bold",
+     "size": 48,
+     "color": "#F4F2EC",
+     "animation": "type",
+     "start": "1.1s",
+     "animationDuration": "0.6s"
+    },
+    {
+     "type": "text",
+     "text": "github.com/tryquorum/quorum",
+     "x": "center",
+     "y": 760,
+     "align": "center",
+     "font": "mono",
+     "weight": "regular",
+     "size": 40,
+     "color": "#9AA0AA",
+     "animation": "fade",
+     "start": "1.6s"
+    },
+    {
+     "type": "text",
+     "text": "Built in a day at c0mpiled-17 Seoul",
+     "x": "center",
+     "y": 960,
+     "align": "center",
+     "font": "sans",
+     "weight": "regular",
+     "size": 30,
+     "color": "#9AA0AA",
+     "animation": "fade",
+     "start": "2.0s"
+    }
+   ]
+  }
+ ],
+ "audio": {
+  "music": {
+   "synth": {
+    "preset": "launch",
+    "key": "Am",
+    "sections": [
+     {
+      "at": 0,
+      "energy": "intro"
+     },
+     {
+      "at": "10.5s",
+      "energy": "build"
+     },
+     {
+      "at": "17s",
+      "energy": "drop"
+     },
+     {
+      "at": "58s",
+      "energy": "outro"
+     }
+    ]
+   },
+   "volume": 0.9,
+   "fadeOut": "2s"
+  },
+  "cues": [
+   {
+    "at": "0.1s",
+    "sfx": "preset:impact"
+   },
+   {
+    "at": "10.5s",
+    "sfx": "preset:riser",
+    "anchor": "end",
+    "volume": 0.8
+   }
+  ],
+  "autoCues": true
+ }
+}
