@@ -31,7 +31,7 @@ export function Healing() {
   }, [seen, reduced])
   const done = n >= LINES.length
   return (
-    <div ref={ref} className="overflow-hidden rounded-2xl border bg-[#050506] shadow-2xl shadow-black/50">
+    <div ref={ref} className="dark lp-float overflow-hidden rounded-[20px] border bg-[#050506] text-foreground">
       <div className="flex items-center gap-2 border-b px-4 py-2.5 font-mono text-xs text-muted-foreground">
         <span className="size-2.5 rounded-full bg-foreground/15" /><span className="size-2.5 rounded-full bg-foreground/15" /><span className="size-2.5 rounded-full bg-foreground/15" />
         <span className="ml-2">recipe · luma-blasts</span>
