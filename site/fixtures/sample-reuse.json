@@ -1,0 +1,199 @@
+{
+  "runId": "run-demo-0002",
+  "request": "What do I need to do from the event announcements?",
+  "mode": "replay",
+  "recordedAt": "2026-11-09T04:18:00.000Z",
+  "events": [
+    {
+      "runId": "run-demo-0002",
+      "seq": 1,
+      "at": "2026-11-09T04:18:00.000Z",
+      "mode": "replay",
+      "type": "run.start",
+      "actor": "council",
+      "text": "Run started for: What do I need to do from the event announcements?",
+      "data": {
+        "request": "What do I need to do from the event announcements?"
+      }
+    },
+    {
+      "runId": "run-demo-0002",
+      "seq": 2,
+      "at": "2026-11-09T04:18:00.800Z",
+      "mode": "replay",
+      "type": "recall",
+      "actor": "gbrain",
+      "text": "Recalled 1 strong match: gb:v-0412 at 0.93.",
+      "data": {
+        "hits": [
+          {
+            "id": "gb:v-0412",
+            "decision": "pass",
+            "score": 0.93,
+            "summary": "Run-demo-0001: read 7 announcements via luma-blasts v2, wrote checklist.md, and held the team post for approval."
+          }
+        ]
+      }
+    },
+    {
+      "runId": "run-demo-0002",
+      "seq": 3,
+      "at": "2026-11-09T04:18:02.000Z",
+      "mode": "replay",
+      "type": "recall",
+      "actor": "council",
+      "text": "Near-identical verdict found, skipping proposal and argument.",
+      "data": {
+        "hits": [
+          {
+            "id": "gb:v-0412",
+            "decision": "pass",
+            "score": 0.93,
+            "summary": "Run-demo-0001: read 7 announcements via luma-blasts v2, wrote checklist.md, and held the team post for approval."
+          }
+        ]
+      }
+    },
+    {
+      "runId": "run-demo-0002",
+      "seq": 4,
+      "at": "2026-11-09T04:18:04.000Z",
+      "mode": "replay",
+      "type": "proposal",
+      "actor": "bot:scout",
+      "text": "Reused p1 shape: Read today's Luma announcements, run by aside.",
+      "data": {
+        "proposalId": "p1",
+        "title": "Read today's Luma announcements",
+        "executor": "aside",
+        "why": "Same request shape as gb:v-0412; announcements still hold today's deadlines."
+      }
+    },
+    {
+      "runId": "run-demo-0002",
+      "seq": 5,
+      "at": "2026-11-09T04:18:04.600Z",
+      "mode": "replay",
+      "type": "proposal",
+      "actor": "bot:planner",
+      "text": "Reused p3 shape: Draft a submission checklist from the announcements, run by codex.",
+      "data": {
+        "proposalId": "p3",
+        "title": "Draft a submission checklist from the announcements",
+        "executor": "codex",
+        "why": "The checklist is the artifact gb:v-0412 approved."
+      }
+    },
+    {
+      "runId": "run-demo-0002",
+      "seq": 6,
+      "at": "2026-11-09T04:18:06.100Z",
+      "mode": "replay",
+      "type": "verdict",
+      "actor": "council",
+      "text": "Council passed p1 from gb:v-0412: read the announcements first.",
+      "data": {
+        "proposalId": "p1",
+        "decision": "pass",
+        "reason": "Near-identical request; the prior council already passed reading the announcements.",
+        "reusedFrom": "gb:v-0412"
+      }
+    },
+    {
+      "runId": "run-demo-0002",
+      "seq": 7,
+      "at": "2026-11-09T04:18:08.500Z",
+      "mode": "replay",
+      "type": "verdict",
+      "actor": "council",
+      "text": "Council passed p3 from gb:v-0412: keep the checklist as the durable artifact.",
+      "data": {
+        "proposalId": "p3",
+        "decision": "pass",
+        "reason": "Prior council passed the checklist as the only durable artifact.",
+        "reusedFrom": "gb:v-0412"
+      }
+    },
+    {
+      "runId": "run-demo-0002",
+      "seq": 8,
+      "at": "2026-11-09T04:18:09.400Z",
+      "mode": "replay",
+      "type": "execute.start",
+      "actor": "aside",
+      "text": "aside started p1: Read today's Luma announcements.",
+      "data": {
+        "proposalId": "p1",
+        "executor": "aside"
+      }
+    },
+    {
+      "runId": "run-demo-0002",
+      "seq": 9,
+      "at": "2026-11-09T04:18:10.500Z",
+      "mode": "replay",
+      "type": "recipe.run",
+      "actor": "recipe:luma-blasts",
+      "text": "recipe luma-blasts v2 called GET /event/get-blasts and returned 200.",
+      "data": {
+        "recipeId": "luma-blasts",
+        "version": 2,
+        "endpoint": "GET /event/get-blasts",
+        "status": 200
+      }
+    },
+    {
+      "runId": "run-demo-0002",
+      "seq": 10,
+      "at": "2026-11-09T04:18:12.300Z",
+      "mode": "replay",
+      "type": "execute.result",
+      "actor": "aside",
+      "text": "aside finished p1: Read 7 announcements.",
+      "data": {
+        "proposalId": "p1",
+        "executor": "aside",
+        "ok": true,
+        "summary": "Read 7 announcements",
+        "items": [
+          "Demo submission due 15:00 in the main hall",
+          "Upload a 2-minute demo video by 15:00",
+          "Lunch served at 12:30 in the atrium",
+          "Judging starts at 16:00, three-minute pitches",
+          "Submission form link posted in the event feed",
+          "Team roster must list all four members",
+          "Hardware checkout closes at 14:00"
+        ]
+      }
+    },
+    {
+      "runId": "run-demo-0002",
+      "seq": 11,
+      "at": "2026-11-09T04:18:12.800Z",
+      "mode": "replay",
+      "type": "board.posted",
+      "actor": "board",
+      "text": "board posted p1 to done: Read today's Luma announcements.",
+      "data": {
+        "cardId": "card-demo-0002-announcements",
+        "title": "Read today's Luma announcements",
+        "column": "done"
+      }
+    },
+    {
+      "runId": "run-demo-0002",
+      "seq": 12,
+      "at": "2026-11-09T04:18:15.000Z",
+      "mode": "replay",
+      "type": "run.end",
+      "actor": "council",
+      "text": "Run finished: 2 passed, 0 held, 0 rejected, 2 reused.",
+      "data": {
+        "passed": 2,
+        "held": 0,
+        "rejected": 0,
+        "reused": 2
+      }
+    }
+  ]
+}
