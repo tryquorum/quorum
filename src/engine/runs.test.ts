@@ -74,7 +74,11 @@ describe("HTTP API", () => {
       memory: async (q) => [{ slug: "quorum/verdicts/x", q }],
       recipes: async () => null,
     })
-    const call = (path: string, init?: RequestInit) => app(new Request("http://localhost:4317" + path, init))
+    const call = (path: string, init?: RequestInit) => {
+      const headers = new Headers(init?.headers)
+      headers.set("host", "localhost:4317")
+      return app(new Request("http://localhost:4317" + path, { ...init, headers }))
+    }
     return { store, runs, call }
   }
   const post = (body: unknown) => ({ method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })

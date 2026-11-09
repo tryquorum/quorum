@@ -8,6 +8,8 @@ import { Store } from "./engine/store"
 import { RunManager } from "./engine/runs"
 import { liveDeps } from "./engine/live"
 import type { Emit } from "./engine/council"
+import { localRequestAllowed } from "./engine/local-guard"
+import { mcpHandler } from "./engine/mcp"
 import { BoardClient } from "./executors/board"
 import { ASIDE_BIN } from "./executors/aside"
 import { CODEX_BIN } from "./executors/codex"
@@ -32,6 +34,8 @@ export type AppDeps = {
   health: () => Promise<Health>
   memory: (q: string) => Promise<unknown>
   recipes: () => Promise<RecipesModule | null>
+  /** QUORUM_MCP_PROPOSE=1 일 때만 MCP 로 의회를 열 수 있어요 */
+  mcpPropose?: boolean
 }
 
 export async function liveHealth(board: BoardClient): Promise<Health> {
@@ -98,6 +102,12 @@ export function createApp(d: AppDeps): (req: Request) => Promise<Response> {
     const url = new URL(req.url)
     const m = req.method
     const parts = url.pathname.split("/").filter(Boolean)
+    if (parts[0] === "api" || parts[0] === "mcp") {
+      if (!localRequestAllowed(req)) return err(403, "이 맥 안에서 온 요청만 받아요")
+    }
+    if (parts[0] === "mcp" && parts.length === 1) {
+      return mcpHandler({ store: d.store, start: (request) => d.runs.start(request).runId, memory: d.memory, allowPropose: !!d.mcpPropose, version: VERSION }, req)
+    }
     if (parts[0] !== "api") return serveStatic(d.siteRoot, url.pathname)
 
     if (parts[1] === "health" && m === "GET") return json({ ok: true, version: VERSION, executors: await d.health() })
@@ -174,6 +184,7 @@ if (import.meta.main) {
     health: cached(() => liveHealth(board), 15_000),
     memory: (q) => searchMemory(q, 10).then((hits) => hits.map((h) => ({ slug: h.slug, title: h.title, snippet: h.snippet, score: h.score }))),
     recipes: loadRecipes,
+    mcpPropose: process.env.QUORUM_MCP_PROPOSE === "1",
   })
   Bun.serve({ port: PORT, hostname: process.env.QUORUM_HOST || "127.0.0.1", idleTimeout: 255, fetch: app })
   console.log("quorum on http://localhost:" + PORT + " (board write " + (board.writeEnabled ? "on" : "off") + ")")
