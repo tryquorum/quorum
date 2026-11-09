@@ -111,7 +111,8 @@ export function createWorkspace(deps: WorkspaceDeps) {
   /** 시험이 승인 실행을 기다릴 때 써요 */
   const pending = new Set<Promise<void>>()
 
-  async function handle(req: Request, parts: string[]): Promise<Response> {
+  /** me: 로그인한 이메일(server.ts 가 Access JWT·로컬 설정으로 정해요). 주면 머리글보다 이것을 믿어요 */
+  async function handle(req: Request, parts: string[], me?: string | null): Promise<Response> {
     const url = new URL(req.url)
     const m = req.method
     const body = async () => ((await req.json().catch(() => null)) as Record<string, unknown> | null)
@@ -121,7 +122,7 @@ export function createWorkspace(deps: WorkspaceDeps) {
     if (res === "meta" && m === "GET") {
       // 로그인 이메일: Cloudflare Access 가 붙여 주는 머리글, 없으면 방향판이 알려 준 주인
       const meta = readMeta(db)
-      const email = req.headers.get("cf-access-authenticated-user-email") || meta.me?.email || null
+      const email = me !== undefined ? me || meta.me?.email || null : req.headers.get("cf-access-authenticated-user-email") || meta.me?.email || null
       return json({ ...meta, me: email ? { email } : null, import: board?.status() ?? null })
     }
     if (res === "import" && id === "sync" && m === "POST") {

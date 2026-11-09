@@ -15,6 +15,16 @@ export function parseAllowed(raw: string | undefined): string[] {
   return (raw || "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean)
 }
 
+/**
+ * 허용 목록 검사. 항목은 정확한 이메일, "*@도메인"(그 도메인만, 하위 도메인 아님), "*"(Access 정책이 들여보낸 누구나).
+ * "*" 는 사람을 Cloudflare Access 정책에 맡긴다는 뜻이라 명시적으로 적어야만 켜져요. 빈 목록은 아무도 아니에요.
+ */
+export function isAllowed(email: string, allowed: string[]): boolean {
+  const e = email.trim().toLowerCase()
+  if (!e.includes("@")) return false
+  return allowed.some((a) => a === "*" || a === e || (a.startsWith("*@") && e.endsWith(a.slice(1)) && e.split("@").length === 2))
+}
+
 export function createAccess(config: AccessConfig) {
   const team = normalizeTeam(config.team)
   const now = config.now || Date.now
@@ -82,7 +92,7 @@ export function createAccess(config: AccessConfig) {
     }
     if (!jwt) return null
     const email = await verifyAccessJwt(jwt)
-    if (!email || !config.allowed.includes(email)) return null
+    if (!email || !isAllowed(email, config.allowed)) return null
     return { email }
   }
   return { who, verifyAccessJwt }

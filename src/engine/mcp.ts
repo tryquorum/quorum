@@ -12,6 +12,8 @@ export type McpDeps = {
   memory: (q: string) => Promise<unknown>
   allowPropose: boolean
   version: string
+  /** 테넌트가 더하는 도구(src/hosted 대기열). 없으면 기본 도구만 */
+  extra?: Record<string, unknown>
 }
 
 const PROTOCOL = "2025-06-18"

@@ -20,6 +20,7 @@ import { GBRAIN_BIN, searchMemory } from "./executors/gbrain"
 import { asideRunner, listRecipes, runRecipe } from "./recipes"
 import { createWorkspace } from "./workspace/api"
 import { engineExecute } from "./workspace/council"
+import { tenantFrom, type Tenant, type TenantRegistry } from "./hosted/tenants"
 
 export const VERSION = "0.2.0"
 const json = (data: unknown, status = 200) =>
@@ -48,7 +49,9 @@ export type AppDeps = {
   /** 로컬 리스너의 /api/me 이메일(QUORUM_LOCAL_USER). 없으면 null */
   localUser?: string | null
   /** Workspace(/api/ws/*). src/workspace/api.ts */
-  workspace?: (req: Request, parts: string[]) => Promise<Response>
+  workspace?: (req: Request, parts: string[], me?: string | null) => Promise<Response>
+  /** 사람마다 저장소를 나눠요(src/hosted/tenants.ts). 없으면 모두 위의 store·runs 하나를 써요 */
+  tenants?: TenantRegistry
 }
 
 export type HealthProbe = { asideBin: () => Promise<boolean>; account: () => Promise<AsideAccount>; which: (name: string) => string | null }
@@ -95,7 +98,7 @@ async function serveStatic(siteRoot: string, pathname: string): Promise<Response
   return (await file.exists()) ? new Response(file) : new Response("not found", { status: 404 })
 }
 
-function sse(d: AppDeps, runId: string, afterSeq: number): Response {
+function sse(d: Pick<Tenant, "store" | "runs">, runId: string, afterSeq: number): Response {
   let unsub = () => {}
   let ka: ReturnType<typeof setInterval> | undefined
   const stream = new ReadableStream<Uint8Array>({
@@ -151,6 +154,9 @@ export function isPublicLanding(method: string, pathname: string): boolean {
 
 export function createApp(d: AppDeps, listener: Listener = "local", pub?: PublicAuth): (req: Request) => Promise<Response> {
   if (listener === "public" && !pub) throw new Error("public listener needs Access auth")
+  // 테넌트 레지스트리가 없으면(옛 시험·단일 사용자) 모든 요청이 하나의 소유자 저장소를 써요
+  const single: Tenant = tenantFrom({ email: d.localUser ?? null, role: "owner", store: d.store, runs: d.runs, workspace: d.workspace, memory: d.memory, recipes: d.recipes, health: d.health, mcpPropose: !!d.mcpPropose })
+  const pick = (user: User | null) => (d.tenants ? d.tenants.resolve(user, listener) : single)
   return async (req) => {
     const url = new URL(req.url)
     const m = req.method
@@ -173,59 +179,68 @@ export function createApp(d: AppDeps, listener: Listener = "local", pub?: Public
         return guarded ? err(401, "login required (Cloudflare Access)") : new Response("login required", { status: 401 })
       }
     }
+    if (!guarded) return serveStatic(d.siteRoot, url.pathname)
 
-    if (parts[0] === "mcp" && parts.length === 1) {
-      return mcpHandler({ store: d.store, start: (request) => d.runs.start(request).runId, memory: d.memory, allowPropose: !!d.mcpPropose, version: VERSION }, req)
+    const picked = pick(user)
+    if (!("store" in picked)) return err(picked.status, picked.error)
+    const t: Tenant = picked
+    const guest = t.role === "guest"
+
+    if (parts[0] === "mcp") {
+      if (parts.length !== 1) return err(404, "unknown route " + m + " " + url.pathname)
+      return mcpHandler({ store: t.store, start: (request) => { const r = t.start(request); if ("error" in r) throw new Error(r.error); return r.runId }, memory: t.memory, allowPropose: t.mcpPropose, version: VERSION, ...(t.extra ? { extra: t.extra } : {}) }, req)
     }
-    if (parts[0] !== "api") return serveStatic(d.siteRoot, url.pathname)
-    if (parts[1] === "ws" && d.workspace) return d.workspace(req, parts)
+    if (parts[1] === "ws" && t.workspace) return t.workspace(req, parts, user?.email ?? null)
 
     if (parts[1] === "health" && m === "GET") {
-      const { details, ...executors } = await d.health()
-      return json({ ok: true, version: VERSION, executors, ...(details ? { details } : {}) })
+      const { details, mode, ...executors } = await t.health()
+      return json({ ok: true, version: VERSION, executors, ...(details ? { details } : {}), ...(mode ? { mode } : {}) })
     }
-    if (parts[1] === "me" && parts.length === 2 && m === "GET") return json({ email: user?.email ?? null, listener })
+    if (parts[1] === "me" && parts.length === 2 && m === "GET") return json({ email: user?.email ?? null, listener, role: t.role })
 
     if (parts[1] === "runs") {
-      if (parts.length === 2 && m === "GET") return json(d.store.listRuns(Math.min(200, Number(url.searchParams.get("limit")) || 50)))
+      if (parts.length === 2 && m === "GET") return json(t.store.listRuns(Math.min(200, Number(url.searchParams.get("limit")) || 50)))
       if (parts.length === 2 && m === "POST") {
         const body = (await req.json().catch(() => null)) as Record<string, unknown> | null
         if (!body) return err(400, "JSON body required")
         if (body.mode === "replay") {
           const replayId = str(body.replayId, 80)
           if (!replayId) return err(400, "replayId required for replay")
-          const r = d.runs.replay(replayId)
+          const r = t.runs.replay(replayId)
           return "error" in r ? err(r.status, r.error) : json({ runId: r.runId, mode: "replay", replayOf: replayId }, 201)
         }
         if (body.mode !== undefined && body.mode !== "live") return err(400, "mode must be live or replay")
         const request = str(body.request, 4000)
         if (!request) return err(400, "request required")
-        return json({ runId: d.runs.start(request).runId, mode: "live" }, 201)
+        const r = t.start(request)
+        return "error" in r ? err(r.status, r.error) : json({ runId: r.runId, mode: "live" }, 201)
       }
-      const run = parts[2] ? d.store.getRun(parts[2]) : null
+      const run = parts[2] ? t.store.getRun(parts[2]) : null
       if (parts.length >= 3 && !run) return err(404, "run not found")
-      if (run && parts.length === 3 && m === "GET") return json({ ...run, events: d.store.getEvents(run.runId) })
+      if (run && parts.length === 3 && m === "GET") return json({ ...run, events: t.store.getEvents(run.runId) })
       if (run && parts.length === 4 && parts[3] === "events" && m === "GET") {
         const lastId = Number(req.headers.get("last-event-id") ?? url.searchParams.get("after") ?? -1)
-        return sse(d, run.runId, Number.isFinite(lastId) ? lastId : -1)
+        return sse(t, run.runId, Number.isFinite(lastId) ? lastId : -1)
       }
     }
 
     if (parts[1] === "memory" && m === "GET") {
       const q = str(url.searchParams.get("q"), 200)
       if (!q) return err(400, "q required")
-      try { return json({ q, results: await d.memory(q) }) } catch (e) { return err(502, "gbrain: " + (e instanceof Error ? e.message : String(e))) }
+      try { return json({ q, results: await t.memory(q) }) } catch (e) { return err(502, "memory: " + (e instanceof Error ? e.message : String(e))) }
     }
 
     if (parts[1] === "recipes") {
-      const mod = await d.recipes()
+      // 레시피는 소유자 맥의 Aside 로 깨진 API 를 고쳐요. 비소유자는 목록이 비고 실행할 수 없어요
+      if (guest) return parts.length === 2 && m === "GET" ? json([]) : err(403, "recipes run on the host's Mac and are only for its owner")
+      const mod = await t.recipes()
       if (!mod) return err(501, "recipes are not available")
       if (parts.length === 2 && m === "GET") return json(await mod.listRecipes())
       if (parts.length === 4 && parts[3] === "run" && m === "POST") {
         const recipeId = parts[2]
         if (!/^[a-z0-9-]{1,60}$/.test(recipeId)) return err(400, "recipe id must be [a-z0-9-]")
         const vars = recipeVars(((await req.json().catch(() => ({}))) || {}) as Record<string, unknown>)
-        const { runId } = d.runs.startCustom("recipe: " + recipeId, async (emit) => {
+        const { runId } = t.runs.startCustom("recipe: " + recipeId, async (emit) => {
           emit("run.start", "recipe:" + recipeId, "레시피 실행: " + recipeId, { recipeId })
           const out = (await mod.runRecipe(recipeId, vars, emit)) as { ok?: boolean; reason?: string } | undefined
           const ok = out?.ok !== false
