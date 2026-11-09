@@ -1,0 +1,644 @@
+{
+  "runId": "run-demo-0001",
+  "request": "Sort out what I need to do from today's event announcements",
+  "mode": "replay",
+  "recordedAt": "2026-11-09T04:12:00.000Z",
+  "events": [
+    {
+      "runId": "run-demo-0001",
+      "seq": 1,
+      "at": "2026-11-09T04:12:00.000Z",
+      "mode": "replay",
+      "type": "run.start",
+      "actor": "council",
+      "text": "Run started for: Sort out what I need to do from today's event announcements",
+      "data": {
+        "request": "Sort out what I need to do from today's event announcements"
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 2,
+      "at": "2026-11-09T04:12:00.800Z",
+      "mode": "replay",
+      "type": "recall",
+      "actor": "gbrain",
+      "text": "Recalled 2 past verdicts, both weak matches below the reuse threshold.",
+      "data": {
+        "hits": [
+          {
+            "id": "gb:v-0331",
+            "summary": "Summarized conference talks into a watch list",
+            "decision": "hold",
+            "score": 0.41
+          },
+          {
+            "id": "gb:v-0287",
+            "summary": "Read an event page and extracted the schedule",
+            "decision": "pass",
+            "score": 0.52
+          }
+        ]
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 3,
+      "at": "2026-11-09T04:12:02.000Z",
+      "mode": "replay",
+      "type": "proposal",
+      "actor": "bot:scout",
+      "text": "Proposed p1: Read today's Luma announcements, run by aside.",
+      "data": {
+        "proposalId": "p1",
+        "title": "Read today's Luma announcements",
+        "executor": "aside",
+        "why": "Announcements hold the deadlines, links, and room changes you need today."
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 4,
+      "at": "2026-11-09T04:12:04.000Z",
+      "mode": "replay",
+      "type": "proposal",
+      "actor": "bot:ops",
+      "text": "Proposed p2: Add announced deadlines to my calendar, run by aside.",
+      "data": {
+        "proposalId": "p2",
+        "title": "Add announced deadlines to my calendar",
+        "executor": "aside",
+        "why": "Deadlines only help if they reach your calendar with reminders attached."
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 5,
+      "at": "2026-11-09T04:12:04.600Z",
+      "mode": "replay",
+      "type": "proposal",
+      "actor": "bot:planner",
+      "text": "Proposed p3: Draft a submission checklist from the announcements, run by codex.",
+      "data": {
+        "proposalId": "p3",
+        "title": "Draft a submission checklist from the announcements",
+        "executor": "codex",
+        "why": "A checklist turns scattered announcement text into an ordered set of steps."
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 6,
+      "at": "2026-11-09T04:12:06.100Z",
+      "mode": "replay",
+      "type": "proposal",
+      "actor": "bot:scout",
+      "text": "Proposed p4: Email every organizer to confirm details, run by aside.",
+      "data": {
+        "proposalId": "p4",
+        "title": "Email every organizer to confirm details",
+        "executor": "aside",
+        "why": "A reply from organizers would settle anything the announcements left vague."
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 7,
+      "at": "2026-11-09T04:12:08.500Z",
+      "mode": "replay",
+      "type": "proposal",
+      "actor": "bot:ops",
+      "text": "Proposed p5: Summarize all past events this month, run by nobody.",
+      "data": {
+        "proposalId": "p5",
+        "title": "Summarize all past events this month",
+        "executor": "none",
+        "why": "Background context could help you judge which sessions matter today."
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 8,
+      "at": "2026-11-09T04:12:09.400Z",
+      "mode": "replay",
+      "type": "proposal",
+      "actor": "bot:planner",
+      "text": "Proposed p6: Post the checklist to the team channel, run by board.",
+      "data": {
+        "proposalId": "p6",
+        "title": "Post the checklist to the team channel",
+        "executor": "board",
+        "why": "Your team needs the same checklist before the 15:00 deadline."
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 9,
+      "at": "2026-11-09T04:12:10.500Z",
+      "mode": "replay",
+      "type": "critique",
+      "actor": "bot:ceo",
+      "text": "ceo keeps p1: reading the source announcements is what grounds every later task.",
+      "data": {
+        "proposalId": "p1",
+        "role": "ceo",
+        "stance": "keep",
+        "reason": "Reading the source announcements is the cheapest way to ground every later task."
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 10,
+      "at": "2026-11-09T04:12:12.300Z",
+      "mode": "replay",
+      "type": "critique",
+      "actor": "bot:qa",
+      "text": "qa keeps p1: it is a read-only browser pass.",
+      "data": {
+        "proposalId": "p1",
+        "role": "qa",
+        "stance": "keep",
+        "reason": "Read-only browser pass, no side effects to guard."
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 11,
+      "at": "2026-11-09T04:12:12.800Z",
+      "mode": "replay",
+      "type": "critique",
+      "actor": "bot:reviewer",
+      "text": "reviewer cuts p2: it duplicates p3.",
+      "data": {
+        "proposalId": "p2",
+        "role": "reviewer",
+        "stance": "cut",
+        "reason": "Duplicates p3: the checklist already carries each deadline."
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 12,
+      "at": "2026-11-09T04:12:15.000Z",
+      "mode": "replay",
+      "type": "critique",
+      "actor": "bot:ceo",
+      "text": "ceo cuts p2: the calendar adds no decision of its own.",
+      "data": {
+        "proposalId": "p2",
+        "role": "ceo",
+        "stance": "cut",
+        "reason": "Calendar entries add no decision the checklist does not already make."
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 13,
+      "at": "2026-11-09T04:12:16.600Z",
+      "mode": "replay",
+      "type": "critique",
+      "actor": "bot:ceo",
+      "text": "ceo keeps p3: one ordered artifact is what survives the day.",
+      "data": {
+        "proposalId": "p3",
+        "role": "ceo",
+        "stance": "keep",
+        "reason": "One ordered artifact is what survives the day."
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 14,
+      "at": "2026-11-09T04:12:17.300Z",
+      "mode": "replay",
+      "type": "critique",
+      "actor": "bot:qa",
+      "text": "qa keeps p3: codex work stays inside the run sandbox.",
+      "data": {
+        "proposalId": "p3",
+        "role": "qa",
+        "stance": "keep",
+        "reason": "Codex runs in .quorum/sandbox/run-demo-0001 with no outside writes."
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 15,
+      "at": "2026-11-09T04:12:18.600Z",
+      "mode": "replay",
+      "type": "critique",
+      "actor": "bot:cso",
+      "text": "cso keeps p3: a local file leaves the machine untouched.",
+      "data": {
+        "proposalId": "p3",
+        "role": "cso",
+        "stance": "keep",
+        "reason": "Local file only, nothing leaves the machine."
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 16,
+      "at": "2026-11-09T04:12:21.400Z",
+      "mode": "replay",
+      "type": "critique",
+      "actor": "bot:cso",
+      "text": "cso escalates p4: it sends mail on your behalf.",
+      "data": {
+        "proposalId": "p4",
+        "role": "cso",
+        "stance": "escalate",
+        "reason": "Sends mail on your behalf, needs approval."
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 17,
+      "at": "2026-11-09T04:12:23.300Z",
+      "mode": "replay",
+      "type": "critique",
+      "actor": "bot:ceo",
+      "text": "ceo cuts p4: the announcements already carry the details.",
+      "data": {
+        "proposalId": "p4",
+        "role": "ceo",
+        "stance": "cut",
+        "reason": "Announcements already answer most detail questions."
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 18,
+      "at": "2026-11-09T04:12:23.700Z",
+      "mode": "replay",
+      "type": "critique",
+      "actor": "bot:qa",
+      "text": "qa cuts p4: mass mail adds noise before the deadline.",
+      "data": {
+        "proposalId": "p4",
+        "role": "qa",
+        "stance": "cut",
+        "reason": "Mass email to organizers adds noise right before the deadline."
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 19,
+      "at": "2026-11-09T04:12:26.300Z",
+      "mode": "replay",
+      "type": "critique",
+      "actor": "bot:ceo",
+      "text": "ceo cuts p5: past events do not change today's plan.",
+      "data": {
+        "proposalId": "p5",
+        "role": "ceo",
+        "stance": "cut",
+        "reason": "Not needed: past events do not change today's plan."
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 20,
+      "at": "2026-11-09T04:12:27.300Z",
+      "mode": "replay",
+      "type": "critique",
+      "actor": "bot:reviewer",
+      "text": "reviewer cuts p5: it repeats p1's read.",
+      "data": {
+        "proposalId": "p5",
+        "role": "reviewer",
+        "stance": "cut",
+        "reason": "Duplicates p1's read of the announcements."
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 21,
+      "at": "2026-11-09T04:12:29.000Z",
+      "mode": "replay",
+      "type": "critique",
+      "actor": "bot:reviewer",
+      "text": "reviewer keeps p6: the team needs the checklist before 15:00.",
+      "data": {
+        "proposalId": "p6",
+        "role": "reviewer",
+        "stance": "keep",
+        "reason": "The team does need the checklist before 15:00."
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 22,
+      "at": "2026-11-09T04:12:29.800Z",
+      "mode": "replay",
+      "type": "critique",
+      "actor": "bot:qa",
+      "text": "qa escalates p6: an external post needs a human look.",
+      "data": {
+        "proposalId": "p6",
+        "role": "qa",
+        "stance": "escalate",
+        "reason": "Posting to an external channel needs a human look first."
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 23,
+      "at": "2026-11-09T04:12:31.000Z",
+      "mode": "replay",
+      "type": "critique",
+      "actor": "bot:cso",
+      "text": "cso escalates p6: it acts in your name on the team channel.",
+      "data": {
+        "proposalId": "p6",
+        "role": "cso",
+        "stance": "escalate",
+        "reason": "Acts in your name on the team channel, needs approval."
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 24,
+      "at": "2026-11-09T04:12:33.000Z",
+      "mode": "replay",
+      "type": "verdict",
+      "actor": "council",
+      "text": "Council passed p1: read the live announcements first.",
+      "data": {
+        "proposalId": "p1",
+        "decision": "pass",
+        "reason": "Live announcements are the source for every other task, so read them first."
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 25,
+      "at": "2026-11-09T04:12:33.600Z",
+      "mode": "replay",
+      "type": "verdict",
+      "actor": "council",
+      "text": "Council rejected p2: it duplicates the p3 checklist.",
+      "data": {
+        "proposalId": "p2",
+        "decision": "reject",
+        "reason": "Duplicate of p3: the checklist already carries the deadlines, so a second calendar pass adds noise."
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 26,
+      "at": "2026-11-09T04:12:35.100Z",
+      "mode": "replay",
+      "type": "verdict",
+      "actor": "council",
+      "text": "Council passed p3: keep the checklist small and ordered.",
+      "data": {
+        "proposalId": "p3",
+        "decision": "pass",
+        "reason": "The checklist is the only artifact that survives the day; keep it small and ordered."
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 27,
+      "at": "2026-11-09T04:12:37.500Z",
+      "mode": "replay",
+      "type": "verdict",
+      "actor": "council",
+      "text": "Council rejected p4 on cso risk: no outbound mail without approval.",
+      "data": {
+        "proposalId": "p4",
+        "decision": "reject",
+        "reason": "cso flagged outbound mail on your behalf; the announcements already answer the detail questions."
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 28,
+      "at": "2026-11-09T04:12:38.400Z",
+      "mode": "replay",
+      "type": "verdict",
+      "actor": "council",
+      "text": "Council rejected p5: out of scope for today's plan.",
+      "data": {
+        "proposalId": "p5",
+        "decision": "reject",
+        "reason": "ceo ruled it out of scope: past events do not change today's plan."
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 29,
+      "at": "2026-11-09T04:12:39.500Z",
+      "mode": "replay",
+      "type": "verdict",
+      "actor": "council",
+      "text": "Council held p6 for board approval: posting acts on your behalf.",
+      "data": {
+        "proposalId": "p6",
+        "decision": "hold",
+        "reason": "Escalated by qa and cso: posting to the team channel acts on your behalf, so it waits for board approval."
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 30,
+      "at": "2026-11-09T04:12:41.300Z",
+      "mode": "replay",
+      "type": "execute.start",
+      "actor": "aside",
+      "text": "aside started p1: Read today's Luma announcements.",
+      "data": {
+        "proposalId": "p1",
+        "executor": "aside"
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 31,
+      "at": "2026-11-09T04:12:41.800Z",
+      "mode": "replay",
+      "type": "recipe.run",
+      "actor": "recipe:luma-blasts",
+      "text": "recipe luma-blasts v1 called GET /event/get-posts.",
+      "data": {
+        "recipeId": "luma-blasts",
+        "version": 1,
+        "endpoint": "GET /event/get-posts"
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 32,
+      "at": "2026-11-09T04:12:44.000Z",
+      "mode": "replay",
+      "type": "recipe.broken",
+      "actor": "recipe:luma-blasts",
+      "text": "recipe luma-blasts v1 broke: 404 endpoint removed.",
+      "data": {
+        "recipeId": "luma-blasts",
+        "version": 1,
+        "endpoint": "GET /event/get-posts",
+        "status": 404,
+        "reason": "endpoint removed"
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 33,
+      "at": "2026-11-09T04:12:45.600Z",
+      "mode": "replay",
+      "type": "recipe.run",
+      "actor": "recipe:luma-blasts",
+      "text": "recipe luma-blasts v1 fell back to exploring the lu.ma event page.",
+      "data": {
+        "recipeId": "luma-blasts",
+        "version": 1,
+        "endpoint": "aside re-explore: watching network on lu.ma event page"
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 34,
+      "at": "2026-11-09T04:12:46.300Z",
+      "mode": "replay",
+      "type": "recipe.repaired",
+      "actor": "recipe:luma-blasts",
+      "text": "recipe luma-blasts repaired to v2: GET /event/get-blasts returned 200.",
+      "data": {
+        "recipeId": "luma-blasts",
+        "version": 2,
+        "endpoint": "GET /event/get-blasts",
+        "status": 200,
+        "reason": "7 announcements match the validation sample"
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 35,
+      "at": "2026-11-09T04:12:47.600Z",
+      "mode": "replay",
+      "type": "memory.saved",
+      "actor": "gbrain",
+      "text": "gbrain saved recipe luma-blasts v2 for the next run.",
+      "data": {
+        "id": "gb:r-luma-blasts-v2",
+        "summary": "luma-blasts v2 reads announcements via GET /event/get-blasts."
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 36,
+      "at": "2026-11-09T04:12:50.400Z",
+      "mode": "replay",
+      "type": "execute.result",
+      "actor": "aside",
+      "text": "aside finished p1: Read 7 announcements.",
+      "data": {
+        "proposalId": "p1",
+        "executor": "aside",
+        "ok": true,
+        "summary": "Read 7 announcements",
+        "items": [
+          "Demo submission due 15:00 in the main hall",
+          "Upload a 2-minute demo video by 15:00",
+          "Lunch served at 12:30 in the atrium",
+          "Judging starts at 16:00, three-minute pitches",
+          "Submission form link posted in the event feed",
+          "Team roster must list all four members",
+          "Hardware checkout closes at 14:00"
+        ]
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 37,
+      "at": "2026-11-09T04:12:52.300Z",
+      "mode": "replay",
+      "type": "execute.start",
+      "actor": "codex",
+      "text": "codex started p3: Draft a submission checklist.",
+      "data": {
+        "proposalId": "p3",
+        "executor": "codex"
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 38,
+      "at": "2026-11-09T04:12:52.700Z",
+      "mode": "replay",
+      "type": "execute.result",
+      "actor": "codex",
+      "text": "codex finished p3: checklist.md written in .quorum/sandbox/run-demo-0001.",
+      "data": {
+        "proposalId": "p3",
+        "executor": "codex",
+        "ok": true,
+        "summary": "checklist.md written in .quorum/sandbox/run-demo-0001",
+        "items": [
+          "15:00 - submit the demo and a 2-minute video",
+          "14:00 - return borrowed hardware at checkout",
+          "12:30 - lunch, then run the final rehearsal",
+          "16:00 - judging begins, three-minute pitch"
+        ]
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 39,
+      "at": "2026-11-09T04:12:55.300Z",
+      "mode": "replay",
+      "type": "memory.saved",
+      "actor": "gbrain",
+      "text": "gbrain saved verdict gb:v-0412 for reuse on similar requests.",
+      "data": {
+        "id": "gb:v-0412",
+        "summary": "Run-demo-0001: read announcements first, then write one checklist; skip calendar duplicates and outbound mail."
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 40,
+      "at": "2026-11-09T04:12:56.300Z",
+      "mode": "replay",
+      "type": "board.posted",
+      "actor": "board",
+      "text": "board posted p3 to done: Draft a submission checklist from the announcements.",
+      "data": {
+        "cardId": "card-demo-checklist",
+        "title": "Draft a submission checklist from the announcements",
+        "column": "done"
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 41,
+      "at": "2026-11-09T04:12:58.000Z",
+      "mode": "replay",
+      "type": "board.posted",
+      "actor": "board",
+      "text": "board posted p6 to approval: Post the checklist to the team channel.",
+      "data": {
+        "cardId": "card-demo-team-post",
+        "title": "Post the checklist to the team channel",
+        "column": "approval"
+      }
+    },
+    {
+      "runId": "run-demo-0001",
+      "seq": 42,
+      "at": "2026-11-09T04:12:58.800Z",
+      "mode": "replay",
+      "type": "run.end",
+      "actor": "council",
+      "text": "Run finished: 2 passed, 1 held, 3 rejected, 0 reused.",
+      "data": {
+        "passed": 2,
+        "held": 1,
+        "rejected": 3,
+        "reused": 0
+      }
+    }
+  ]
+}
