@@ -8,7 +8,7 @@ import { join } from "node:path"
 import type { QuorumEvent } from "../contract"
 import { asideRunner, buildDiscoverScript, parseProbes, RESULT_PREFIX, type AsideRunner } from "./aside"
 import { fixedSegments, templatize } from "./call"
-import { endpointOf, redactUrl, stripSecretParams } from "./spec"
+import { endpointOf, isSecretKey, originOf, redactUrl, stripSecretParams } from "./spec"
 import { GbrainMemory, MemoryError, repairNote, type Memory } from "./memory"
 import { listRecipes, runRecipe } from "./runner"
 import { RecipeStore } from "./store"
@@ -288,11 +288,14 @@ describe("runRecipe", () => {
     const def = blasts(["/missing"])
     def.request.headers = { cookie: "{{env.QUORUM_TEST_COOKIE}}" }
     await useDef(def)
-    const aside: AsideRunner = async () => ({ code: 0, stderr: "", stdout: RESULT_PREFIX + JSON.stringify({ url: `${base}/event/get-blasts?event_api_id=evt-123&access_token=SECRET123`, status: 200, body: { entries: [{ api_id: "x", message: "<p>hi</p>" }] } }) })
+    const probe = (url: string) => RESULT_PREFIX + JSON.stringify({ url, status: 200, body: { entries: [{ api_id: "x", message: "<p>hi</p>" }] } })
+    // 비밀 질의값이 필요한 URL 은 탈락, 같은 경로의 깨끗한 URL 이 채택돼요
+    const aside: AsideRunner = async () => ({ code: 0, stderr: "", stdout: [probe(`${base}/event/get-blasts?event_api_id=evt-123&access_token=SECRET123`), probe(`${base}/event/get-blasts?event_api_id=evt-123`)].join("\n") })
     const out = await runRecipe("t-blasts", ctx({ aside }), emit)
     expect(out).toMatchObject({ ok: true, version: 2 })
     const v2 = store.current("t-blasts").request
     expect(v2).toEqual({ method: "GET", url: `${base}/event/get-blasts?event_api_id={{eventApiId}}`, headers: { cookie: "{{env.QUORUM_TEST_COOKIE}}" } })
+    expect(events.find((e) => e.actor === "aside" && (e.data as any)?.ok === false)!.text).toContain("비밀 질의값")
     expect(JSON.stringify(events)).not.toContain("SECRET123")
     expect(JSON.stringify(puts)).not.toContain("SECRET123")
     events = []
@@ -300,6 +303,29 @@ describe("runRecipe", () => {
     try {
       expect(await runRecipe("t-blasts", ctx(), emit)).toMatchObject({ ok: true, version: 2, repaired: false })
     } finally { delete process.env.QUORUM_TEST_COOKIE }
+  })
+
+  test("recalled note: secret query value is stripped before saving; http:// variant of a cookie host gets no cookie", async () => {
+    const def = blasts([])
+    def.request.headers = { cookie: "{{env.QUORUM_TEST_COOKIE}}" }
+    await useDef(def)
+    const note = [`- new endpoint: GET ${base}/event/get-blasts?event_api_id={{eventApiId}}&access_token=SECRET123`].join("\n")
+    const mem: Memory = { put: memory.put, search: async () => [{ slug: "recipes/t-blasts-v4", score: 1, snippet: note }] }
+    const out = await runRecipe("t-blasts", ctx({ memory: mem }), emit)
+    expect(out).toMatchObject({ ok: true, version: 2 })
+    expect(JSON.stringify(store.current("t-blasts"))).not.toContain("SECRET123")
+    expect(store.current("t-blasts").request.headers).toEqual({ cookie: "{{env.QUORUM_TEST_COOKIE}}" })
+  })
+
+  test("header inheritance is by origin: an aside URL on another origin of the same server gets no cookie", async () => {
+    const def = blasts(["/missing"])
+    def.request.headers = { cookie: "{{env.QUORUM_TEST_COOKIE}}" }
+    await useDef(def)
+    const other = base.replace("127.0.0.1", "localhost")
+    const aside: AsideRunner = async () => ({ code: 0, stderr: "", stdout: RESULT_PREFIX + JSON.stringify({ url: `${other}/event/get-blasts?event_api_id=evt-123`, status: 200, body: { entries: [{ api_id: "x", message: "m" }] } }) })
+    const out = await runRecipe("t-blasts", ctx({ aside }), emit)
+    expect(out).toMatchObject({ ok: true, version: 2 })
+    expect(store.current("t-blasts").request).toEqual({ method: "GET", url: `${other}/event/get-blasts?event_api_id={{eventApiId}}` })
   })
 
   test("browser-only success of the current request does not stack identical versions", async () => {
@@ -347,6 +373,11 @@ describe("helpers", () => {
     // 정확히 같은 조각만: slug "event" 가 /event/ 경로를 바꾸지 않고, 짧은 값(2자)도 바꿔요
     expect(templatize("https://h/event/get-blasts?event_api_id=ab&x=event", { eventApiId: "ab", slug: "event" }, fixedSegments(["https://h/event/get-posts?event_api_id={{eventApiId}}"]))).toBe("https://h/event/get-blasts?event_api_id={{eventApiId}}&x={{slug}}")
     expect(templatize("https://h/e/my-event/posts", { slug: "my-event" })).toBe("https://h/e/{{slug}}/posts")
+    for (const k of ["country_code", "zipcode", "keyword", "design", "event_api_id", "author"]) expect(isSecretKey(k)).toBe(false)
+    for (const k of ["access_token", "api_key", "apiKey", "session", "sig", "client_secret", "X-Amz-Signature", "code"]) expect(isSecretKey(k)).toBe(true)
+    expect(originOf("http://host/x")).not.toBe(originOf("https://host/x"))
+    expect(originOf("https://host/x?a=1")).toBe(originOf("https://host/y"))
+    expect(stripSecretParams("https://h/r?country_code=US&id=1")).toBe("https://h/r?country_code=US&id=1")
     expect(stripSecretParams("https://h/a?id=1&access_token=S&api_key={{k}}")).toBe("https://h/a?id=1&api_key={{k}}")
     expect(redactUrl("https://h/a?id=1&session=S")).toBe("https://h/a?id=1&session=***")
     expect(endpointOf({ method: "GET", url: "https://h/a?token=abc" })).toBe("GET https://h/a?token=***")

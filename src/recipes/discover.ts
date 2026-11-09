@@ -3,7 +3,7 @@
 import { buildDiscoverScript, parseProbes } from "./aside"
 import { callRecipe, checkBody, fixedSegments, templatize } from "./call"
 import { classifyRunError, RecipeError, RUN_ERROR_MESSAGE } from "./errors"
-import { endpointOf, fill, stripSecretParams } from "./spec"
+import { endpointOf, fill, originOf, stripSecretParams } from "./spec"
 import type { Candidate, RecipeCtx, RecipeDef, RequestSpec } from "./types"
 
 export type Attempt = { via: "http" | "aside"; endpoint: string; ok: boolean; status?: number; reason?: string }
@@ -49,14 +49,17 @@ export async function discover(def: RecipeDef, ctx: RecipeCtx & { vars: Record<s
   if (!probesOut.length) return { found: null, attempts, asideError: "Aside 가 후보를 하나도 보내지 않았어요" }
   const fixed = fixedSegments([def.request.url, a.startUrl, ...(def.discover.http?.candidates || []).map((c) => c.request.url)])
   // 머리글은 a.headers, 없으면 같은 호스트로 선언된 요청의 것을 물려받아요(쿠키 템플릿이 v2 에서 빠지지 않게)
-  const hostOf = (u: string) => { try { return new URL(u).host } catch { return "" } }
+  // 같은 출처(scheme+host+port)일 때만: http:// 로 쿠키가 나가지 않게
   const declared = [def.request, ...(def.discover.http?.candidates || []).map((c) => c.request)]
-  const headersFor = (u: string) => a.headers || declared.find((q) => q.headers && hostOf(q.url) === hostOf(u))?.headers
+  const headersFor = (u: string) => a.headers || declared.find((q) => q.headers && originOf(q.url) === originOf(u))?.headers
   for (const p of probesOut) {
-    const url = stripSecretParams(templatize(p.url, ctx.vars, fixed))
+    const templ = templatize(p.url, ctx.vars, fixed)
+    const url = stripSecretParams(templ)
     const headers = headersFor(url)
     const candidate: Candidate = { request: { method: a.method || "GET", url, ...(headers ? { headers } : {}) }, parse: a.parse || def.parse, note: "aside" }
     const endpoint = endpointOf(candidate.request)
+    // 비밀 질의값을 빼면 검증한 URL 과 달라져요. 검증하지 않은 URL 은 저장하지 않으니 탈락이에요
+    if (url !== templ) { note({ via: "aside", endpoint, ok: false, status: p.status, reason: "비밀 질의값(토큰 등)이 필요한 경로라 저장하지 않아요" }); continue }
     // 지금 버전과 똑같은 요청이 브라우저에서만 되면 새 버전을 만들지 않아요(서버에는 로그인 쿠키가 필요) — 같은 버전을 계속 쌓지 않게
     if (keyOf(candidate.request) === keyOf(def.request)) { note({ via: "aside", endpoint, ok: false, status: p.status, reason: p.status < 300 ? "브라우저에서만 돼요 — 서버에는 로그인 쿠키(예: LUMA_COOKIE)가 필요해요" : `HTTP ${p.status}` }); continue }
     if (p.status < 200 || p.status >= 300) { note({ via: "aside", endpoint, ok: false, status: p.status, reason: p.error || `HTTP ${p.status}` }); continue }

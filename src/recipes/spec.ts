@@ -19,8 +19,17 @@ export function endpointOf(req: RequestSpec): string {
   return `${req.method} ${redactUrl(req.url)}`
 }
 
-/** 비밀처럼 보이는 질의 키 */
-export const SECRET_KEY = /token|secret|key|sig|auth|session|passw|cookie|credential|code/i
+/** 출처(scheme+host+port). 쿠키 같은 머리글은 같은 출처에만 붙여요 */
+export function originOf(url: string): string {
+  try { return new URL(url).origin } catch { return "" }
+}
+
+/** 비밀처럼 보이는 질의 키: 키 이름 전체(소문자, 영숫자만)로 판정해요. country_code·keyword·design 같은 기능 파라미터는 아니에요 */
+const SECRET_NAMES = new Set(["token", "key", "apikey", "secret", "sig", "signature", "auth", "authorization", "session", "sessionid", "sid", "password", "passwd", "pwd", "cookie", "credential", "credentials", "code", "privatekey", "clientsecret"])
+export function isSecretKey(key: string): boolean {
+  const n = key.toLowerCase().replace(/[^a-z0-9]/g, "")
+  return SECRET_NAMES.has(n) || /(token|secret|password|signature|apikey)$/.test(n)
+}
 const mapQuery = (url: string, fn: (k: string, v: string) => string | null) => {
   const q = url.indexOf("?")
   if (q < 0) return url
@@ -36,11 +45,11 @@ const decodeURIComponentSafe = (s: string) => { try { return decodeURIComponent(
 const isTemplate = (v: string) => /^\{\{[^}]+\}\}$/.test(v)
 /** 이벤트·기록에 싣는 URL: 비밀처럼 보이는 질의 값은 *** (템플릿 값은 그대로) */
 export function redactUrl(url: string): string {
-  return mapQuery(url, (k, v) => (SECRET_KEY.test(k) && v && !isTemplate(v) ? "***" : v))
+  return mapQuery(url, (k, v) => (isSecretKey(k) && v && !isTemplate(v) ? "***" : v))
 }
 /** 찾은 URL 에서 비밀처럼 보이는 질의 값(템플릿 아닌 것)을 빼요. 저장·이벤트·gbrain 에 남지 않게 */
 export function stripSecretParams(url: string): string {
-  return mapQuery(url, (k, v) => (SECRET_KEY.test(k) && v && !isTemplate(v) ? null : v))
+  return mapQuery(url, (k, v) => (isSecretKey(k) && v && !isTemplate(v) ? null : v))
 }
 
 /** 점 경로("data.event.name"). "a|b" 는 앞에서부터 값이 있는 첫 경로. 빈 경로는 값 그대로 */

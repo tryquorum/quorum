@@ -5,7 +5,7 @@ import { callRecipe } from "./call"
 import { discover, type Attempt } from "./discover"
 import { RecipeError } from "./errors"
 import { endpointsFromNote, MemoryError, noteSlug, repairNote, sameRepair, type Memory } from "./memory"
-import { endpointOf } from "./spec"
+import { endpointOf, originOf, stripSecretParams } from "./spec"
 import { asideRunner } from "./aside"
 import { GbrainMemory } from "./memory"
 import { defaultStore, RecipeStore, type RecipeSummary } from "./store"
@@ -94,14 +94,17 @@ async function recall(id: string, def: RecipeDef, ctx: Resolved, ev: ReturnType<
     ev.send("recall", "gbrain", hits.length ? `지난 수리 기록 ${hits.length}개를 찾았어요` : "지난 수리 기록이 없어요",
       { recipeId: id, version: def.version, endpoint: endpointOf(def.request), hits: hits.map((h) => ({ id: h.slug, summary: h.snippet.split("\n")[0].slice(0, 120), decision: "repair", score: h.score })) })
     // 기록은 바깥 자료라, 레시피에 이미 적힌 호스트로 가는 경로만 써요(쿠키 머리글이 다른 곳으로 새지 않게)
-    const hostOf = (u: string) => { try { return new URL(u).host } catch { return "" } }
+    // 출처(scheme+host+port) 기준: http:// 로 바꾼 기록이 쿠키를 받지 못하게
+    const hostOf = originOf
     const declared = [def.request, ...(def.discover.http?.candidates || []).map((c) => c.request)]
     const allowed = new Set(declared.map((q) => hostOf(q.url)).filter(Boolean))
     // 머리글(쿠키)은 같은 호스트로 선언된 요청의 것만 붙여요
     const headersFor = (url: string) => declared.find((q) => q.headers && hostOf(q.url) === hostOf(url))?.headers
     const seen = new Set<string>()
     const out: Candidate[] = []
-    for (const h of hits) for (const e of endpointsFromNote(h.snippet)) {
+    for (const h of hits) for (const found of endpointsFromNote(h.snippet)) {
+      // 기록 속 비밀 질의값은 저장소로 옮기지 않아요(후보는 이 URL 로 다시 검증돼요)
+      const e = { ...found, url: stripSecretParams(found.url) }
       const key = `${e.method} ${e.url}`
       if (seen.has(key) || !allowed.has(hostOf(e.url))) continue
       seen.add(key)
