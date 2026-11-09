@@ -100,7 +100,8 @@ export function Workspace() {
   useEffect(() => { if (!toast) return; const t = window.setTimeout(() => setToast(null), 4000); return () => window.clearTimeout(t) }, [toast])
 
   const actions = useMemo(() => ({
-    done: (i: Item) => act("i:" + i.id, "Done: " + i.text.split("\n")[0], () => ws.done(i.id)),
+    // board task-row 처럼 동그라미는 양쪽으로: 끝낸 일을 누르면 다시 열어요
+    done: (i: Item) => i.done ? act("i:" + i.id, "Reopened: " + i.text.split("\n")[0], () => ws.patch(i.id, { done: false })) : act("i:" + i.id, "Done: " + i.text.split("\n")[0], () => ws.done(i.id)),
     ask: (i: Item) => act("i:" + i.id, "Sent to the council", () => ws.ask(i)),
     approve: (s: Signal) => act("s:" + s.id, "Approved — running on " + (s.meta?.executor ?? "executor"), () => ws.approve(s.id)),
     reject: (s: Signal) => act("s:" + s.id, "Rejected", () => ws.reject(s.id)),
@@ -163,7 +164,7 @@ export function Workspace() {
         case "row.next": move(1); break
         case "row.prev": move(-1); break
         case "row.open": if (s) openRow(s); break
-        case "row.done": if (s?.kind === "item" && !s.item.done) void actions.done(s.item); else if (s?.kind === "signal" && s.resolve) void actions.resolve(s.signal); break
+        case "row.done": if (s?.kind === "item") void actions.done(s.item); else if (s?.kind === "signal" && s.resolve) void actions.resolve(s.signal); break
         case "row.approve": if (s?.kind === "signal" && s.decide) void actions.approve(s.signal); break
         case "row.reject": if (s?.kind === "signal" && s.decide) void actions.reject(s.signal); break
         case "row.ask": if (s?.kind === "item" && s.ask && !s.item.runId) void actions.ask(s.item); break

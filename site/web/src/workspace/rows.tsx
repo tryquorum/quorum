@@ -48,7 +48,7 @@ export function ItemRow({ item, area, selected, busy, onSelect, onOpen, onDone, 
   return (
     <Row selected={selected} onSelect={onSelect}>
       {/* 터치에서는 누르는 자리를 44px 로 넓히고 동그라미는 그대로(board task-row 의 coarse min-h-11 규칙) */}
-      <button type="button" onClick={onDone} disabled={busy || item.done} aria-label={(item.done ? "Done: " : "Mark done: ") + item.text} title="Done (E)"
+      <button type="button" onClick={onDone} disabled={busy} aria-pressed={item.done} aria-label={(item.done ? "Reopen: " : "Mark done: ") + item.text} title={item.done ? "Done (E)·reopen" : "Done (E)"}
         className="group/done mt-0.5 grid size-[18px] shrink-0 place-items-center disabled:opacity-60 max-md:-m-[13px] max-md:size-11 [@media(pointer:coarse)]:-m-[13px] [@media(pointer:coarse)]:size-11">
         <span className={cn("grid size-[18px] place-items-center rounded-full border border-foreground/30 text-transparent transition-colors group-hover/done:border-foreground group-hover/done:text-foreground", item.done && "border-foreground bg-foreground text-background")}>
           <Check className="size-3" strokeWidth={3} />
