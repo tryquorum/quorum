@@ -5,6 +5,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { makeGuestTenant } from "./guest"
 import { openHosted } from "./hosted"
+import { holdSignal } from "./test-kit"
 import { Store } from "../engine/store"
 import { createWorkspace } from "../workspace/api"
 
@@ -22,16 +23,33 @@ const withGuest = async (fn: (g: ReturnType<typeof makeGuestTenant>, call: (m: s
 }
 
 describe("review round 5 fixes", () => {
+  test("after a restart, approved work waiting in the person's queue is not marked interrupted (merge with lane/workspace recoverRunning)", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "quorum-r5r-"))
+    try {
+      const hosted = openHosted(":memory:")
+      const g = makeGuestTenant({ email: "judge@example.com", key: "k", dir, hosted, bots: "client" })
+      const s = await holdSignal(g, "draft the reply", "reply")
+      const d = await (await g.workspace!(new Request("http://x/api/ws/signals/" + s.id), ["api", "ws", "signals", s.id], "judge@example.com")).json() as { previewHash: string }
+      const ap = await g.workspace!(new Request("http://x/api/ws/signals/" + s.id + "/approve", { method: "POST", body: JSON.stringify({ previewHash: d.previewHash }) }), ["api", "ws", "signals", s.id, "approve"], "judge@example.com")
+      expect(ap.status).toBe(202)
+      const again = makeGuestTenant({ email: "judge@example.com", key: "k", dir, hosted, bots: "client" })
+      const after = await (await again.workspace!(new Request("http://x/api/ws/signals/" + s.id), ["api", "ws", "signals", s.id], "judge@example.com")).json() as { signal: { status: string; lane: string } }
+      expect(after.signal).toMatchObject({ status: "running", lane: "running" })
+      expect(again.tasks.lease({})!.task.kind).toBe("browser")
+    } finally { rmSync(dir, { recursive: true, force: true }) }
+  })
+
   test("the exact text is shown before approval and approval is bound to it", () => withGuest(async (g, call) => {
-    const s = (await call("POST", "/api/ws/signals", { kind: "approval", title: "Draft a reply", ref: "manual:1", meta: { runId: "r1", proposalId: "p1", executor: "aside", task: "draft the reply", request: "reply to Alex" } })).body
+    const s = await holdSignal(g, "draft the reply", "reply to Alex")
     const detail = (await call("GET", "/api/ws/signals/" + s.id)).body
-    expect(detail.send.text).toContain("draft the reply")
-    expect(detail.send.hash).toBe(sha(detail.send.text))
+    expect(detail.approvalPreview).toContain("draft the reply")
+    expect(detail.approvalPreview).toContain("Rules:")
+    expect(detail.previewHash).toBe(sha(detail.approvalPreview).slice(0, 16))
     expect((await call("POST", "/api/ws/signals/" + s.id + "/approve")).status).toBe(409)
-    expect((await call("POST", "/api/ws/signals/" + s.id + "/approve", { sendHash: "0".repeat(64) })).status).toBe(409)
-    const ok = await call("POST", "/api/ws/signals/" + s.id + "/approve", { sendHash: detail.send.hash })
+    expect((await call("POST", "/api/ws/signals/" + s.id + "/approve", { previewHash: "0".repeat(16) })).status).toBe(409)
+    const ok = await call("POST", "/api/ws/signals/" + s.id + "/approve", { previewHash: detail.previewHash })
     expect(ok.status).toBe(202)
-    expect(g.tasks.get(ok.body.taskId)!.prompt).toBe(detail.send.text)
+    expect(g.tasks.get(ok.body.taskId)!.prompt).toBe(detail.approvalPreview)
   }))
 
   test("a report longer than the limit is refused, not cut; the lease can report a shorter one", () => withGuest(async (g) => {

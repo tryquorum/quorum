@@ -37,3 +37,15 @@ export function publicApp(deps: AppDeps, allowed: string[] = ["*"]) {
 }
 export const rpc = (name: string, args: Record<string, unknown> = {}, id = 1) => ({ jsonrpc: "2.0", id, method: "tools/call", params: { name, arguments: args } })
 export type { TenantRegistry, Hosted }
+
+/** 의회 보류 하나를 엔진 저장소에 기록하고 Workspace 가 읽게 해요(밖에서 올린 사건은 runId 같은 예약 메타를 못 달아요) */
+export async function holdSignal(g: { store: import("../engine/store").Store; workspace?: (req: Request, parts: string[], me?: string | null) => Promise<Response> }, task: string, request: string, runId = "rhold") {
+  const at = new Date().toISOString()
+  g.store.createRun({ runId, request, mode: "live", startedAt: at, kind: "council" })
+  g.store.appendEvent({ runId, seq: 0, at, mode: "live", type: "proposal", actor: "bot:scout", text: "Draft a reply", data: { proposalId: "p1", title: "Draft a reply", executor: "aside", task } })
+  g.store.appendEvent({ runId, seq: 1, at, mode: "live", type: "verdict", actor: "council", text: "hold · Draft a reply", data: { proposalId: "p1", decision: "hold", reason: "external" } })
+  g.store.appendEvent({ runId, seq: 2, at, mode: "live", type: "run.end", actor: "council", text: "end", data: { status: "done" } })
+  g.store.finishRun(runId, "done")
+  const now = await (await g.workspace!(new Request("http://x/api/ws/now"), ["api", "ws", "now"], "judge@example.com")).json() as { needsYou: { id: string }[] }
+  return now.needsYou[0]
+}

@@ -4,9 +4,9 @@
 import { Database } from "bun:sqlite"
 import { mkdirSync } from "node:fs"
 import { dirname } from "node:path"
-import { approveSignal, initCouncilSync, rejectSignal, resolveSignal, sendPreview, syncCouncil, type HostedApprove, type EngineStore, type ExecuteFn } from "./council"
+import { approvalPreview, approveSignal, initCouncilSync, recoverRunning, rejectSignal, resolveSignal, syncCouncil, type EngineStore, type ExecuteFn, type HostedApprove } from "./council"
 import { archiveItem, createItem, getItem, initItems, listItems, logItem, patchItem, type Item } from "./items"
-import { appendNote, getNote, initNotes, putNote } from "./notes"
+import { appendNote, getNote, initNotes, noteOverflow, NoteRejected, putNote } from "./notes"
 import { getSignal, ingestSignal, initSignals, listSignals, type Signal } from "./signals"
 import { createBoardImport, initBoardImport, readMeta, type GetJson } from "./board-import"
 
@@ -15,14 +15,22 @@ const json = (data: unknown, status = 200) =>
 const err = (status: number, message: string) => json({ error: message }, status)
 const failed = (r: unknown): r is { status: number; error: string } => !!r && typeof r === "object" && "error" in r && "status" in r
 const REF = /^(item|signal):[A-Za-z0-9_-]{1,40}$/
+/** 이 프로세스에서 결과를 기다리는 승인 실행 id(모든 Workspace 인스턴스가 같이 써요) */
+const LIVE_EXEC = new Set<string>()
+/** 밖에서 보낸 사건이 넣을 수 없는 meta 열쇠: 실행을 가리키거나 사람의 결정을 흉내 내는 것(리뷰 지적 6) */
+const RESERVED_META = ["runId", "proposalId", "executor", "execRunId", "askRunId", "decidedBy", "decidedAt", "decision", "resolvedBy", "fence", "itemId"]
 
 export type WorkspaceDeps = {
   path: string; engine?: EngineStore; execute?: ExecuteFn; now?: () => number
+  /** 승인 실행 시간 상한(ms). 기본 council.EXEC_TIMEOUT_MS */
+  execTimeoutMs?: number
+  /** 결과를 기다리는 승인 실행 집합. 기본은 프로세스 공용(LIVE_EXEC); 새 프로세스(재시작)를 흉내 내는 시험만 빈 집합을 넘겨요 */
+  liveExec?: Set<string>
   /** 방향판 읽기 전용 가져오기(예: http://127.0.0.1:3070). 없으면 가져오지 않아요 */
   boardBase?: string; boardGet?: GetJson
   /** 처음 여는 빈 Workspace 에 Send to agent 로 바로 해 볼 데모 항목 하나를 넣어요(한 번만) */
   demo?: boolean
-  /** 호스팅 비소유자: 승인한 일을 실행하지 않고 그 사람 대기열에 넣어요(src/hosted/guest.ts). 승인 전에 보낼 글을 보여 주고 그 해시로 승인해요 */
+  /** 호스팅 비소유자: 승인한 일을 실행하지 않고 그 사람 대기열에 넣어요(src/hosted/guest.ts). 승인 미리보기는 그 사람 Aside 가 받을 글 전체예요 */
   hosted?: HostedApprove
 }
 export type GoalView = { goal: Item; total: number; done: number; open: Item[]; next: string | null }
@@ -112,6 +120,10 @@ export function createWorkspace(deps: WorkspaceDeps) {
   const board = deps.boardBase ? createBoardImport(db, { base: deps.boardBase, get: deps.boardGet, now: clock }) : null
   /** 시험이 승인 실행을 기다릴 때 써요 */
   const pending = new Set<Promise<void>>()
+  // 이 프로세스가 결과를 기다리는 승인 실행. 프로세스 전체가 한 집합을 같이 써서, 같은 DB 로 Workspace 를 하나 더 만들어도
+  // 다른 인스턴스가 지켜보는 실행은 건드리지 않고, 앞 프로세스가 남긴 running 사건만 끊김으로 돌려요
+  const live = deps.liveExec ?? LIVE_EXEC
+  recoverRunning(db, clock(), live)
 
   /** me: 로그인한 이메일(server.ts 가 Access JWT·로컬 설정으로 정해요). 주면 머리글보다 이것을 믿어요 */
   async function handle(req: Request, parts: string[], me?: string | null): Promise<Response> {
@@ -174,19 +186,25 @@ export function createWorkspace(deps: WorkspaceDeps) {
       if (!id && m === "POST") {
         // 다른 봇도 방향판처럼 "시작/에러/끝/승인 필요"를 보낼 수 있어요
         const b = await body()
-        const r = ingestSignal(db, { ...(b || {}), source: typeof b?.source === "string" ? b.source : "agent" }, clock())
+        // 의회 판정(quorum:)과 방향판 사본(board:) ref 는 서버만 만들어요. 실행 열쇠는 지우고, 할 일(task)은 사람이 볼 수 있게 본문에 적어요
+        const ref = typeof b?.ref === "string" ? b.ref : ""
+        if (/^(quorum|board):/.test(ref)) return err(400, "ref prefix quorum: and board: are reserved for the server")
+        const meta = b?.meta && typeof b.meta === "object" && !Array.isArray(b.meta) ? Object.fromEntries(Object.entries(b.meta as Record<string, unknown>).filter(([k]) => !RESERVED_META.includes(k))) : {}
+        const task = typeof meta.task === "string" ? meta.task.trim().slice(0, 2000) : ""
+        const bodyText = [typeof b?.body === "string" ? b.body : "", task ? "실행할 일: " + task : ""].filter(Boolean).join("\n\n")
+        const r = ingestSignal(db, { ...(b || {}), meta, ...(bodyText ? { body: bodyText } : {}), source: typeof b?.source === "string" ? b.source : "agent" }, clock())
         return typeof r === "string" ? err(400, r) : json(r, 201)
       }
       if (!id) return err(405, "method not allowed")
       if (!action && m === "GET") {
         const s = getSignal(db, id)
-        if (!s) return err(404, "signal not found")
-        const send = sendPreview(db, s, deps.hosted)
-        return json({ signal: s, note: getNote(db, "signal:" + id), ...(send ? { send } : {}) })
+        // 승인하면 실행기에 보낼 글을 그대로(approvalPreview), 그리고 그 글의 지문(previewHash)
+        return s ? json({ signal: getSignal(db, id), note: getNote(db, "signal:" + id), ...(approvalPreview(db, s, deps.hosted) ?? {}) }) : err(404, "signal not found")
       }
       if (action === "approve" && m === "POST") {
-        const b = deps.hosted ? await body() : null
-        const r = approveSignal(db, id, deps.execute, clock(), deps.hosted, typeof b?.sendHash === "string" ? b.sendHash : null)
+        const b = await body()
+        const expectHash = typeof b?.previewHash === "string" ? b.previewHash : undefined
+        const r = approveSignal(db, id, deps.execute, clock(), { timeoutMs: deps.execTimeoutMs, live, expectHash, ...(deps.hosted ? { hosted: deps.hosted } : {}) })
         if (r.done) { const p = r.done.catch((e) => console.error("[workspace] approve finish failed:", e)).finally(() => pending.delete(p)); pending.add(p) }
         return json(r.body, r.status)
       }
@@ -215,8 +233,14 @@ export function createWorkspace(deps: WorkspaceDeps) {
       if (!id && m === "PUT") {
         const b = await body()
         if (typeof b?.md !== "string") return err(400, "md required")
-        return json(putNote(db, ref, b.md, clock()))
+        // 자르지 않고, 그사이 바뀐 노트를 덮지 않아요(baseUpdatedAt: 화면이 연 노트의 updatedAt, 새 노트는 0)
+        const base = typeof b.baseUpdatedAt === "number" ? b.baseUpdatedAt : undefined
+        try { return json(putNote(db, ref, b.md, clock(), { baseUpdatedAt: base })) } catch (e) {
+          if (e instanceof NoteRejected) return json({ error: e.message, current: e.current }, e.status)
+          throw e
+        }
       }
+      if (id === "overflow" && m === "GET") return json(noteOverflow(db, ref))
       if (id === "append" && m === "POST") {
         const b = await body()
         if (typeof b?.md !== "string" || !b.md.trim()) return err(400, "md required")

@@ -98,9 +98,9 @@ describe("two people on the hosted site (in-process)", () => {
     // 5) 승인 → 서버는 실행하지 않고 judge 대기열에 넣어요 → judge Aside 가 가져가 보고
     // 승인 전에 보낼 글을 보고, 그 글의 해시로 승인해요(해시 없이는 409)
     expect((await post(judge, "/api/ws/signals/" + hold.id + "/approve", {})).status).toBe(409)
-    const send = (await judge("/api/ws/signals/" + hold.id)).body.send
-    expect(send.text).toContain("Pay the fee on lu.ma/c0mpiled")
-    const ap = await post(judge, "/api/ws/signals/" + hold.id + "/approve", { sendHash: send.hash })
+    const send = (await judge("/api/ws/signals/" + hold.id)).body
+    expect(send.approvalPreview).toContain("Pay the fee on lu.ma/c0mpiled")
+    const ap = await post(judge, "/api/ws/signals/" + hold.id + "/approve", { previewHash: send.previewHash })
     expect(ap.status).toBe(202)
     expect(ap.body.taskId).toBeTruthy()
     // 다른 사람 토큰으로는 judge 의 일을 가져갈 수 없어요

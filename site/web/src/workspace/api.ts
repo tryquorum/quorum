@@ -17,8 +17,8 @@ export type Signal = {
   id: string; ref: string | null; source: string; kind: string; title: string; body: string | null; lane: string; reason: string | null
   status: "open" | "running" | "resolved"; meta: Record<string, any>; created_at: number; updated_at: number; resolved_at: number | null
 }
-export type Note = { ref: string; md: string; by: string; updatedAt: number; personEdited: boolean }
-/** GET /api/health. details 는 실행기마다 꺼진 이유·설치 안내(src/server.ts liveHealth) */
+export type Note = { ref: string; md: string; by: string; updatedAt: number; personEdited: boolean; overflow?: number }
+/** GET /api/health. details 는 실행기마다 꺼진 이유·설치 안내(src/server.ts liveHealth). mode hosted 는 사람마다 자기 Aside 를 붙이는 호스팅 */
 export type HealthDetail = { ok: boolean; hint?: string; reason?: string | null; account?: string | null; email?: string | null }
 export type Health = { ok: boolean; version?: string; mode?: "hosted"; executors?: Partial<Record<"aside" | "codex" | "gbrain" | "board", boolean>>; details?: Partial<Record<string, HealthDetail>> }
 /** 연결 토큰(src/hosted/tokens.ts). 원문(secret)은 만들 때 응답에만 있어요 */
@@ -77,12 +77,13 @@ export const ws = {
   log: (id: string, text: string) => call<Item>("/api/ws/items/" + id + "/log", { method: "POST", body: { text } }),
   archive: (id: string) => call<{ ok: true }>("/api/ws/items/" + id, { method: "DELETE" }),
   item: (id: string) => call<{ item: Item; note: Note | null }>("/api/ws/items/" + id),
-  /** send: 호스팅에서 승인하면 그 사람 Aside 가 받을 글 전체와 해시(승인은 이 해시에 묶여요) */
-  signal: (id: string) => call<{ signal: Signal; note: Note | null; send?: { text: string; hash: string } }>("/api/ws/signals/" + id),
-  approve: (id: string, sendHash?: string) => call<{ signal: Signal; execRunId?: string; taskId?: string }>("/api/ws/signals/" + id + "/approve", { method: "POST", ...(sendHash ? { body: { sendHash } } : {}) }),
+  signal: (id: string) => call<{ signal: Signal; note: Note | null; approvalPreview?: string; previewHash?: string }>("/api/ws/signals/" + id),
+  /** previewHash: 사람이 본 실행 글의 지문. 그사이 글이 바뀌었으면 서버가 409 로 실행하지 않아요 */
+  approve: (id: string, previewHash?: string) => call<{ signal: Signal; execRunId?: string }>("/api/ws/signals/" + id + "/approve", { method: "POST", body: previewHash ? { previewHash } : {} }),
   reject: (id: string, why = "") => call<{ signal: Signal }>("/api/ws/signals/" + id + "/reject", { method: "POST", body: { why } }),
   resolve: (id: string) => call<{ signal: Signal }>("/api/ws/signals/" + id + "/resolve", { method: "POST" }),
-  saveNote: (ref: string, md: string) => call<Note>("/api/ws/notes?ref=" + encodeURIComponent(ref), { method: "PUT", body: { md } }),
+  /** baseUpdatedAt: 화면이 연 노트의 updatedAt(새 노트는 0). 그사이 바뀌었으면 409, 너무 길면 413 */
+  saveNote: (ref: string, md: string, baseUpdatedAt?: number) => call<Note>("/api/ws/notes?ref=" + encodeURIComponent(ref), { method: "PUT", body: { md, ...(baseUpdatedAt !== undefined ? { baseUpdatedAt } : {}) } }),
   /** 의회에 넘기기: 콘솔과 같은 POST /api/runs 로 열고, runId 를 항목에 이어요 */
   ask: async (item: Item) => {
     const r = await call<{ runId: string }>("/api/runs", { method: "POST", body: { request: item.raw ?? item.text } })

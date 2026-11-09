@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import type { Proposal } from "@/console/stream"
-import { call, ws, type Area, type GoalView, type Item, type Note, type Signal } from "./api"
+import { ApiError, call, ws, type Area, type GoalView, type Item, type Note, type Signal } from "./api"
 import { Md } from "./md"
 import { ALERT, CHIP, DECIDE, LATE } from "./tone"
 import { SourceChip, dueLabel, isLate, whenOf } from "./rows"
@@ -16,9 +16,10 @@ import { useMemory, useRunWatch } from "./run-watch"
 import { dday } from "./views"
 
 export type Open = { kind: "item"; id: string } | { kind: "signal"; id: string } | null
-type Loaded = { kind: "item"; item: Item; note: Note | null } | { kind: "signal"; signal: Signal; note: Note | null; send?: { text: string; hash: string } }
-/** approveExact: 호스팅에서 화면에 보인 글(해시)에 묶어 승인해요 */
-type Acts = { approve: (s: Signal) => Promise<void>; approveExact?: (s: Signal, hash: string) => Promise<void>; reject: (s: Signal) => Promise<void>; resolve: (s: Signal) => Promise<void>; done: (i: Item) => Promise<void>; ask: (i: Item) => Promise<void> }
+type Loaded = { kind: "item"; item: Item; note: Note | null } | { kind: "signal"; signal: Signal; note: Note | null; approvalPreview?: string; previewHash?: string }
+/** true 면 성공, 문자열이면 실패 이유 */
+type ActResult = true | string
+type Acts = { approve: (s: Signal, previewHash?: string) => Promise<ActResult>; reject: (s: Signal) => Promise<ActResult>; resolve: (s: Signal) => Promise<ActResult>; done: (i: Item) => Promise<ActResult>; ask: (i: Item) => Promise<ActResult> }
 const AUTO = new Set(["agent", "goat", "system"])
 const ROLES = [["ceo", "CEO"], ["reviewer", "Reviewer"], ["qa", "QA"], ["cso", "CSO"]] as const
 const when = (ms: number) => new Date(ms).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
@@ -41,6 +42,9 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf, returnFo
   const [data, setData] = useState<Loaded | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [md, setMd] = useState("")
+  // 노트 저장이 거절됐을 때(409 그사이 바뀜, 413 너무 김): 이유와, 다시 불러온 뒤에도 남겨 둘 내 초안
+  const [noteProblem, setNoteProblem] = useState<{ status: number; text: string } | null>(null)
+  const [draft, setDraft] = useState<string | null>(null)
   const [line, setLine] = useState("")
   const [title, setTitle] = useState("")
   const [saved, setSaved] = useState<string | null>(null)
@@ -59,11 +63,6 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf, returnFo
   useEffect(() => { setTick(0); setSaved(null); setLine("") }, [open])
 
   const goal = data?.kind === "item" && data.item.type === "goal" ? goalOf(data.item.id) : null
-  // 호스팅: 이 사건의 Approve 는 화면에 보인 글(해시)에 묶어요. 다른 사건의 Approve 는 그 사건을 열어 글부터 보여 줘요
-  const sendPreview = data?.kind === "signal" ? data.send : undefined
-  const actHere: Acts = sendPreview && data?.kind === "signal" && act.approveExact
-    ? { ...act, approve: (s) => (s.id === data.signal.id ? act.approveExact!(s, sendPreview.hash) : act.approve(s)) }
-    : act
   const runId = data ? (data.kind === "item" ? data.item.runId : (data.signal.meta?.askRunId ?? data.signal.meta?.runId)) : undefined
   const run = useRunWatch(runId)
   const memQ = data ? (data.kind === "item" ? data.item.text : data.signal.title).split("\n")[0] : ""
@@ -88,7 +87,29 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf, returnFo
 
   const refresh = (msg?: string) => { if (msg) setSaved(msg); setTick((t) => t + 1); onChanged() }
   const run_ = async (fn: () => Promise<unknown>, msg: string) => {
-    try { await fn(); refresh(msg) } catch (e) { setError(e instanceof Error ? e.message : String(e)) }
+    setError(null)
+    try { const r = await fn(); if (typeof r === "string") { setSaved(null); setError(r); return } refresh(msg) } catch (e) { setSaved(null); setError(e instanceof Error ? e.message : String(e)) }
+  }
+  const saveNote = async () => {
+    if (!data) return
+    setNoteProblem(null)
+    try {
+      await ws.saveNote(ref, md, data.note?.updatedAt ?? 0)
+      setDraft(null)
+      refresh("Note saved")
+    } catch (e) {
+      const status = e instanceof ApiError ? e.status : 0
+      setNoteProblem({ status, text: status === 409 ? "The council added to this note while you were editing, so nothing was saved. Reload it, then add your change." : e instanceof Error ? e.message : String(e) })
+    }
+  }
+  /** 저장이 409 로 거절됐을 때: 최신 노트를 불러오고, 내 초안은 따로 남겨 둬요 */
+  const reloadNote = async () => {
+    if (!data) return
+    const fresh = data.kind === "item" ? await ws.item(data.item.id).then((r) => ({ kind: "item" as const, ...r })) : await ws.signal(data.signal.id).then((r) => ({ kind: "signal" as const, ...r }))
+    setDraft(md)
+    setData(fresh)
+    setMd(fresh.note?.md ?? "")
+    setNoteProblem(null)
   }
   const send = async () => {
     if (!data || sending) return
@@ -164,16 +185,18 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf, returnFo
                 </Button>
                 <span className="text-2xs leading-4 text-muted-foreground">gstack CEO · Reviewer · QA · CSO argue it, Aside or Codex runs only what passes, gbrain remembers the verdict.</span>
               </div>
-              {sendPreview && (
-                <div className="rounded-xl border bg-background/60 p-3">
-                  <p className="text-xs font-medium">When you approve, your Aside receives exactly this</p>
-                  <p className="text-2xs text-muted-foreground">The request and the council's task are fenced as data, followed by the rules. If this text changes before you approve, Quorum asks you to look again.</p>
-                  <pre className="mt-2 max-h-72 overflow-auto rounded-lg bg-muted/40 p-2.5 font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-words">{sendPreview.text}</pre>
-                </div>
-              )}
-              {run && <RunPanel run={run} signals={runSignals} act={actHere} onDone={() => refresh()} />}
+              {run && <RunPanel run={run} signals={runSignals} act={act} onDone={() => refresh()} />}
               {/* 이 사건의 제안 카드가 위 진행에 이미 있으면 거기 Approve/Reject 하나만 둬요(같은 버튼이 두 번 나오지 않게) */}
-              {data.kind === "signal" && <SignalActions s={data.signal} act={actHere} onDone={(m) => refresh(m)} inCard={!!run && runId === data.signal.meta?.runId && !!run.proposals[String(data.signal.meta?.proposalId)]} />}
+              {data.kind === "signal" && (() => {
+                const inCard = !!run && runId === data.signal.meta?.runId && !!run.proposals[String(data.signal.meta?.proposalId)]
+                const preview = data.approvalPreview && data.previewHash ? { text: data.approvalPreview, hash: data.previewHash } : null
+                return (
+                  <>
+                    {preview && !inCard && <ExactTask preview={preview} executor={String(data.signal.meta?.executor)} />}
+                    <SignalActions s={data.signal} act={act} preview={preview} onDone={(m) => { setError(null); refresh(m) }} onFail={(why) => { setSaved(null); setError(why) }} inCard={inCard} />
+                  </>
+                )
+              })()}
             </div>
 
             {/* 아래: 사람 기록 */}
@@ -192,12 +215,25 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf, returnFo
                   <Button type="submit" size="sm" variant="secondary" disabled={!line.trim()}>Add</Button>
                 </form>
               )}
-              <details className="group/note" open={!data.note?.md}>
+              <details className="group/note" open={!data.note?.md || draft !== null || !!noteProblem}>
                 <summary className="cursor-pointer text-xs font-medium text-muted-foreground select-none hover:text-foreground max-md:py-3.5 [@media(pointer:coarse)]:py-3.5">Note {data.note && <span className="font-normal">· {data.note.personEdited ? "edited by you" : "written by the council"} · {when(data.note.updatedAt)}</span>}</summary>
                 <Textarea value={md} onChange={(e) => setMd(e.target.value)} placeholder="Markdown. The council only appends here; it never rewrites what you wrote." className="mt-2 min-h-28 font-mono text-xs leading-5" />
                 <div className="mt-2 flex items-center gap-2">
-                  <Button size="sm" variant="secondary" disabled={md === (data.note?.md ?? "")} onClick={() => void run_(() => ws.saveNote(ref, md), "Note saved")}>Save note</Button>
+                  <Button size="sm" variant="secondary" disabled={md === (data.note?.md ?? "")} onClick={() => void saveNote()}>Save note</Button>
+                  {data.note?.overflow ? <span className="text-2xs text-muted-foreground">{data.note.overflow} council result(s) kept separately — the note is full</span> : null}
                 </div>
+                {noteProblem && (
+                  <div role="alert" className={"mt-2 flex flex-wrap items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs " + ALERT}>
+                    <span className="min-w-0 flex-1">{noteProblem.text}</span>
+                    {noteProblem.status === 409 && <Button size="sm" variant="outline" className="rounded-full" onClick={() => void reloadNote()}>Reload the note</Button>}
+                  </div>
+                )}
+                {draft !== null && (
+                  <div className="mt-2">
+                    <p className="mb-1 text-2xs text-muted-foreground">Your unsaved draft (copy what you need into the note above)</p>
+                    <Textarea readOnly value={draft} aria-label="Your unsaved draft" className="min-h-20 font-mono text-xs leading-5" />
+                  </div>
+                )}
               </details>
               {(saved || error) && <p role="status" className={cn("text-2xs", error ? "rounded px-1.5 py-0.5 " + ALERT : "text-muted-foreground")}>{error ?? saved}</p>}
             </div>
@@ -288,7 +324,16 @@ function ProposalCard({ p, signal, act, onDone }: { p: Proposal; signal: Signal 
   const running = p.exec.some((x) => x.type === "execute.start") && !result
   const waiting = signal && signal.status === "open" && ["decide", "now"].includes(signal.lane)
   const [busy, setBusy] = useState(false)
-  const go = async (fn: () => Promise<void>) => { setBusy(true); try { await fn(); onDone() } finally { setBusy(false) } }
+  const [fail, setFail] = useState<string | null>(null)
+  // 승인하면 실행기에 보낼 글 그대로(리뷰 지적 6). 서버가 같은 글의 지문을 확인해요
+  const [preview, setPreview] = useState<{ text: string; hash: string } | null>(null)
+  useEffect(() => {
+    if (!waiting || !signal) { setPreview(null); return }
+    let live = true
+    ws.signal(signal.id).then((r) => { if (live && r.approvalPreview && r.previewHash) setPreview({ text: r.approvalPreview, hash: r.previewHash }) }).catch(() => {})
+    return () => { live = false }
+  }, [waiting, signal?.id, signal?.updated_at])
+  const go = async (fn: () => Promise<ActResult>) => { setBusy(true); setFail(null); try { const r = await fn(); if (r === true) onDone(); else setFail(r) } finally { setBusy(false) } }
   const after = signal && signal.meta?.decidedBy ? (signal.status === "running" ? "approved · running" : signal.meta.decision === "reject" ? "rejected by you" : "approved by you") : null
   return (
     <div className="rounded-xl border bg-background/60 p-3">
@@ -314,13 +359,15 @@ function ProposalCard({ p, signal, act, onDone }: { p: Proposal; signal: Signal 
           <Md text={result.summary || result.text} />
         </div>
       )}
+      {waiting && <ExactTask preview={preview} executor={String(signal.meta?.executor)} />}
       {waiting && (
         <div className="mt-2.5 flex flex-wrap items-center gap-2">
-          <Button size="sm" className="rounded-full" disabled={busy} onClick={() => void go(() => act.approve(signal))}><Check />{signal.kind === "error" ? "Retry" : "Approve"}</Button>
+          <Button size="sm" className="rounded-full" disabled={busy || !preview} onClick={() => void go(() => act.approve(signal, preview?.hash))}><Check />{signal.kind === "error" ? "Retry" : "Approve"}</Button>
           <Button size="sm" variant="outline" className="rounded-full" disabled={busy} onClick={() => void go(() => act.reject(signal))}><X />{signal.kind === "error" ? "Dismiss" : "Reject"}</Button>
           <span className="text-2xs text-muted-foreground">{signal.kind === "error" ? "Retry runs it on " + String(signal.meta?.executor) + " again." : "Approve runs it on " + String(signal.meta?.executor) + " now."}</span>
         </div>
       )}
+      {fail && <p role="alert" className={"mt-2 rounded px-1.5 py-0.5 text-2xs " + ALERT}>Not done: {fail}</p>}
       {p.verdict?.decision === "hold" && !signal && <p className="mt-2 text-2xs text-muted-foreground">Waiting for the workspace to pick up this hold…</p>}
       {after && <p className="mt-2 text-2xs text-muted-foreground">{after}{signal?.body && signal.lane === "review" ? "" : ""}</p>}
       {signal && signal.meta?.decidedBy && signal.lane === "review" && signal.body && <div className="mt-2 rounded-lg bg-muted/50 p-2.5 text-xs leading-5"><Md text={signal.body} /></div>}
@@ -328,19 +375,31 @@ function ProposalCard({ p, signal, act, onDone }: { p: Proposal; signal: Signal 
   )
 }
 
-function SignalActions({ s, act, onDone, inCard }: { s: Signal; act: Acts; onDone: (m: string) => void; inCard?: boolean }) {
+/** 승인하면 보낼 글 그대로. 접어 두지 않고 보여 줘요 */
+export function ExactTask({ preview, executor }: { preview: { text: string; hash: string } | null; executor: string }) {
+  return (
+    <div className="mt-2">
+      <p className="mb-1 text-2xs text-muted-foreground">Approve sends exactly this to {executor}:</p>
+      {preview ? <pre data-exact-task className="max-h-48 overflow-auto rounded-lg border bg-muted/40 p-2.5 font-mono text-2xs leading-4 whitespace-pre-wrap break-words">{preview.text}</pre> : <p className="text-2xs text-muted-foreground">Loading the exact task…</p>}
+    </div>
+  )
+}
+
+function SignalActions({ s, act, onDone, onFail, inCard, preview }: { s: Signal; act: Acts; onDone: (m: string) => void; onFail: (why: string) => void; inCard?: boolean; preview?: { text: string; hash: string } | null }) {
   const council = !!s.meta?.runId && !!s.meta?.proposalId
   const waiting = s.status === "open" && ["decide", "now", "main"].includes(s.lane)
-  if (s.status !== "open") return null
-  if (waiting && council && inCard) return null
-  const items: [string, () => Promise<void>, string][] = []
+  const items: [string, () => Promise<ActResult>, string][] = []
+  // 실행 중에 멈춘 것도 닫을 수 있어요(리뷰 지적 2): 실행기는 멈추지 못하고, 늦게 온 결과는 노트에만 남아요
+  if (s.status === "running") items.push(["Dismiss", () => act.reject(s), "Dismissed — a late result will only go to the note"])
+  else if (s.status !== "open") return null
+  else if (waiting && council && inCard) return null
   // 실행이 실패한 판정은 보류가 아니라서 "다시 실행 / 닫기"로 불러요(같은 승인·거절 길을 써요)
-  if (waiting && council) items.push(s.kind === "error" ? ["Retry", () => act.approve(s), "Running again"] : ["Approve", () => act.approve(s), "Approved"], s.kind === "error" ? ["Dismiss", () => act.reject(s), "Dismissed"] : ["Reject", () => act.reject(s), "Rejected"])
+  else if (waiting && council) items.push(s.kind === "error" ? ["Retry", () => act.approve(s, preview?.hash), "Running again"] : ["Approve", () => act.approve(s, preview?.hash), "Approved"], s.kind === "error" ? ["Dismiss", () => act.reject(s), "Dismissed"] : ["Reject", () => act.reject(s), "Rejected"])
   else items.push([s.lane === "review" ? "Mark reviewed" : "Mark handled", () => act.resolve(s), "Closed"])
   return (
     <div className="flex flex-wrap gap-2">
       {items.map(([label, fn, msg]) => (
-        <Button key={label} size="sm" variant={label === "Approve" || label === "Retry" ? "default" : "outline"} className="rounded-full" onClick={() => void fn().then(() => onDone(msg))}>
+        <Button key={label} size="sm" variant={label === "Approve" || label === "Retry" ? "default" : "outline"} className="rounded-full" onClick={() => void fn().then((r) => (r === true ? onDone(msg) : onFail(r)))}>
           {label === "Reject" || label === "Dismiss" ? <X /> : <Check />}{label}
         </Button>
       ))}
