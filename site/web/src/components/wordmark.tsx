@@ -52,7 +52,7 @@ export function Wordmark({ className, title = "Quorum", ...props }: SVGProps<SVG
 
 export function Brand({ className }: { className?: string }) {
   return (
-    <a href="/" className={cn("inline-flex items-center text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md", className)}>
+    <a href={import.meta.env.BASE_URL} className={cn("inline-flex items-center text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md", className)}>
       <Wordmark className="h-[22px]" />
     </a>
   )

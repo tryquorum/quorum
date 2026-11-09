@@ -19,7 +19,7 @@ function Nav() {
           <a href={REPO} className="rounded-full px-3 py-1.5 hover:text-foreground">GitHub</a>
         </div>
         <Button asChild size="lg" className="ml-auto rounded-full px-4 md:ml-2">
-          <a href="/app">Open the console</a>
+          <a href={`${import.meta.env.BASE_URL}app.html`}>Open the console</a>
         </Button>
       </nav>
     </header>
@@ -45,10 +45,10 @@ function Hero() {
         </p>
         <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row">
           <Button asChild className="h-12 rounded-full px-6 text-base">
-            <a href="/app?replay=1">Watch a recorded session <ArrowRight /></a>
+            <a href={`${import.meta.env.BASE_URL}app.html?replay=1`}>Watch a recorded session <ArrowRight /></a>
           </Button>
           <Button asChild variant="secondary" className="h-12 rounded-full px-6 text-base">
-            <a href="/app">Convene the council</a>
+            <a href={`${import.meta.env.BASE_URL}app.html`}>Convene the council</a>
           </Button>
         </div>
         <p className="mt-5 text-sm text-muted-foreground">Built in a day at c0mpiled-17 Seoul · YC RFS Multiplayer AI + Self-Maintaining APIs</p>
@@ -216,8 +216,8 @@ function Cta() {
           Type what you need, watch the council argue it out, and see exactly what ran and why.
         </p>
         <div className="relative mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Button asChild className="h-12 rounded-full px-6 text-base"><a href="/app">Open the console <ArrowRight /></a></Button>
-          <Button asChild variant="secondary" className="h-12 rounded-full px-6 text-base"><a href="/app?replay=1">Watch the demo run</a></Button>
+          <Button asChild className="h-12 rounded-full px-6 text-base"><a href={`${import.meta.env.BASE_URL}app.html`}>Open the console <ArrowRight /></a></Button>
+          <Button asChild variant="secondary" className="h-12 rounded-full px-6 text-base"><a href={`${import.meta.env.BASE_URL}app.html?replay=1`}>Watch the demo run</a></Button>
         </div>
       </div>
     </section>

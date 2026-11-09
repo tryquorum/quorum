@@ -11,12 +11,12 @@ const root = import.meta.dirname
 const apiPort = process.env.QUORUM_PORT ?? "4317"
 export default defineConfig({
   root,
-  base: "/",
+  base: process.env.QUORUM_BASE ?? "/",
   plugins: [react(), tailwindcss()],
   resolve: { alias: { "@": resolve(root, "./src") } },
   build: {
-    outDir: resolve(root, ".."),
-    emptyOutDir: false,
+    outDir: process.env.QUORUM_OUT ? resolve(process.env.QUORUM_OUT) : resolve(root, ".."),
+    emptyOutDir: Boolean(process.env.QUORUM_OUT),
     rollupOptions: { input: { index: resolve(root, "index.html"), app: resolve(root, "app.html") } },
   },
   server: { port: 5173, proxy: { "/api": `http://127.0.0.1:${apiPort}` } },

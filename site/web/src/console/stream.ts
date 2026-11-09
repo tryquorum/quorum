@@ -145,8 +145,8 @@ export function applyEvent(prev: RunView, e: QuorumEvent): RunView {
 export type Fixture = { runId: string; request: string; mode: "replay"; recordedAt?: string; events: QuorumEvent[] }
 
 export const FIXTURES: Record<string, { file: string; label: string }> = {
-  "1": { file: "/fixtures/sample-run.json", label: "Recorded run: event announcements" },
-  reuse: { file: "/fixtures/sample-reuse.json", label: "Recorded run: memory reuse" },
+  "1": { file: `${import.meta.env.BASE_URL}fixtures/sample-run.json`, label: "Recorded run: event announcements" },
+  reuse: { file: `${import.meta.env.BASE_URL}fixtures/sample-reuse.json`, label: "Recorded run: memory reuse" },
 }
 
 export type StopFn = () => void
