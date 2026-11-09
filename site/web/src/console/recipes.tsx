@@ -40,7 +40,7 @@ export function RecipesPanel({ disabledReason, busy, onRun }: { disabledReason?:
           {state.recipes.map((r) => (
             <li key={r.id} className="text-sm">
               <div className="flex items-center gap-2">
-                <span className={cn("size-1.5 shrink-0 rounded-full", r.health == null ? "bg-foreground/25" : r.health.ok ? "bg-keep" : "bg-cut")} title={r.health?.note ?? (r.health == null ? "not run yet" : r.health.ok ? "healthy" : "broken")} />
+                <span className={cn("size-1.5 shrink-0 rounded-full", r.health == null ? "bg-foreground/25" : r.health.ok ? "bg-foreground/70" : "bg-red-400")} title={r.health?.note ?? (r.health == null ? "not run yet" : r.health.ok ? "healthy" : "broken")} />
                 <span className="font-mono text-xs">{r.id}</span>
                 <span className="font-mono text-2xs text-muted-foreground">v{r.version}</span>
                 <Button size="xs" variant="outline" className="ml-auto rounded-full" disabled={busy || !slug} onClick={() => onRun(r.id, { slug })}><Play />Run</Button>

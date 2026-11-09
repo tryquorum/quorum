@@ -1,20 +1,23 @@
 import { Brain, CircleAlert, Globe, LayoutDashboard, Terminal, Wrench } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
 import { Steps } from "@/components/steps"
 import { cn } from "@/lib/utils"
 import type { Decision, Executor, QuorumEvent, Role, Stance } from "@/lib/contract"
 import type { Proposal, RecipeStep, RunView } from "./stream"
+import { ALERT, CHIP, DECIDE, LATE } from "@/workspace/tone"
+
+// One tone, as in the workspace (site/web/src/workspace/tone.ts): neutral chips; what needs a decision (hold, escalate)
+// is an inverted neutral chip; red only for real failures, as text and border, never a tinted fill.
 
 export const ROLE_LABEL: Record<Role, string> = { ceo: "CEO", reviewer: "Reviewer", qa: "QA", cso: "CSO" }
 export const STANCE_TONE: Record<Stance, string> = {
-  keep: "bg-keep/12 text-keep",
-  cut: "bg-cut/12 text-cut",
-  escalate: "bg-escalate/12 text-escalate",
+  keep: "border border-border text-foreground",
+  cut: "border border-border text-muted-foreground",
+  escalate: "border border-transparent " + DECIDE,
 }
 export const DECISION_TONE: Record<Decision, string> = {
-  pass: "bg-keep/15 text-keep border-keep/30",
-  hold: "bg-escalate/15 text-escalate border-escalate/30",
-  reject: "bg-cut/15 text-cut border-cut/30",
+  pass: "border-border text-foreground",
+  hold: "border-transparent " + DECIDE,
+  reject: "border-border text-muted-foreground",
 }
 const EXEC_ICON: Record<Executor, typeof Globe> = { aside: Globe, codex: Terminal, board: LayoutDashboard, none: CircleAlert }
 
@@ -35,7 +38,7 @@ export function ProposalCard({ p, captions }: { p: Proposal; captions?: Record<n
   const reused = !!p.verdict?.reusedFrom
   const Icon = p.executor ? EXEC_ICON[p.executor] : CircleAlert
   return (
-    <article key={p.verdict ? "decided" : "open"} className={cn("row-in rounded-2xl border bg-card/70 p-4 sm:p-5 transition-opacity duration-500", reused && "glow-memory", p.verdict && "verdict-pulse", p.verdict?.decision === "reject" && "opacity-75")}>
+    <article key={p.verdict ? "decided" : "open"} className={cn("row-in rounded-2xl border bg-card/40 p-4 sm:p-5 transition-opacity duration-500", p.verdict?.decision === "reject" && "opacity-75")}>
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <p className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-2xs text-muted-foreground">
@@ -47,7 +50,7 @@ export function ProposalCard({ p, captions }: { p: Proposal; captions?: Record<n
           {p.why && <p className="mt-1 text-sm text-muted-foreground">{p.why}</p>}
         </div>
         {p.verdict ? (
-          <span className={cn("stamp shrink-0 rounded-md border px-2 py-0.5 font-mono text-xs font-bold tracking-widest uppercase", DECISION_TONE[p.verdict.decision])}>{p.verdict.decision}</span>
+          <span className={cn("shrink-0 rounded-full border px-2 py-0.5 font-mono text-xs font-semibold tracking-wider uppercase", DECISION_TONE[p.verdict.decision])}>{p.verdict.decision}</span>
         ) : (
           <span className="shrink-0 animate-pulse font-mono text-2xs tracking-wider text-muted-foreground uppercase">arguing</span>
         )}
@@ -71,7 +74,7 @@ export function ProposalCard({ p, captions }: { p: Proposal; captions?: Record<n
       {p.verdict && (
         <div className="mt-4 rounded-xl bg-background/60 px-3 py-2 text-sm">
           {reused && (
-            <p className="mb-1 text-xs font-medium text-memory">
+            <p className="mb-1 text-xs font-medium text-foreground">
               <Brain className="mr-1 inline size-3.5 align-[-2px]" />Reused gbrain verdict <span className="font-mono">{p.verdict.reusedFrom}</span>, no debate needed
             </p>
           )}
@@ -89,7 +92,7 @@ export function RecallPanel({ view }: { view: RunView }) {
   const hits = view.recall?.hits ?? []
   const strong = hits.some((h) => (h.score ?? 0) >= 0.85)
   return (
-    <Panel title="gbrain recall" icon={Brain} className={cn(strong && "glow-memory")} aside={strong ? <Badge className="bg-memory/15 text-memory">reuse</Badge> : null}>
+    <Panel title="gbrain recall" icon={Brain} aside={strong ? <span className={"rounded-full px-1.5 py-px font-mono text-2xs " + DECIDE}>reuse</span> : null}>
       {!view.recall ? (
         <p className="text-sm text-muted-foreground">Past verdicts on similar requests show up here.</p>
       ) : hits.length === 0 ? (
@@ -99,13 +102,13 @@ export function RecallPanel({ view }: { view: RunView }) {
           {hits.map((h) => (
             <li key={h.id} className="text-sm">
               <div className="mb-1 flex items-baseline gap-2 font-mono text-2xs text-muted-foreground">
-                <span className={cn("min-w-0 truncate", (h.score ?? 0) >= 0.85 && "text-memory")} title={h.id}>{h.id}</span>
+                <span className={cn("min-w-0 truncate", (h.score ?? 0) >= 0.85 && "text-foreground")} title={h.id}>{h.id}</span>
                 {h.score !== undefined && <span className="ml-auto shrink-0 num">{h.score.toFixed(2)}</span>}
               </div>
               {h.decision && <p className="mb-1 text-2xs text-muted-foreground">{h.decision}</p>}
               {h.score !== undefined && (
                 <div className="mb-1.5 h-1 overflow-hidden rounded-full bg-muted">
-                  <div className={cn("h-full rounded-full", h.score >= 0.85 ? "bg-memory" : "bg-foreground/30")} style={{ width: `${Math.round(h.score * 100)}%` }} />
+                  <div className={cn("h-full rounded-full", h.score >= 0.85 ? "bg-foreground" : "bg-foreground/30")} style={{ width: `${Math.round(h.score * 100)}%` }} />
                 </div>
               )}
               <p className="text-foreground/85">{h.summary}</p>
@@ -117,12 +120,12 @@ export function RecallPanel({ view }: { view: RunView }) {
   )
 }
 
-const RECIPE_TONE: Record<RecipeStep["type"], string> = { "recipe.run": "text-muted-foreground", "recipe.broken": "text-cut", "recipe.repaired": "text-keep" }
+const RECIPE_TONE: Record<RecipeStep["type"], string> = { "recipe.run": "text-muted-foreground", "recipe.broken": LATE, "recipe.repaired": "text-foreground" }
 export function RecipePanel({ steps }: { steps: RecipeStep[] }) {
   const broken = steps.some((s) => s.type === "recipe.broken")
   const repaired = steps.some((s) => s.type === "recipe.repaired")
   return (
-    <Panel title="Recipe health" icon={Wrench} aside={repaired ? <Badge className="bg-keep/15 text-keep">repaired</Badge> : broken ? <Badge className="bg-cut/15 text-cut">broken</Badge> : null}>
+    <Panel title="Recipe health" icon={Wrench} aside={repaired ? <span className={"rounded-full px-1.5 py-px font-mono text-2xs " + CHIP}>repaired</span> : broken ? <span className={"rounded-full px-1.5 py-px font-mono text-2xs " + ALERT}>broken</span> : null}>
       {!steps.length ? (
         <p className="text-sm text-muted-foreground">When a recipe breaks and Aside repairs it, the timeline shows here.</p>
       ) : (
@@ -155,7 +158,7 @@ export function OutcomePanel({ view }: { view: RunView }) {
             const column = typeof e.data?.column === "string" ? e.data.column : undefined
             return (
               <li key={e.seq} className="row-in flex items-start gap-2">
-                <span className={cn("mt-0.5 rounded-full px-1.5 py-px font-mono text-2xs", e.type === "memory.saved" ? "bg-memory/15 text-memory" : column === "approval" ? "bg-escalate/15 text-escalate" : "bg-live/15 text-live")}>
+                <span className={cn("mt-0.5 rounded-full px-1.5 py-px font-mono text-2xs", column === "approval" ? DECIDE : CHIP)}>
                   {e.type === "memory.saved" ? "gbrain" : column === "approval" ? "approval" : "board"}
                 </span>
                 <span className="min-w-0 flex-1 text-foreground/85">{e.text}</span>
@@ -169,9 +172,9 @@ export function OutcomePanel({ view }: { view: RunView }) {
 }
 
 const TYPE_TONE: Partial<Record<QuorumEvent["type"], string>> = {
-  recall: "text-memory", proposal: "text-foreground", critique: "text-muted-foreground", verdict: "text-signal",
-  "execute.start": "text-live", "execute.result": "text-live", "recipe.broken": "text-cut", "recipe.repaired": "text-keep",
-  "memory.saved": "text-memory", error: "text-cut", "run.end": "text-signal",
+  recall: "text-foreground", proposal: "text-foreground", critique: "text-muted-foreground", verdict: "text-foreground",
+  "execute.start": "text-foreground", "execute.result": "text-foreground", "recipe.broken": LATE, "recipe.repaired": "text-foreground",
+  "memory.saved": "text-foreground", error: LATE, "run.end": "text-foreground",
 }
 export function EventLog({ events }: { events: QuorumEvent[] }) {
   return (
@@ -183,7 +186,7 @@ export function EventLog({ events }: { events: QuorumEvent[] }) {
           <span className="line-clamp-2 min-w-0" title={e.text}>
             <span className="text-muted-foreground">{e.actor}</span>{" "}
             <span className="text-foreground/85">{e.text}</span>
-            {e.mode === "replay" && <span className="ml-1.5 rounded bg-escalate/15 px-1 text-[10px] text-escalate">replay</span>}
+            {e.mode === "replay" && <span className={"ml-1.5 rounded px-1 text-[10px] " + CHIP}>replay</span>}
           </span>
         </li>
       ))}

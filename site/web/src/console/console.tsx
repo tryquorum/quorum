@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Brain, CircleAlert, Gavel, History, MonitorPlay, Play, RotateCcw, Square, Terminal } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandShortcut } from "@/components/ui/command"
 import { Brand } from "@/components/wordmark"
-import { Hemicycle } from "@/components/hemicycle"
 import { asset, STATIC } from "@/lib/base"
 import { cn } from "@/lib/utils"
 import type { Health, QuorumEvent, RunSummary } from "@/lib/contract"
@@ -14,6 +12,10 @@ import { EventLog, OutcomePanel, Panel, ProposalCard, RecallPanel, RecipePanel }
 import { RunList } from "./run-list"
 import { RecipesPanel } from "./recipes"
 import { EN, SEOUL_RUN_ID } from "@/lib/seoul"
+import { ALERT, CHIP, DECIDE } from "@/workspace/tone"
+
+// Same tone and header pattern as the workspace (/w): one neutral tone, inverted chips for what needs a decision or is a
+// replay, red only for real failures. The council floor keeps its function; the hemicycle decoration is gone.
 
 const EXAMPLES = [
   "오늘 c0mpiled-17 Seoul 행사 Luma 공지에서 내가 지금 해야 할 일만 정리해 줘",
@@ -46,19 +48,19 @@ function useHealth() {
 
 function HealthChips() {
   const { health, problem } = useHealth()
-  if (STATIC) return <span className="inline-flex items-center gap-1.5 rounded-full border border-escalate/40 px-2.5 py-0.5 text-2xs text-escalate"><MonitorPlay className="size-3" />static demo · no server</span>
+  if (STATIC) return <span className={"inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-2xs " + CHIP}><MonitorPlay className="size-3" />static demo · no server</span>
   const names = ["aside", "codex", "gbrain", "board"] as const
   return (
     <div className="flex flex-wrap items-center gap-1.5" aria-label="Executor status">
-      <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-2xs", problem ? "text-cut" : "text-muted-foreground")} title={problem ?? health?.version}>
-        <span className={cn("size-1.5 rounded-full", problem ? "bg-cut" : health?.ok ? "bg-keep" : "bg-foreground/30")} />
+      <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-2xs", problem ? ALERT : CHIP)} title={problem ?? health?.version}>
+        <span className={cn("size-1.5 rounded-full", problem ? "bg-red-400" : health?.ok ? "bg-foreground/70" : "bg-foreground/30")} />
         server{health?.version ? ` ${health.version}` : ""}{problem ? " down" : ""}
       </span>
       {names.map((n) => {
         const state = health?.executors?.[n]
         return (
           <span key={n} className="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-mono text-2xs text-muted-foreground" title={state === undefined ? "not reported by /api/health" : state ? "available" : "unavailable"}>
-            <span className={cn("size-1.5 rounded-full", state === undefined ? "bg-foreground/25" : state ? "bg-keep" : "bg-cut")} />
+            <span className={cn("size-1.5 rounded-full", state === undefined ? "bg-foreground/25" : state ? "bg-foreground/70" : "ring-1 ring-foreground/50")} />
             {n}{state === undefined && <span className="text-muted-foreground/60">?</span>}
           </span>
         )
@@ -77,18 +79,18 @@ function Tally({ view }: { view: RunView }) {
   const votes = tally.keep + tally.escalate + tally.cut
   const memoryOnly = votes === 0 && reused > 0
   return (
-    <div className="rounded-2xl border bg-card/60 p-4">
-      <Hemicycle tally={memoryOnly ? { keep: 1, escalate: 0, cut: 0 } : tally} progress={votes || reused ? 1 : 0} memory={memoryOnly} className="mx-auto max-w-xs" />
-      <dl className="mt-2 grid grid-cols-4 gap-2 text-center">
-        {([["pass", verdicts.pass, "text-keep"], ["hold", verdicts.hold, "text-escalate"], ["reject", verdicts.reject, "text-cut"], ["reused", reused, "text-memory"]] as const).map(([k, v, tone]) => (
-          <div key={k}>
+    <div className="rounded-2xl border bg-card/40 p-4">
+      <p className="mb-3 text-xs font-semibold tracking-wide uppercase">Verdicts</p>
+      <dl className="grid grid-cols-4 gap-2">
+        {([["pass", verdicts.pass], ["hold", verdicts.hold], ["reject", verdicts.reject], ["reused", reused]] as const).map(([k, v]) => (
+          <div key={k} className="border-t pt-2">
             <dt className="font-mono text-2xs text-muted-foreground uppercase">{k}</dt>
-            <dd className={cn("num text-2xl font-semibold", v ? tone : "text-muted-foreground/50")}>{v}</dd>
+            <dd className={cn("num mt-0.5 text-2xl font-semibold", !v && "text-muted-foreground/50")}>{k === "hold" && v ? <span className={"rounded-full px-2 " + DECIDE}>{v}</span> : v}</dd>
           </div>
         ))}
       </dl>
-      <p className="mt-2 text-center font-mono text-2xs text-muted-foreground">
-        {votes} critiques · <span className="text-keep">{tally.keep} keep</span> · <span className="text-escalate">{tally.escalate} escalate</span> · <span className="text-cut">{tally.cut} cut</span>
+      <p className="mt-3 font-mono text-2xs text-muted-foreground">
+        {memoryOnly ? "decided from gbrain memory, no debate" : votes + " critiques · " + tally.keep + " keep · " + tally.escalate + " escalate · " + tally.cut + " cut"}
       </p>
     </div>
   )
@@ -178,40 +180,40 @@ export function Console() {
   return (
     <div className="min-h-dvh">
       {STATIC && (
-        <div role="note" className="border-b border-escalate/30 bg-escalate/10 px-4 py-2 text-center text-sm text-escalate">
+        <div role="note" className="border-b bg-muted/50 px-4 py-2 text-center text-sm text-muted-foreground">
           {STATIC_NOTE}. <a className="underline underline-offset-2" href="https://github.com/tryquorum/quorum">Source and setup</a>
         </div>
       )}
       {isReplay && (
-        <div role="status" className="sticky top-0 z-40 border-b border-escalate/30 bg-escalate/12 px-4 py-2 text-sm text-escalate backdrop-blur-xl">
+        <div role="status" className="sticky top-0 z-40 border-b bg-background/85 px-4 py-2 text-sm backdrop-blur-xl">
           <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-3 gap-y-1.5">
-            <span className="rounded border border-escalate/50 px-1.5 font-mono text-xs font-bold tracking-widest">REPLAY</span>
+            <span className={"rounded-full px-2 font-mono text-xs font-semibold tracking-widest " + DECIDE}>REPLAY</span>
             <span className="min-w-0 flex-1">
               <span className="sm:hidden">Recorded earlier, not live</span>
-              <span className="hidden sm:inline">{fixture === "seoul" ? "Recorded live at c0mpiled-17 Seoul, 11:31 KST today." : "Scripted sample run."} Nothing is running now{demo ? "; paced for viewing" : ""}.</span>
+              <span className="hidden sm:inline">{fixture === "seoul" ? "Recorded live at c0mpiled-17 Seoul, 9 Nov 2026, 11:31 KST." : "Scripted sample run."} Nothing is running now{demo ? "; paced for viewing" : ""}.</span>
             </span>
             <div className="flex items-center gap-1">
               {[1, 2, 4].map((s) => (
-                <button key={s} type="button" onClick={() => { setSpeed(s); void startReplay(fixture ?? "seoul", s) }} className={cn("rounded px-1.5 py-0.5 font-mono text-xs", speed === s ? "bg-escalate/25" : "hover:bg-escalate/15")}>{s}×</button>
+                <button key={s} type="button" onClick={() => { setSpeed(s); void startReplay(fixture ?? "seoul", s) }} className={cn("rounded px-1.5 py-0.5 font-mono text-xs", speed === s ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted")}>{s}×</button>
               ))}
-              <button type="button" onClick={() => void startReplay(fixture ?? "seoul")} className="ml-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs hover:bg-escalate/15"><RotateCcw className="size-3" />Restart</button>
-              {busy && <button type="button" onClick={() => { stop(); setView((v) => ({ ...v, status: "done" })) }} className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs hover:bg-escalate/15"><Square className="size-3" />Stop</button>}
+              <button type="button" onClick={() => void startReplay(fixture ?? "seoul")} className="ml-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"><RotateCcw className="size-3" />Restart</button>
+              {busy && <button type="button" onClick={() => { stop(); setView((v) => ({ ...v, status: "done" })) }} className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"><Square className="size-3" />Stop</button>}
             </div>
           </div>
         </div>
       )}
 
-      <header className="border-b">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
+      <header className="border-b bg-background/80 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5 sm:px-6">
           <Brand />
-          <span className="font-mono text-xs text-muted-foreground">console</span>
-          <a href={import.meta.env.BASE_URL + "w"} className="rounded-full border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground">Workspace</a>
+          <h1 className="text-sm font-semibold">Council console</h1>
+          <a href={import.meta.env.BASE_URL + "w"} className="rounded-full border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground max-md:py-2">Workspace</a>
           <div className="ml-auto"><HealthChips /></div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-6">
-        <form className="rounded-2xl border bg-card/60 p-3 sm:p-4" onSubmit={(e) => { e.preventDefault(); void convene(request) }}>
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
+        <form className="rounded-2xl border bg-card/40 p-3 sm:p-4" onSubmit={(e) => { e.preventDefault(); void convene(request) }}>
           <label htmlFor="request" className="mb-2 block text-sm font-medium">What do you need?</label>
           <Textarea
             id="request"
@@ -235,8 +237,8 @@ export function Console() {
 
         {view.failure && (
           // Alert styling from board run-view.tsx RunError
-          <div role="alert" className="mt-4 flex flex-col gap-1.5 rounded-lg bg-destructive/5 px-4 py-3 text-sm">
-            <p className="flex items-center gap-1.5 font-semibold text-destructive"><CircleAlert className="size-4" />{source === "fixture" ? "The recording could not be played" : source === "recipe" ? "The recipe did not run" : source === "history" ? "The run could not be played back" : "The council did not start"}</p>
+          <div role="alert" className={"mt-4 flex flex-col gap-1.5 rounded-xl px-4 py-3 text-sm " + ALERT}>
+            <p className="flex items-center gap-1.5 font-semibold"><CircleAlert className="size-4" />{source === "fixture" ? "The recording could not be played" : source === "recipe" ? "The recipe did not run" : source === "history" ? "The run could not be played back" : "The council did not start"}</p>
             <p className="leading-relaxed text-foreground/80">{view.failure}. Nothing ran.</p>
             {source !== "fixture" && (
               <div className="pt-1"><Button size="sm" variant="outline" className="rounded-full" onClick={() => void startReplay("seoul", 1, true)}><Play />Watch the recorded Seoul run instead</Button></div>
@@ -246,8 +248,8 @@ export function Console() {
 
         {view.status !== "idle" && (
           <div className="mt-6 flex flex-wrap items-center gap-2 text-sm">
-            <Badge className={cn("font-mono tracking-wider", source === "live" ? "bg-live/15 text-live" : source === "recipe" ? "bg-signal/15 text-signal" : "bg-escalate/15 text-escalate")}>{label}</Badge>
-            <Badge variant={view.status === "error" ? "destructive" : "secondary"} className={cn(busy && "animate-pulse")}>{view.status}</Badge>
+            <span className={cn("rounded-full px-2 py-0.5 font-mono text-xs tracking-wider", source === "fixture" || source === "history" ? DECIDE : CHIP)}>{label}</span>
+            <span className={cn("rounded-full px-2 py-0.5 text-xs", view.status === "error" ? ALERT : CHIP, busy && "animate-pulse")}>{view.status}</span>
             {view.runId && <span className="font-mono text-xs text-muted-foreground">{view.runId}</span>}
             {view.request && <span className="line-clamp-2 min-w-0 basis-full text-base font-medium sm:basis-auto">“{view.request}”</span>}
           </div>
@@ -257,8 +259,8 @@ export function Console() {
           <section aria-label="Council floor" className="flex min-w-0 flex-col gap-3">
             {proposals.length === 0 ? (
               <div className="flex flex-col items-center rounded-2xl border border-dashed px-6 py-14 text-center">
-                <Hemicycle tally={{ keep: 0, escalate: 0, cut: 0 }} progress={0} className="max-w-sm" />
-                <p className="mt-2 text-lg font-semibold tracking-tight">{busy ? "The council is gathering…" : "The floor is empty"}</p>
+                <Gavel aria-hidden className="size-6 text-muted-foreground" />
+                <p className="mt-3 text-lg font-semibold tracking-tight">{busy ? "The council is gathering…" : "The floor is empty"}</p>
                 <p className="mt-1 max-w-md text-sm text-muted-foreground">
                   {busy ? "Proposals appear here as bots put them on the floor." : "Ask for something above, or replay a recorded run. Proposals, the argument over each one and the verdict appear here as they happen."}
                 </p>
@@ -267,13 +269,13 @@ export function Console() {
               proposals.map((p) => <ProposalCard key={p.id} p={p} captions={view.runId === SEOUL_RUN_ID ? EN : undefined} />)
             )}
             {view.errors.map((e) => (
-              <div key={e.seq} role="alert" className="rounded-lg bg-destructive/5 px-4 py-3 text-sm">
-                <p className="font-semibold text-destructive">{e.actor}: error</p>
+              <div key={e.seq} role="alert" className={"rounded-xl px-4 py-3 text-sm " + ALERT}>
+                <p className="font-semibold">{e.actor}: error</p>
                 <p className="text-foreground/80">{e.text}</p>
               </div>
             ))}
             {view.end && (
-              <p className="rounded-xl border bg-card/60 px-4 py-3 text-sm text-muted-foreground"><span className="font-mono text-signal">run.end</span> · {view.end.text}</p>
+              <p className="rounded-xl border bg-card/40 px-4 py-3 text-sm text-muted-foreground"><span className="font-mono text-foreground">run.end</span> · {view.end.text}</p>
             )}
           </section>
 
