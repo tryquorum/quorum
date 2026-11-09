@@ -19,7 +19,7 @@ const REPO = "https://github.com/tryquorum/quorum"
 /** Same domain on the Quorum server (/w sits behind Cloudflare Access); the GitHub Pages copy links to the live one. */
 const WORKSPACE = STATIC ? "https://quorum.lidgeai.com/w" : asset("w")
 /** The submission video slot. The recorded cut is temporary and will be replaced by the final edit. */
-const DEMO = { src: asset("media/quorum-demo.mp4"), poster: asset("media/quorum-demo-poster.jpg"), seconds: 61 }
+const DEMO = { src: asset("media/quorum-demo.mp4"), poster: asset("media/quorum-demo-poster.jpg"), seconds: 85 }
 
 const btn = "inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 text-base font-medium whitespace-nowrap transition-colors"
 const primary = btn + " bg-primary text-primary-foreground hover:bg-primary/90"
