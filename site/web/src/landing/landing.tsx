@@ -46,7 +46,7 @@ function Hero() {
       <div className="lp-container flex flex-col items-center text-center">
         <a href="#record" className="lp-ring mb-7 inline-flex items-center gap-2 rounded-full bg-card py-1 pr-3.5 pl-1 text-sm transition-colors hover:bg-muted">
           <span className="shrink-0 rounded-full bg-primary px-2 py-0.5 text-xs font-medium whitespace-nowrap text-primary-foreground">Live run</span>
-          Recorded at c0mpiled-17 Seoul<span className="max-sm:hidden">, 11:31 KST</span> <ArrowRight className="size-3.5" />
+          <span>Recorded at c0mpiled-17 Seoul<span className="max-sm:hidden">, 11:31 KST</span></span> <ArrowRight className="size-3.5" />
         </a>
         <h1 id="hero-title" className="lp-h1">Your board, where agents argue before they act.</h1>
         <p className="lp-lede mx-auto mt-7 max-w-[62ch]">
