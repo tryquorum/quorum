@@ -199,18 +199,21 @@ type CustomRuns = { startCustom(request: string, body: (emit: Emit) => Promise<"
 
 /**
  * 그 사람의 에이전트가 대기열 일의 결과를 보고했어요. 사건을 Review(성공) 또는 Needs you(실패)로 옮기고 결과를 노트에 붙여요.
- * 결과 글은 그 사람 에이전트가 쓴 것이라 그 사람 Workspace 에만 남아요. 사람이 이미 닫은 사건은 옮기지 않고 노트만 더해요.
+ * 결과 글은 그 사람 에이전트가 쓴 것이라 그 사람 Workspace 에만 남아요. 사람이 기다리다 먼저 닫은 사건도 다시 열어서
+ * 결과가 늘 보이는 곳(Review·Needs you)에 와요. 옮기지 못하면 null 이고, 대기열은 결과를 기록하지 않아요.
  */
 export function finishQueued(db: Database, signalId: string, r: { ok: boolean; text: string; executor: string; taskId: string }, now = Date.now()): Signal | null {
   const cur = getSignal(db, signalId)
   if (!cur) return null
   const text = r.text.trim() || "(the agent reported no text)"
+  const closed = cur.status === "resolved"
   const moved = r.ok
-    ? moveSignal(db, signalId, ["open", "running"], { status: "open", lane: "review", kind: "done", reason: "Your Aside ran this · review the result", body: text.slice(0, 8000), meta: { taskId: r.taskId } }, now)
-    : moveSignal(db, signalId, ["open", "running"], { status: "open", lane: "decide", kind: "error", reason: "Your Aside could not finish: " + firstLine(text), meta: { taskId: r.taskId, execError: text.slice(0, 2000) } }, now)
+    ? moveSignal(db, signalId, ["open", "running", "resolved"], { status: "open", lane: "review", kind: "done", reason: (closed ? "Your Aside finished after you closed this" : "Your Aside ran this") + " · review the result", body: text.slice(0, 8000), meta: { taskId: r.taskId } }, now)
+    : moveSignal(db, signalId, ["open", "running", "resolved"], { status: "open", lane: "decide", kind: "error", reason: "Your Aside could not finish: " + firstLine(text), meta: { taskId: r.taskId, execError: text.slice(0, 2000) } }, now)
+  if (!moved) return null
   appendNote(db, "signal:" + signalId, (r.ok ? "## Result from your Aside" : "## Your Aside could not finish") + " (" + r.executor + ", task " + r.taskId + ")\n\n" + text.slice(0, 8000), "agent", now)
   if (cur.meta?.itemId) logItem(db, String(cur.meta.itemId), { by: "agent", text: (r.ok ? "Aside finished: " : "Aside failed: ") + cur.title }, now)
-  return moved ?? getSignal(db, signalId)
+  return moved
 }
 /** 엔진 실행기를 RunManager.startCustom 위에서 불러요. 콘솔에는 "workspace approve: …" 실행으로 보여요 */
 export function engineExecute(runs: CustomRuns, executorsFor: (runId: string) => Partial<Record<"aside" | "codex" | "board", Executor>>): ExecuteFn {
