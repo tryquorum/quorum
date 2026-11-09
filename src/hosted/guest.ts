@@ -24,11 +24,12 @@ export type GuestConfig = {
   now?: () => number
 }
 
-/** 글 안의 가장 긴 백틱 줄보다 하나 긴 울타리로 감싸요: 글이 울타리를 닫고 밖으로 나올 수 없어요 */
+/**
+ * 데이터를 울타리(````)로 감싸요. 글 속 백틱 3개 이상은 "[N backticks]" 로 바꿔서 글이 울타리를 닫을 수 없고,
+ * 울타리 길이도 늘지 않아요(백틱을 잔뜩 넣어 지시를 키워 끝의 규칙을 밀어내지 못하게)
+ */
 export function fence(text: string): string {
-  const longest = Math.max(2, ...[...text.matchAll(/`+/g)].map((m) => m[0].length))
-  const f = "`".repeat(longest + 1)
-  return f + "text\n" + text + "\n" + f
+  return "````text\n" + text.replace(/`{3,}/g, (m) => "[" + m.length + " backticks]") + "\n````"
 }
 
 /** 브라우저 일 지시. 사람의 요청과 의회가 쓴 일은 울타리 안의 데이터예요: 서버 주인의 지시가 아니고, 보내기·결제·게시는 그 사람 승인 없이는 하지 않아요 */
@@ -62,10 +63,10 @@ export function makeGuestTenant(c: GuestConfig): GuestTenant {
   const ws = createWorkspace({
     path: join(c.dir, "workspace.db"), engine: store, demo: true, now,
     enqueue: (p) => {
-      const prompt = browserTaskPrompt(p.task, p.request)
-      const t = q().enqueue({ kind: "browser", ref: p.ref, title: p.title, prompt, executor: p.executor, runId: p.runId, proposalId: p.proposalId, request: p.request })
+      const t = q().enqueue({ kind: "browser", ref: p.ref, title: p.title, prompt: browserTaskPrompt(p.task, p.request), executor: p.executor, runId: p.runId, proposalId: p.proposalId, request: p.request })
       c.hosted.audit(c.email, "task.queue", "approved " + t.id + " " + p.title.slice(0, 80))
-      return { taskId: t.id, prompt }
+      // 노트에는 대기열에 저장된 글을 그대로 보여 줘요(에이전트가 받는 바로 그 글)
+      return { taskId: t.id, prompt: t.prompt }
     },
   })
   tasks = createQueue(ws.db, { now, ...(c.leaseMs ? { leaseMs: c.leaseMs } : {}) })

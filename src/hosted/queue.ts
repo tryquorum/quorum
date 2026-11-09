@@ -25,6 +25,8 @@ type Row = {
 }
 const pub = (r: Row): Task => ({ id: r.id, kind: r.kind, ref: r.ref, runId: r.run_id, proposalId: r.proposal_id, actor: r.actor, executor: r.executor, title: r.title, prompt: r.prompt, request: r.request, status: r.status, leaseUntil: r.lease_until, attempts: r.attempts, result: r.result, createdAt: r.created_at, updatedAt: r.updated_at })
 export const RESULT_MAX = 20_000
+/** 에이전트에게 넘기는 지시의 상한. 넘으면 자르지 않고 거절해요(잘리면 끝의 규칙이 빠질 수 있어요) */
+export const PROMPT_MAX = 20_000
 const KIND_ORDER = "CASE kind WHEN 'opinion' THEN 0 WHEN 'browser' THEN 1 ELSE 2 END"
 
 export function initTasks(db: Database) {
@@ -89,10 +91,11 @@ export function createQueue(db: Database, o: { now?: () => number; leaseMs?: num
   function enqueue(input: EnqueueInput): Task {
     const existing = db.query("SELECT * FROM tasks WHERE ref=?").get(input.ref) as Row | null
     if (existing) return pub(existing)
+    if (input.prompt.length > PROMPT_MAX) throw new Error("task text is too long for the queue (" + input.prompt.length + " > " + PROMPT_MAX + ")")
     const t = now()
     const id = rid()
     db.query("INSERT INTO tasks(id,kind,ref,run_id,proposal_id,actor,executor,title,prompt,request,status,attempts,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,'queued',0,?,?)")
-      .run(id, input.kind, input.ref, input.runId ?? null, input.proposalId ?? null, input.actor ?? null, input.executor ?? null, input.title.slice(0, 200), input.prompt.slice(0, 20_000), input.request?.slice(0, 4000) ?? null, t, t)
+      .run(id, input.kind, input.ref, input.runId ?? null, input.proposalId ?? null, input.actor ?? null, input.executor ?? null, input.title.slice(0, 200), input.prompt, input.request?.slice(0, 4000) ?? null, t, t)
     for (const wake of [...wakers]) wake(true)
     return get(id)!
   }

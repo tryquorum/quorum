@@ -207,11 +207,13 @@ export function finishQueued(db: Database, signalId: string, r: { ok: boolean; t
   if (!cur) return null
   const text = r.text.trim() || "(the agent reported no text)"
   const closed = cur.status === "resolved"
+  // 사건 본문은 미리보기(8000자), 전체 결과(대기열 상한 20000자)는 노트에 그대로 남겨요
+  const preview = text.length > 8000 ? text.slice(0, 7900) + "\n\n… (full result in the note)" : text
   const moved = r.ok
-    ? moveSignal(db, signalId, ["open", "running", "resolved"], { status: "open", lane: "review", kind: "done", reason: (closed ? "Your Aside finished after you closed this" : "Your Aside ran this") + " · review the result", body: text.slice(0, 8000), meta: { taskId: r.taskId } }, now)
+    ? moveSignal(db, signalId, ["open", "running", "resolved"], { status: "open", lane: "review", kind: "done", reason: (closed ? "Your Aside finished after you closed this" : "Your Aside ran this") + " · review the result", body: preview, meta: { taskId: r.taskId } }, now)
     : moveSignal(db, signalId, ["open", "running", "resolved"], { status: "open", lane: "decide", kind: "error", reason: "Your Aside could not finish: " + firstLine(text), meta: { taskId: r.taskId, execError: text.slice(0, 2000) } }, now)
   if (!moved) return null
-  appendNote(db, "signal:" + signalId, (r.ok ? "## Result from your Aside" : "## Your Aside could not finish") + " (" + r.executor + ", task " + r.taskId + ")\n\n" + text.slice(0, 8000), "agent", now)
+  appendNote(db, "signal:" + signalId, (r.ok ? "## Result from your Aside" : "## Your Aside could not finish") + " (" + r.executor + ", task " + r.taskId + ")\n\n" + text.slice(0, 20_000), "agent", now)
   if (cur.meta?.itemId) logItem(db, String(cur.meta.itemId), { by: "agent", text: (r.ok ? "Aside finished: " : "Aside failed: ") + cur.title }, now)
   return moved
 }
