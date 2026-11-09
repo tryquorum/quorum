@@ -98,13 +98,13 @@ export function SignalRow({ s, selected, busy, onSelect, onOpen, onApprove, onRe
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
         {onApprove && (
-          <Button type="button" size="xs" className="rounded-full max-sm:w-11" onClick={onApprove} disabled={busy} title="Approve (A)">
-            <Check /><span className="max-sm:sr-only">Approve</span>
+          <Button type="button" size="xs" className="rounded-full max-sm:w-11" onClick={onApprove} disabled={busy} title={failed ? "Retry (A)" : "Approve (A)"}>
+            <Check /><span className="max-sm:sr-only">{failed ? "Retry" : "Approve"}</span>
           </Button>
         )}
         {onReject && (
-          <Button type="button" variant="outline" size="xs" className="rounded-full max-sm:w-11" onClick={onReject} disabled={busy} title="Reject (X)">
-            <X /><span className="max-sm:sr-only">Reject</span>
+          <Button type="button" variant="outline" size="xs" className="rounded-full max-sm:w-11" onClick={onReject} disabled={busy} title={failed ? "Dismiss (X)" : "Reject (X)"}>
+            <X /><span className="max-sm:sr-only">{failed ? "Dismiss" : "Reject"}</span>
           </Button>
         )}
         {onResolve && (

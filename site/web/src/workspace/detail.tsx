@@ -302,9 +302,9 @@ function ProposalCard({ p, signal, act, onDone }: { p: Proposal; signal: Signal 
       )}
       {waiting && (
         <div className="mt-2.5 flex flex-wrap items-center gap-2">
-          <Button size="sm" className="rounded-full" disabled={busy} onClick={() => void go(() => act.approve(signal))}><Check />Approve</Button>
-          <Button size="sm" variant="outline" className="rounded-full" disabled={busy} onClick={() => void go(() => act.reject(signal))}><X />Reject</Button>
-          <span className="text-2xs text-muted-foreground">Approve runs it on {String(signal.meta?.executor)} now.</span>
+          <Button size="sm" className="rounded-full" disabled={busy} onClick={() => void go(() => act.approve(signal))}><Check />{signal.kind === "error" ? "Retry" : "Approve"}</Button>
+          <Button size="sm" variant="outline" className="rounded-full" disabled={busy} onClick={() => void go(() => act.reject(signal))}><X />{signal.kind === "error" ? "Dismiss" : "Reject"}</Button>
+          <span className="text-2xs text-muted-foreground">{signal.kind === "error" ? "Retry runs it on " + String(signal.meta?.executor) + " again." : "Approve runs it on " + String(signal.meta?.executor) + " now."}</span>
         </div>
       )}
       {p.verdict?.decision === "hold" && !signal && <p className="mt-2 text-2xs text-muted-foreground">Waiting for the workspace to pick up this hold…</p>}
@@ -319,13 +319,14 @@ function SignalActions({ s, act, onDone }: { s: Signal; act: Acts; onDone: (m: s
   const waiting = s.status === "open" && ["decide", "now", "main"].includes(s.lane)
   if (s.status !== "open") return null
   const items: [string, () => Promise<void>, string][] = []
-  if (waiting && council) items.push(["Approve", () => act.approve(s), "Approved"], ["Reject", () => act.reject(s), "Rejected"])
+  // 실행이 실패한 판정은 보류가 아니라서 "다시 실행 / 닫기"로 불러요(같은 승인·거절 길을 써요)
+  if (waiting && council) items.push(s.kind === "error" ? ["Retry", () => act.approve(s), "Running again"] : ["Approve", () => act.approve(s), "Approved"], s.kind === "error" ? ["Dismiss", () => act.reject(s), "Dismissed"] : ["Reject", () => act.reject(s), "Rejected"])
   else items.push([s.lane === "review" ? "Mark reviewed" : "Mark handled", () => act.resolve(s), "Closed"])
   return (
     <div className="flex flex-wrap gap-2">
       {items.map(([label, fn, msg]) => (
-        <Button key={label} size="sm" variant={label === "Approve" ? "default" : "outline"} className="rounded-full" onClick={() => void fn().then(() => onDone(msg))}>
-          {label === "Reject" ? <X /> : <Check />}{label}
+        <Button key={label} size="sm" variant={label === "Approve" || label === "Retry" ? "default" : "outline"} className="rounded-full" onClick={() => void fn().then(() => onDone(msg))}>
+          {label === "Reject" || label === "Dismiss" ? <X /> : <Check />}{label}
         </Button>
       ))}
     </div>
