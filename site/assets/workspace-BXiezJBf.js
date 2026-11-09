@@ -1,1 +1,0 @@
-import{_ as e,f as t,l as n,m as r}from"./tone-CgxG9F5Y.js";import{t as i}from"./workspace-B27mk4zV.js";var a=e(r(),1),o=t(),s=n();(0,o.createRoot)(document.getElementById(`root`)).render((0,s.jsx)(a.StrictMode,{children:(0,s.jsx)(i,{})}));

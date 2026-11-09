@@ -234,11 +234,11 @@ export function Story() {
     return () => { cancelAnimationFrame(raf); window.removeEventListener("scroll", on); window.removeEventListener("resize", on) }
   }, [reduced])
   return (
-    <section ref={section} id="story" aria-labelledby="story-title" className={cn("relative", reduced ? "lp-section" : "h-[170svh] lg:h-[185svh]")}>
-      <div className={cn("lp-container", !reduced && "sticky top-0 flex h-svh flex-col justify-center pt-20 pb-6")}>
+    <section ref={section} id="story" aria-labelledby="story-title" className={cn("relative", reduced ? "lp-section" : "h-[150svh] lg:h-[160svh]")}>
+      <div className={cn("lp-container", !reduced && "sticky top-0 flex h-svh flex-col justify-center pt-16 pb-4")}>
         <div className="lp-ca items-center">
           <div className="lg:col-span-4 lg:col-start-1">
-            <p className="font-mono text-sm tracking-tight text-foreground">Too many cooks spoil the broth.</p>
+            <p className="text-base font-medium text-foreground">Too many cooks spoil the broth.</p>
             <p className="mt-1 text-xs text-muted-foreground">In Korea they say: too many boatmen steer the ship up a mountain. <span lang="ko" className="whitespace-nowrap">사공이 많으면 배가 산으로 간다</span></p>
             <h2 id="story-title" className="lp-h2 mt-4">More agents, one direction.</h2>
             <p className="mt-4 text-muted-foreground max-lg:hidden">
@@ -247,14 +247,14 @@ export function Story() {
             </p>
             <ol className="mt-5 flex flex-col gap-1 lg:mt-7">
               {STORY_STEPS.map((s, i) => (
-                <li key={s.title} className={cn("border-l-2 py-1.5 pl-4 transition-[color,border-color] duration-300", reduced ? "border-foreground/30" : i === step ? "border-foreground" : "border-transparent [&>p:first-child]:text-muted-foreground", !reduced && i !== step && "max-lg:hidden")} aria-current={i === step ? "step" : undefined}>
+                <li key={s.title} className={cn("border-l-2 py-1.5 pl-4 transition-[color,border-color] duration-300", reduced ? "border-foreground/30" : i === step ? "border-foreground" : "border-transparent [&>p:first-child]:text-muted-foreground")} aria-current={i === step ? "step" : undefined}>
                   <p className="font-semibold"><span className="num mr-2 text-xs text-muted-foreground">0{i + 1}</span>{s.title}</p>
-                  <p className="mt-0.5 text-sm text-muted-foreground">{s.body}</p>
+                  <p className="mt-0.5 text-sm text-muted-foreground max-lg:text-[13px] max-lg:leading-snug">{s.body}</p>
                 </li>
               ))}
             </ol>
           </div>
-          <div className="relative h-[42svh] overflow-hidden rounded-2xl border border-[var(--lp-ring)] lg:col-span-8 lg:col-start-5 lg:h-[min(64svh,560px)]">
+          <div className="relative h-[30svh] overflow-hidden rounded-2xl border border-[var(--lp-ring)] lg:col-span-8 lg:col-start-5 lg:h-[min(64svh,560px)]">
             <StorySea progress={progress} label={label} chips={chips} />
             <span ref={label} aria-hidden className="absolute top-3 left-3 max-w-[calc(100%-1.5rem)] rounded-full bg-background/85 px-2.5 py-1 font-mono text-2xs text-foreground backdrop-blur" />
             <div aria-hidden className="pointer-events-none absolute top-[24%] left-[60%] flex -translate-x-1/2 gap-1.5">
