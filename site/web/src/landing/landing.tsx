@@ -5,7 +5,7 @@ import { Brand, QuorumMark } from "@/components/wordmark"
 import { cn } from "@/lib/utils"
 import { HeroSession } from "./hero-session"
 
-const REPO = "https://github.com/lidge-jun/quorum"
+const REPO = "https://github.com/tryquorum/quorum"
 
 function Nav() {
   return (
