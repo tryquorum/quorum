@@ -147,7 +147,7 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf, returnFo
   const head = data ? headOf(data, areaOf) : null
   return (
     <Dialog open={!!open} onOpenChange={(o) => { if (!o) onClose() }}>
-      <DialogContent onCloseAutoFocus={(e) => { if (returnFocus) { e.preventDefault(); returnFocus() } }} className="max-h-[90svh] grid-cols-[minmax(0,1fr)] gap-0 overflow-x-hidden overflow-y-auto p-0 sm:max-w-2xl max-sm:inset-0 max-sm:h-dvh max-sm:max-h-none max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-none">
+      <DialogContent onCloseAutoFocus={(e) => { if (returnFocus) { e.preventDefault(); returnFocus() } }} className="max-h-[90svh] grid-cols-[minmax(0,1fr)] gap-0 overflow-x-hidden overflow-y-auto p-0 sm:max-w-4xl max-sm:inset-0 max-sm:h-dvh max-sm:max-h-none max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-none">
         {!data && (
           <div className="flex flex-col gap-3 p-5">
             <DialogTitle className="text-sm text-muted-foreground">{error ? "Couldn't open this" : "Loading…"}</DialogTitle>
@@ -179,7 +179,7 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf, returnFo
               {data.kind === "signal" && data.signal.reason && <p className="text-xs text-muted-foreground">{data.signal.reason}</p>}
               {data.kind === "item" && data.item.raw && data.item.raw !== data.item.text && <p className="text-xs text-muted-foreground">You wrote: “{data.item.raw}”</p>}
               {goal && <GoalProgress g={goal} />}
-              {data.kind === "signal" && data.signal.body && <div className="max-h-40 overflow-auto rounded-xl bg-muted/40 p-3 text-xs leading-5"><Md text={data.signal.body} /></div>}
+              {data.kind === "signal" && data.signal.body && <div className="max-h-[60vh] overflow-auto rounded-xl bg-muted/40 p-3 text-xs leading-5"><Md text={data.signal.body} /></div>}
               {data.note?.md && <NotePreview md={data.note.md} by={data.note.personEdited ? "you" : "the council"} />}
               {data.kind === "item" && data.item.log.length > 0 && (
                 <ul className="flex flex-col gap-1">
@@ -296,9 +296,9 @@ function GoalProgress({ g }: { g: GoalView }) {
 
 /** 노트 앞부분 미리보기(board note-preview.tsx 처럼 몇 줄만) */
 function NotePreview({ md, by }: { md: string; by: string }) {
-  const lines = md.split("\n").filter((l) => l.trim()).slice(0, 6).join("\n")
+  const lines = md.split("\n").filter((l) => l.trim()).slice(0, 400).join("\n")
   return (
-    <div className="rounded-xl border p-3 text-xs leading-5">
+    <div className="max-h-[60vh] overflow-auto rounded-xl border p-3 text-xs leading-5">
       <p className="mb-1 text-2xs text-muted-foreground">Note · {by}</p>
       <Md text={lines} />
     </div>

@@ -6,7 +6,9 @@ const { chromium } = require("/Users/jun/Developer/new/node_modules/playwright-c
     const p = await (await b.newContext({ viewport: { width: 1280, height: 800 }, colorScheme: theme, reducedMotion: "reduce" })).newPage()
     await p.goto("http://127.0.0.1:4350/", { waitUntil: "networkidle" }); await p.waitForTimeout(1000)
     out[theme] = await p.evaluate(() => {
-      const parse = (c) => { const m = c.match(/[\d.]+/g); if (!m) return null; const [r, g, b, a = 1] = m.map(Number); return { r, g, b, a } }
+      const cv = document.createElement("canvas"); cv.width = cv.height = 1; const cx = cv.getContext("2d", { willReadFrequently: true })
+      // Resolve any CSS color (oklch, color-mix, rgba) to sRGB by painting one pixel.
+      const parse = (c) => { if (!c || c === "transparent") return { r: 0, g: 0, b: 0, a: 0 }; cx.clearRect(0, 0, 1, 1); cx.fillStyle = "#000"; cx.fillStyle = c; cx.fillRect(0, 0, 1, 1); const [r, g, b, a] = cx.getImageData(0, 0, 1, 1).data; return { r, g, b, a: a / 255 } }
       const L = ({ r, g, b }) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4 }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b) }
       const bgOf = (el) => { const stack = []; for (let e = el; e; e = e.parentElement) { const c = parse(getComputedStyle(e).backgroundColor); if (c && c.a > 0) { stack.push(c); if (c.a >= 1) break } } let base = parse(getComputedStyle(document.body).backgroundColor) ; const lp = document.querySelector(".lp"); base = parse(getComputedStyle(lp).backgroundColor) || base; for (let i = stack.length - 1; i >= 0; i--) { const c = stack[i]; if (c.a >= 1) base = c; else base = { r: c.r * c.a + base.r * (1 - c.a), g: c.g * c.a + base.g * (1 - c.a), b: c.b * c.a + base.b * (1 - c.a), a: 1 } } return base }
       const fails = []; let n = 0
@@ -37,3 +39,4 @@ const { chromium } = require("/Users/jun/Developer/new/node_modules/playwright-c
   console.log(JSON.stringify(out, null, 1))
   await b.close()
 })()
+

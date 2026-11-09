@@ -133,3 +133,26 @@ about 7.9:1 (light) and #d4d4d8 on #18203c about 10.7:1 (dark).
 Open: none of S1-S2. Not verified: axe-core (not installed here; contrast and focus were measured by script
 instead), real Safari/iOS, the workspace preview's own focus order inside the iframe.
 
+
+
+## 9. Fresh design review (round 1, hyds/deepseek-v4.1-flash-1m) and responses
+
+Verdict received: CHANGES REQUESTED. Each finding, the decision and the evidence:
+
+| Finding | Sev | Decision | Evidence after the fix |
+|---|---|---|---|
+| R1 story steps 02/03 `display:none` below 1024 (information by scrub alone) | S2 | accepted | story.tsx: steps always rendered, active marked by rule and ink; after/crop__story__390__light.png shows 01-03 |
+| R2 record numbers captured mid count-up (2/8/1m 30s) | S2 | accepted | CountUp removed from Record (values render final: 3 / 12 / 1 / 1 / 1 / 2m 32s from SEOUL_STATS); crop__record__1280__dark.png; CountUp, Rise, useFirstSight deleted from motion.tsx (no importers) |
+| R3 recipe terminal: second floating shadow, 5 hues | S3 | accepted | healing.tsx: lp-ring card, no shadow, ink/muted plus red for the 404 only; crop__recipes__1280__light.png. Red is red-700 in light (red-400 failed AA on the light card) |
+| R4 two ink fills in the first viewport | S3 | accepted | header "Open workspace" is now a ring; one ink CTA in the hero; landing__firstviewport__1280__light.png |
+| R5 Story to Record gap larger than 154 px | S3 | accepted | runway 185svh -> 160svh (150svh below 1024), sticky padding trimmed, scene 30svh on phones; page 7,555 -> 6,959 px at 1280 |
+| R6 film buried far down the proof column | S3 | accepted | film moved into the claim column under the six numbers, so it sits next to the critics at the top of Record |
+| R7 mono proverb reads as a second eyebrow | S4 | accepted | proverb set in the sans at L4 medium; mono kept for provenance labels |
+| R8 closing headline overrides L1 | S4 | accepted | CTA uses lp-h1 as locked |
+| R9 flow-step logos (`Logo size="sm"`) under 24 px | S4 | rebutted | GAP-6 and IS-4 cover the agent flags (24 px, unaltered). The flow-step marks are inline credits beside a heading at text size (16-20 px) and repeat logos shown full size in Runs on; no ideal-state statement covers them |
+
+Re-verification at the fix head: a11y.cjs now resolves every CSS color (oklch, color-mix) by painting a pixel, so
+the earlier zero-failure result is re-measured: 161 text nodes per theme, 0 below AA in light and dark. No
+overflow at 1280/1024/768/390, no console errors, 1 eyebrow, sections hero 1,328 / story 1,280 / record 1,175 /
+judgment 875 / recipes 798 / runs on 913 / CTA 426 px. Page height 6,959 px at 1280, 9,287 px at 390.
+

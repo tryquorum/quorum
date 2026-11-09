@@ -242,3 +242,11 @@
 .lift:hover { transform: translateY(-3px); border-color: color-mix(in oklab, var(--foreground) 22%, transparent); }
 @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; } .flip-inner { transition: none; } .grain::after { display: none; } }
 
+
+/* Workspace 팝업·카드 안의 마크다운: 공용 .md 와 같은 규칙, 작은 글씨와 촘촘한 간격 */
+.md.md-compact{font-size:inherit;line-height:inherit}
+.md.md-compact > :first-child{margin-top:0}
+.md.md-compact p{margin:.35em 0}
+.md.md-compact h1,.md.md-compact h2,.md.md-compact h3,.md.md-compact h4{font-size:1em;font-weight:600;margin:.8em 0 .25em}
+.md.md-compact ul,.md.md-compact ol{margin:.3em 0}
+.md.md-compact pre{max-height:12rem;font-size:.9em}

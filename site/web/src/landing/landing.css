@@ -48,8 +48,8 @@ html:not(.dark) { color-scheme: light; }
 .lp-ring { box-shadow: inset 0 0 0 1px var(--lp-ring); }
 .lp-float { box-shadow: inset 0 0 0 1px var(--lp-ring), 0 24px 60px -12px var(--lp-shadow); }
 .lp-nav { display: inline-flex; align-items: center; min-height: 40px; padding: 0 12px; border-radius: 9999px; font-size: 0.9375rem; font-weight: 500; transition: background-color 150ms ease; }
-.lp-nav:not(.bg-primary) { color: var(--foreground); }
-.lp-nav:not(.bg-primary):hover { background: var(--muted); }
+.lp-nav { color: var(--foreground); }
+.lp-nav:hover { background: var(--muted); }
 .lp-text-link::after { content: "→"; transition: transform 150ms ease; }
 .lp-text-link:hover::after { transform: translateX(2px); }
 .lp-skip { position: absolute; top: 8px; left: 8px; z-index: 50; padding: 10px 16px; border-radius: 9999px; background: var(--primary); color: var(--primary-foreground); font-weight: 600; transform: translateY(-160%); }
