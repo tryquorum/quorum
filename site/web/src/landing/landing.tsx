@@ -8,6 +8,7 @@ import { Argument } from "./argument"
 import { Healing } from "./healing"
 import { Logo, type LogoKey } from "./logos"
 import { PixelSea } from "./pixel-sea"
+import { Story } from "./story"
 import { CountUp, Rise, useScrollStep } from "./motion"
 import { cn } from "@/lib/utils"
 import "./landing.css"
@@ -275,6 +276,7 @@ export function Landing() {
       <Header />
       <main id="main">
         <Hero />
+        <Story />
         <Demo />
         <How />
         <Record />
