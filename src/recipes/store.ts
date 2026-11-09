@@ -75,6 +75,12 @@ CREATE TABLE IF NOT EXISTS recipe_health(id TEXT PRIMARY KEY, ok INTEGER NOT NUL
   }
 }
 
+let shared: RecipeStore | null = null
+/** 엔진이 store 를 넘기지 않을 때 쓰는 프로세스 공용 저장소 */
+export function defaultStore(): RecipeStore {
+  return (shared ||= openRecipeStore())
+}
+
 /** 기본 위치 .quorum/recipes.db (env QUORUM_RECIPES_DB). ":memory:" 도 돼요 */
 export function openRecipeStore(path = process.env.QUORUM_RECIPES_DB || ".quorum/recipes.db", defsDir = DEFS_DIR): RecipeStore {
   if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true })

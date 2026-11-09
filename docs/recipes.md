@@ -4,21 +4,22 @@
 
 ## 쓰기
 
-```ts
-import { openRecipeStore, runRecipe, GbrainMemory, asideRunner } from "./recipes"
+엔진 연결 지점은 `src/recipes/index.ts`의 두 함수예요.
 
-const store = openRecipeStore()              // .quorum/recipes.db (env QUORUM_RECIPES_DB)
+```ts
+import { runRecipe, listRecipes, asideRunner } from "./recipes"
+
+listRecipes()                                  // GET /api/recipes: { id, site, intent, version, endpoint, health }[]
 const out = await runRecipe("luma-blasts", {
-  runId, seqStart: 1, mode: "live",
+  runId, seqStart: 1,                           // seq 는 seqStart 부터, 끝나면 out.nextSeq
   vars: { slug: "compiled-8lsr", eventApiId: "evt-tt3sFLIW9Ee1SUU" },
-  store,
-  memory: new GbrainMemory(),                 // gbrain put/search (env QUORUM_GBRAIN_BIN)
-  aside: asideRunner(),                       // 맥에서만. 없으면 http 후보만 시도
-}, (event) => bus.push(event))                // QuorumEvent (src/contract.ts)
+  aside: asideRunner(),                         // 맥(엔진)에서만. 생략 + QUORUM_ASIDE=1 이어도 켜져요
+}, (event) => bus.push(event))                  // QuorumEvent (src/contract.ts)
 // out = { ok, version, endpoint, result, repaired, reason, nextSeq }
 ```
 
-- `GET /api/recipes` → `store.list()` (id, site, intent, version, endpoint, health)
+ctx에서 생략한 값: `store`는 기본 저장소(`.quorum/recipes.db`, env QUORUM_RECIPES_DB), `memory`는 `new GbrainMemory()`(env QUORUM_GBRAIN_BIN)예요. `memory: null`이면 기억을 끄고 그 사실을 error 이벤트로 남겨요. `aside`가 없으면 http 후보까지만 시도해요. get-blasts처럼 로그인이 필요한 수리는 엔진이 맥에서 `aside`를 넘겨야 끝나요.
+
 - `POST /api/recipes/:id/run` → `runRecipe(id, ctx, emit)`. id는 `[a-z0-9-]`만 받아요.
 - 주기 점검: `watchRecipes(store, [{ id, vars }], ms, { memory, aside }, emit)` — DB를 닫으면 멈춰요.
 

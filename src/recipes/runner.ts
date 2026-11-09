@@ -6,6 +6,9 @@ import { discover, type Attempt } from "./discover"
 import { RecipeError } from "./errors"
 import { endpointsFromNote, MemoryError, noteSlug, repairNote, sameRepair, type Memory } from "./memory"
 import { endpointOf } from "./spec"
+import { asideRunner } from "./aside"
+import { GbrainMemory } from "./memory"
+import { defaultStore, type RecipeSummary, type RecipeStore } from "./store"
 import type { Candidate, Emit, RecipeCtx, RecipeDef, RunOutcome } from "./types"
 
 type Data = Record<string, unknown>
@@ -21,9 +24,26 @@ export function recipeEmitter(ctx: RecipeCtx, emit: Emit) {
 
 const countOf = (r: unknown) => (Array.isArray(r) ? r.length : r && typeof r === "object" ? 1 : 0)
 
+type Resolved = RecipeCtx & { store: RecipeStore; memory: Memory | null }
+
+/** 생략한 값 채우기: store -> 기본 저장소, memory -> GbrainMemory, aside -> QUORUM_ASIDE=1 일 때만 asideRunner */
+function resolveCtx(ctx: RecipeCtx): Resolved {
+  return {
+    ...ctx,
+    store: ctx.store ?? defaultStore(),
+    memory: ctx.memory === undefined ? new GbrainMemory() : ctx.memory,
+    aside: ctx.aside === undefined ? (process.env.QUORUM_ASIDE === "1" ? asideRunner() : null) : ctx.aside,
+  }
+}
+
+/** GET /api/recipes: 레시피 목록과 현재 버전·상태 */
+export function listRecipes(store: RecipeStore = defaultStore()): RecipeSummary[] {
+  return store.list()
+}
+
 export async function runRecipe(id: string, ctx: RecipeCtx, emit: Emit): Promise<RunOutcome> {
   const ev = recipeEmitter(ctx, emit)
-  try { return await run(id, ctx, ev) }
+  try { return await run(id, resolveCtx(ctx), ev) }
   catch (e) {
     // 예상하지 못한 오류(DB·코드 오류)도 조용히 던지지 않고 이벤트로 남겨요
     const msg = String((e as Error)?.message || e)
@@ -33,7 +53,7 @@ export async function runRecipe(id: string, ctx: RecipeCtx, emit: Emit): Promise
 }
 
 /** gbrain 에서 이 레시피의 지난 수리 기록을 찾아 recall 이벤트로 보여 주고, 기록된 새 경로를 후보로 돌려줘요 */
-async function recall(id: string, def: RecipeDef, ctx: RecipeCtx, ev: ReturnType<typeof recipeEmitter>): Promise<Candidate[]> {
+async function recall(id: string, def: RecipeDef, ctx: Resolved, ev: ReturnType<typeof recipeEmitter>): Promise<Candidate[]> {
   if (!ctx.memory) return []
   try {
     const hits = (await ctx.memory.search(`recipes/${id}`, 5)).filter((h) => h.slug.startsWith(`recipes/${id}-v`))
@@ -57,7 +77,7 @@ async function recall(id: string, def: RecipeDef, ctx: RecipeCtx, ev: ReturnType
   }
 }
 
-async function run(id: string, ctx: RecipeCtx, ev: ReturnType<typeof recipeEmitter>): Promise<RunOutcome> {
+async function run(id: string, ctx: Resolved, ev: ReturnType<typeof recipeEmitter>): Promise<RunOutcome> {
   const actor = `recipe:${id}`
   let def: RecipeDef
   try { def = ctx.store.current(id) }

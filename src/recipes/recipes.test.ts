@@ -9,7 +9,7 @@ import type { QuorumEvent } from "../contract"
 import { asideRunner, buildDiscoverScript, parseProbes, RESULT_PREFIX, type AsideRunner } from "./aside"
 import { templatize } from "./call"
 import { GbrainMemory, MemoryError, repairNote, type Memory } from "./memory"
-import { runRecipe } from "./runner"
+import { listRecipes, runRecipe } from "./runner"
 import { RecipeStore } from "./store"
 import type { RecipeDef } from "./types"
 import { watchRecipes } from "./watch"
@@ -209,6 +209,18 @@ describe("runRecipe", () => {
     await runRecipe("t-blasts", ctx({ memory: conflicting, runId: "Run 42!" }), emit)
     expect(events.at(-1)).toMatchObject({ type: "memory.saved", data: { slug: "recipes/t-blasts-v2-run-42", duplicate: false } })
     expect(written).toEqual(["recipes/t-blasts-v2-run-42"])
+  })
+
+  test("engine call shape: runRecipe(id, { vars, runId }, emit) defaults memory to GbrainMemory (QUORUM_GBRAIN_BIN) and listRecipes(store)", async () => {
+    await useDef(blasts(["/event/get-blasts"]))
+    process.env.QUORUM_GBRAIN_BIN = "/usr/bin/false"
+    try {
+      const out = await runRecipe("t-blasts", { vars: { eventApiId: "evt-123", slug: "s" }, runId: "engine-1", store }, emit)
+      expect(out).toMatchObject({ ok: true, version: 2 })
+      // 기본 gbrain 은 /usr/bin/false 라 회상·기록 실패가 둘 다 error 로 드러나요
+      expect(events.filter((e) => e.type === "error" && e.actor === "gbrain").length).toBe(2)
+    } finally { delete process.env.QUORUM_GBRAIN_BIN }
+    expect(listRecipes(store)).toEqual([expect.objectContaining({ id: "t-blasts", version: 2 })])
   })
 
   test("memory: null is reported, never silently skipped", async () => {

@@ -41,11 +41,12 @@ export type RecipeCtx = {
   mode?: "live" | "replay"
   /** 첫 이벤트의 seq (기본 1). 엔진이 앞에 이벤트를 냈으면 그다음 번호를 넘겨요 */
   seqStart?: number
-  store: RecipeStore
-  /** null 이면 기억을 쓰지 않는다는 뜻이고, 그 사실을 error 이벤트로 드러내요 */
-  memory: Memory | null
+  /** 생략하면 기본 저장소(openRecipeStore: .quorum/recipes.db 또는 QUORUM_RECIPES_DB) */
+  store?: RecipeStore
+  /** 생략하면 GbrainMemory(). null 이면 기억을 쓰지 않고, 그 사실을 error 이벤트로 드러내요 */
+  memory?: Memory | null
   fetch?: typeof fetch
-  /** 있으면 http 후보가 모두 실패했을 때 Aside 로 새 경로를 찾아요(실제 맥에서만) */
+  /** 있으면 http 후보가 모두 실패했을 때 Aside 로 새 경로를 찾아요(실제 맥에서만). 생략하고 QUORUM_ASIDE=1 이면 asideRunner(). null 이면 끔 */
   aside?: AsideRunner | null
   timeoutMs?: number
 }
