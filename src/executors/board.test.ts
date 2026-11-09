@@ -110,7 +110,7 @@ describe("BoardClient", () => {
     const impl = (async () => {
       count++;
       return new Response("{}");
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
     const client = new BoardClient({ fetchImpl: impl, writeEnabled: false });
     const out = await client.postRunResult({ title: "Run done", body: "# body" });
     expect(out).toEqual({ posted: false, reason: "QUORUM_BOARD_WRITE is not 1" });
@@ -139,7 +139,7 @@ describe("BoardClient", () => {
     const bad = makeFakeFetch(rpcResult({ structuredContent: { results: [{ ok: false, do: "decide", error: "질문이 너무 짧아요" }] } }));
     await expect(new BoardClient({ fetchImpl: bad.impl, writeEnabled: true }).postDecision({ title: "짧", body: "" })).rejects.toThrow("질문이 너무 짧아요");
     let count = 0;
-    const off = new BoardClient({ fetchImpl: (async () => { count++; return new Response("{}"); }) as typeof fetch, writeEnabled: false });
+    const off = new BoardClient({ fetchImpl: (async () => { count++; return new Response("{}"); }) as unknown as typeof fetch, writeEnabled: false });
     expect((await off.postDecision({ title: "x", body: "y" })).posted).toBe(false);
     expect(count).toBe(0);
   });
@@ -174,7 +174,7 @@ describe("BoardClient", () => {
   test("available returns false when tools/list fails", async () => {
     const impl = (async () => {
       throw new Error("connection refused");
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
     const client = new BoardClient({ fetchImpl: impl });
     await expect(client.available()).resolves.toBe(false);
   });
