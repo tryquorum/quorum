@@ -159,7 +159,8 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf, returnFo
                 <span className="text-2xs leading-4 text-muted-foreground">gstack CEO · Reviewer · QA · CSO argue it, Aside or Codex runs only what passes, gbrain remembers the verdict.</span>
               </div>
               {run && <RunPanel run={run} signals={runSignals} act={act} onDone={() => refresh()} />}
-              {data.kind === "signal" && <SignalActions s={data.signal} act={act} onDone={(m) => refresh(m)} />}
+              {/* 이 사건의 제안 카드가 위 진행에 이미 있으면 거기 Approve/Reject 하나만 둬요(같은 버튼이 두 번 나오지 않게) */}
+              {data.kind === "signal" && <SignalActions s={data.signal} act={act} onDone={(m) => refresh(m)} inCard={!!run && runId === data.signal.meta?.runId && !!run.proposals[String(data.signal.meta?.proposalId)]} />}
             </div>
 
             {/* 아래: 사람 기록 */}
@@ -314,10 +315,11 @@ function ProposalCard({ p, signal, act, onDone }: { p: Proposal; signal: Signal 
   )
 }
 
-function SignalActions({ s, act, onDone }: { s: Signal; act: Acts; onDone: (m: string) => void }) {
+function SignalActions({ s, act, onDone, inCard }: { s: Signal; act: Acts; onDone: (m: string) => void; inCard?: boolean }) {
   const council = !!s.meta?.runId && !!s.meta?.proposalId
   const waiting = s.status === "open" && ["decide", "now", "main"].includes(s.lane)
   if (s.status !== "open") return null
+  if (waiting && council && inCard) return null
   const items: [string, () => Promise<void>, string][] = []
   // 실행이 실패한 판정은 보류가 아니라서 "다시 실행 / 닫기"로 불러요(같은 승인·거절 길을 써요)
   if (waiting && council) items.push(s.kind === "error" ? ["Retry", () => act.approve(s), "Running again"] : ["Approve", () => act.approve(s), "Approved"], s.kind === "error" ? ["Dismiss", () => act.reject(s), "Dismissed"] : ["Reject", () => act.reject(s), "Rejected"])
