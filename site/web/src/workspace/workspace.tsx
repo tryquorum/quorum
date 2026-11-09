@@ -176,7 +176,8 @@ export function Workspace() {
   }
 
   const imp = meta?.import
-  const total = now ? now.counts.needsYou + now.counts.dueToday + now.counts.review : 0
+  // 머리의 "N to handle" 은 화면에 보이는 줄(고른 공간으로 거른 것)과 같은 수로 세요
+  const total = route.view === "now" ? sections.filter((s) => s.id === "needs" || s.id === "due" || s.id === "review").reduce((n, s) => n + s.rows.length, 0) : 0
   return (
     <TooltipProvider delayDuration={300}>
       <SidebarProvider>
