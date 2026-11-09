@@ -1,6 +1,3 @@
-import { useEffect, useState } from "react"
-import { useReducedMotion } from "@/components/reveal"
-import { useFirstSight } from "./motion"
 import { cn } from "@/lib/utils"
 
 // The luma-blasts recipe (src/recipes/defs/luma-blasts.json): v1 called event/get-posts, which now 404s.
@@ -18,23 +15,11 @@ const LINES: { tag: string; tone: string; text: string; ms: number }[] = [
 ]
 
 export function Healing() {
-  // The whole transcript shows by default; it types itself out again the first time it scrolls into view.
-  const reduced = useReducedMotion()
-  const [n, setN] = useState(LINES.length)
-  const [play, setPlay] = useState(false)
-  const ref = useFirstSight<HTMLDivElement>(() => { if (!reduced) setPlay(true) })
-  useEffect(() => {
-    if (!play) return
-    let i = 0
-    let t: number
-    setN(0)
-    const tick = () => { i++; setN(i); if (i < LINES.length) t = window.setTimeout(tick, LINES[i].ms) }
-    t = window.setTimeout(tick, 300)
-    return () => window.clearTimeout(t)
-  }, [play])
+  // The whole transcript is always shown: a replay that cleared and retyped it left an empty box mid-scroll (audit c5).
+  const n = LINES.length
   const done = n >= LINES.length
   return (
-    <div ref={ref} className="dark lp-float overflow-hidden rounded-[20px] border bg-[#050506] text-foreground">
+    <div className="dark lp-float overflow-hidden rounded-[20px] border bg-[#050506] text-foreground">
       <div className="flex items-center gap-2 border-b px-4 py-2.5 font-mono text-xs text-muted-foreground">
         <span className="size-2.5 rounded-full bg-foreground/15" /><span className="size-2.5 rounded-full bg-foreground/15" /><span className="size-2.5 rounded-full bg-foreground/15" />
         <span className="ml-2">recipe · luma-blasts</span>
@@ -42,7 +27,7 @@ export function Healing() {
       </div>
       <ol className="min-h-[19rem] space-y-1.5 p-4 font-mono text-[12.5px] leading-relaxed sm:p-5">
         {LINES.slice(0, n).map((l, i) => (
-          <li key={i} className="type-in grid grid-cols-[7.5rem_1fr] gap-3 max-sm:grid-cols-1 max-sm:gap-0">
+          <li key={i} className="grid grid-cols-[7.5rem_1fr] gap-3 max-sm:grid-cols-1 max-sm:gap-0">
             <span className={cn(l.tone, l.tag === "$" && "text-signal")}>{l.tag}</span>
             <span className={cn("break-words", l.tag === "$" ? "text-foreground" : l.tone)}>{l.text}</span>
           </li>

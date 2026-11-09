@@ -67,7 +67,7 @@ export function PixelSea({ className, seaPx = 200 }: { className?: string; seaPx
       const px = ptr.on ? (ptr.sx - 0.5) : 0, py = ptr.on ? (ptr.sy - 0.5) : 0
       const moonR = W < 160 ? 6 : Math.max(6, Math.min(16, Math.round(H * 0.075)))
       const narrow = W < 160 // phones: a half-risen moon on the horizon keeps clear of the headline
-      const moonX = Math.round(W * (narrow ? 0.8 : 0.74) + px * -2.5)
+      const moonX = Math.round(W * (narrow ? 0.8 : W < 300 ? 0.87 : 0.74) + px * -2.5) // 768-1199 px: keep the moon clear of the centered headline
       const moonY = narrow ? horizon + Math.round(scroll * moonR * 2) : Math.round(horizon * 0.34 + scroll * horizon * 0.42 + py * -1.5)
       const flX = ptr.sx * W, flY = ptr.sy * H, flR = 22
       const dark = scroll * 0.55

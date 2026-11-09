@@ -11,24 +11,38 @@ html:not(.dark) { color-scheme: light; }
 .lp-h1 { max-width: 16ch; font-size: clamp(2.25rem, 1.15rem + 3.2vw, 4rem); line-height: 1.02; font-weight: 650; letter-spacing: -0.04em; text-wrap: balance; }
 .lp-h2 { max-width: 20ch; font-size: clamp(1.625rem, 1rem + 1.6vw, 2.5rem); line-height: 1.1; font-weight: 650; letter-spacing: -0.03em; text-wrap: balance; }
 .lp-eyebrow { margin-bottom: 14px; font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted-foreground); }
-.lp-lede { color: var(--muted-foreground); font-size: clamp(1rem, 0.95rem + 0.25vw, 1.125rem); line-height: 1.55; text-wrap: pretty; }
+.lp-lede { color: var(--muted-foreground); font-size: clamp(1rem, 0.95rem + 0.25vw, 1.125rem); line-height: 1.55; text-wrap: balance; }
 .lp p { max-width: 66ch; text-wrap: pretty; }
 /* Text that sits on the pixel sea keeps AA: the horizon is placed below it, this only firms up the muted tone. */
-.lp-onscene { color: color-mix(in oklab, var(--foreground) 72%, var(--lp-canvas)); }
+.lp-onscene { color: #3f3f46; }
+.dark .lp-onscene { color: #d4d4d8; }
 /* Entrances are added on top of visible content: nothing is hidden before script or the observer runs. A block gets
    lp-rise-in only when its first pixel enters the viewport, so a full-page capture or a no-motion visit sees everything. */
 @keyframes lp-rise-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 .lp-rise-in { animation: lp-rise-in 350ms var(--ease-standard) both; }
-.lp-step { opacity: 0.42; transition: opacity 250ms ease; }
-.lp-step.is-on { opacity: 1; }
-.lp-step.is-now::before { color: var(--foreground); }
+/* Steps never dim their text (WCAG 1.4.3, audit GAP-2): titles not yet reached use the muted ink (5.2:1), the current
+   step gets ink, a bold number and a rule. */
+.lp-step h3 { color: var(--muted-foreground); transition: color 250ms ease; }
+.lp-step.is-on h3 { color: var(--foreground); }
+.lp-step.is-now { box-shadow: inset 0 2px 0 var(--foreground); }
+.lp-step.is-now::before { color: var(--foreground); font-weight: 600; }
 /* Agent flags sway from the mast: rotation only, so the logo itself is never skewed or stretched. */
 @keyframes lp-flag { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-4deg); } }
 @keyframes lp-flag-gust { 0%, 100% { transform: rotate(1deg); } 50% { transform: rotate(-8deg); } }
 .lp-flag { transform-origin: 0 50%; animation: lp-flag 3.4s ease-in-out infinite; }
 .group:hover .lp-flag { animation: lp-flag-gust 1.3s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) { .lp-rise-in { animation: none; } .lp-step { opacity: 1; } .lp-flag, .group:hover .lp-flag { animation: none; } }
-.lp-section { padding-block: clamp(72px, 10vw, 136px); }
+@media (prefers-reduced-motion: reduce) { .lp-rise-in { animation: none; } .lp-step h3 { color: var(--foreground); } .lp-flag, .group:hover .lp-flag { animation: none; } }
+/* Spacing rhythm (CONCEPT.md): two sections sit 112-160 px apart at 1280 and 64 px at 390. */
+.lp-section { padding-block: clamp(32px, 6vw, 80px); }
+/* Claim + artifact grammar: claim 4 of 12 columns (sticky on desktop), one empty column, artifact 7. */
+.lp-ca { display: grid; gap: 32px; }
+@media (min-width: 1024px) {
+  .lp-ca { grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: 24px; }
+  .lp-claim { grid-column: 1 / span 4; align-self: start; position: sticky; top: 6rem; }
+  .lp-artifact { grid-column: 6 / span 7; min-width: 0; }
+}
+/* Provenance label (concept A): mono, sentence case, muted; the only small mono text on the page. */
+.lp-label { font-family: var(--font-mono); font-size: 0.75rem; line-height: 1.5; color: var(--muted-foreground); text-wrap: balance; }
 .lp-split { display: grid; gap: 40px; }
 @media (min-width: 900px) { .lp-split { grid-template-columns: 5fr 7fr; gap: 64px; } }
 .lp-ring { box-shadow: inset 0 0 0 1px var(--lp-ring); }

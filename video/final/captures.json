@@ -1,0 +1,108 @@
+{
+ "landing": {
+  "session": "captures/landing.vid2cap",
+  "in": {
+   "event": "landing"
+  }
+ },
+ "story": {
+  "session": "captures/story.vid2cap",
+  "in": {
+   "event": "story"
+  },
+  "speed": 2
+ },
+ "workspace": {
+  "session": "captures/council.vid2cap",
+  "in": 0.9,
+  "camera": [
+   {
+    "at": 0,
+    "zoom": 1,
+    "x": 0.5,
+    "y": 0.5
+   },
+   {
+    "at": 1,
+    "zoom": 1,
+    "x": 0.5,
+    "y": 0.5
+   },
+   {
+    "at": 1.7,
+    "zoom": 1.55,
+    "x": 0.5,
+    "y": 0.36
+   }
+  ],
+  "cursor": {}
+ },
+ "council": {
+  "session": "captures/council.vid2cap",
+  "split": true,
+  "parts": [
+   {
+    "in": 19.8,
+    "dur": 2
+   },
+   {
+    "in": 38
+   }
+  ],
+  "camera": [
+   {
+    "at": 0,
+    "zoom": 1.75,
+    "x": 0.5,
+    "y": 0.4
+   }
+  ]
+ },
+ "execute": {
+  "session": "captures/council.vid2cap",
+  "split": true,
+  "parts": [
+   {
+    "in": 50,
+    "dur": 2.3
+   },
+   {
+    "in": 92
+   }
+  ],
+  "camera": [
+   {
+    "at": 0,
+    "zoom": 1.75,
+    "x": 0.5,
+    "y": 0.45
+   }
+  ]
+ },
+ "reuse": {
+  "session": "captures/reuse.vid2cap",
+  "split": true,
+  "in": 3.3,
+  "camera": [
+   {
+    "at": 0,
+    "zoom": 1.75,
+    "x": 0.5,
+    "y": 0.4
+   }
+  ]
+ },
+ "heal": {
+  "session": "captures/recipe4.vid2cap",
+  "in": 5,
+  "speed": 2,
+  "camera": [
+   {
+    "at": 0,
+    "zoom": 1.6,
+    "x": 0.31,
+    "y": 0.24
+   }
+  ]
+ }
+}
