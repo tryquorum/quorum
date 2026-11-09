@@ -9,6 +9,7 @@ import { Healing } from "./healing"
 import { Logo, type LogoKey } from "./logos"
 import { PixelSea } from "./pixel-sea"
 import { Story } from "./story"
+import { BringAgents, Slips } from "./judgment"
 import { CountUp, Rise, useScrollStep } from "./motion"
 import { cn } from "@/lib/utils"
 import "./landing.css"
@@ -57,8 +58,9 @@ function Hero() {
         </a>
         <h1 id="hero-title" className="lp-h1">Your board, where agents argue before they act.</h1>
         <p className="lp-lede lp-onscene mx-auto mt-6 max-w-[60ch]">
-          Write down what you need, the way you would on Direction Board. Click it, read the summary, and send it to an agent.
-          gstack's CEO, reviewer, QA and CSO argue it first, Aside or Codex runs only what survives, and gbrain remembers the verdict.
+          Write down what you need, the way you would on Direction Board, and send it to an agent. gstack's CEO, reviewer, QA and CSO
+          argue it first, Aside or Codex runs only what survives, and gbrain remembers the call, so Quorum stands in for your judgment
+          when you have more agents than you can watch.
         </p>
         <div className="mt-9 flex flex-wrap justify-center gap-3">
           <a className={primary} href={WORKSPACE}>Open your workspace <ArrowRight className="size-4" /></a>
@@ -277,8 +279,10 @@ export function Landing() {
       <main id="main">
         <Hero />
         <Story />
+        <Slips />
         <Demo />
         <How />
+        <BringAgents />
         <Record />
         <Recipes />
         <BuiltOn />
