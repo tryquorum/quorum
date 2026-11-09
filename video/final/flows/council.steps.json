@@ -1,0 +1,46 @@
+[
+ {
+  "goto": "http://127.0.0.1:4331/w"
+ },
+ {
+  "wait": 1800
+ },
+ {
+  "mark": "now"
+ },
+ {
+  "click": "main button:has-text(\"Shortlist YC\")",
+  "label": "open"
+ },
+ {
+  "wait": 2800
+ },
+ {
+  "mark": "popup"
+ },
+ {
+  "click": "[role=dialog] button:has-text(\"Send to agent\")",
+  "label": "send"
+ },
+ {
+  "mark": "sent"
+ },
+ {
+  "eval": "new Promise((res)=>{const t0=Date.now();let stable=0,last='';const iv=setInterval(()=>{const d=document.querySelector('[role=dialog]');if(!d){return}const sc=d.querySelector('.overflow-y-auto')||d;const box=[d,...d.querySelectorAll('*')].find(e=>e.scrollHeight>e.clientHeight+20&&getComputedStyle(e).overflowY!=='visible')||d;box.scrollTo({top:box.scrollHeight,behavior:'smooth'});const tx=d.innerText;const spinning=d.querySelector('.animate-spin');const running=/is running|Loading/.test(tx);const verdicts=(tx.match(/\\b(pass|hold|reject)\\b/g)||[]).length;if(!spinning&&!running&&verdicts>0&&tx===last){stable++}else{stable=0}last=tx;if(stable>=5||Date.now()-t0>1200000){clearInterval(iv);res(verdicts)}},1000)})"
+ },
+ {
+  "mark": "run-end"
+ },
+ {
+  "wait": 1500
+ },
+ {
+  "eval": "new Promise((res)=>{const d=document.querySelector('[role=dialog]');const box=[d,...d.querySelectorAll('*')].find(e=>e.scrollHeight>e.clientHeight+20&&getComputedStyle(e).overflowY!=='visible')||d;const H=box.scrollHeight-box.clientHeight;const t0=performance.now();const T=12000;const step=(now)=>{const k=Math.min(1,(now-t0)/T);const e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;box.scrollTop=H*e;if(k<1)requestAnimationFrame(step);else res(1)};box.scrollTop=0;setTimeout(()=>requestAnimationFrame(step),1500)})"
+ },
+ {
+  "mark": "reviewed"
+ },
+ {
+  "wait": 2000
+ }
+]
