@@ -8,6 +8,7 @@ import { join } from "node:path"
 import type { QuorumEvent } from "../contract"
 import { asideRunner, buildDiscoverScript, parseProbes, RESULT_PREFIX, type AsideRunner } from "./aside"
 import { fixedSegments, templatize } from "./call"
+import { endpointOf, redactUrl, stripSecretParams } from "./spec"
 import { GbrainMemory, MemoryError, repairNote, type Memory } from "./memory"
 import { listRecipes, runRecipe } from "./runner"
 import { RecipeStore } from "./store"
@@ -282,6 +283,35 @@ describe("runRecipe", () => {
     expect(events.filter((e) => e.actor === "aside" && e.type === "recipe.run").length).toBe(3)
   })
 
+  test("aside repair keeps the declared cookie header template, drops secret query values, and a later server run without aside passes with the cookie", async () => {
+    blastsAuth = true
+    const def = blasts(["/missing"])
+    def.request.headers = { cookie: "{{env.QUORUM_TEST_COOKIE}}" }
+    await useDef(def)
+    const aside: AsideRunner = async () => ({ code: 0, stderr: "", stdout: RESULT_PREFIX + JSON.stringify({ url: `${base}/event/get-blasts?event_api_id=evt-123&access_token=SECRET123`, status: 200, body: { entries: [{ api_id: "x", message: "<p>hi</p>" }] } }) })
+    const out = await runRecipe("t-blasts", ctx({ aside }), emit)
+    expect(out).toMatchObject({ ok: true, version: 2 })
+    const v2 = store.current("t-blasts").request
+    expect(v2).toEqual({ method: "GET", url: `${base}/event/get-blasts?event_api_id={{eventApiId}}`, headers: { cookie: "{{env.QUORUM_TEST_COOKIE}}" } })
+    expect(JSON.stringify(events)).not.toContain("SECRET123")
+    expect(JSON.stringify(puts)).not.toContain("SECRET123")
+    events = []
+    process.env.QUORUM_TEST_COOKIE = "session=ok"
+    try {
+      expect(await runRecipe("t-blasts", ctx(), emit)).toMatchObject({ ok: true, version: 2, repaired: false })
+    } finally { delete process.env.QUORUM_TEST_COOKIE }
+  })
+
+  test("browser-only success of the current request does not stack identical versions", async () => {
+    blastsAuth = true
+    await useDef(blasts(["/missing"], { request: { method: "GET", url: `${base}/event/get-blasts?event_api_id={{eventApiId}}` } }))
+    const aside: AsideRunner = async () => ({ code: 0, stderr: "", stdout: RESULT_PREFIX + JSON.stringify({ url: `${base}/event/get-blasts?event_api_id=evt-123`, status: 200, body: { entries: [{ api_id: "x", message: "m" }] } }) })
+    const out = await runRecipe("t-blasts", ctx({ aside }), emit)
+    expect(out.ok).toBe(false)
+    expect(store.current("t-blasts").version).toBe(1)
+    expect(events.find((e) => e.actor === "aside" && e.type === "recipe.run")!.text).toContain("LUMA_COOKIE")
+  })
+
   test("aside binary failing (/usr/bin/false) is surfaced as an aside error event", async () => {
     await useDef(blasts(["/missing"]))
     const out = await runRecipe("t-blasts", ctx({ aside: asideRunner({ bin: "/usr/bin/false", account: "test" }) }), emit)
@@ -317,6 +347,9 @@ describe("helpers", () => {
     // 정확히 같은 조각만: slug "event" 가 /event/ 경로를 바꾸지 않고, 짧은 값(2자)도 바꿔요
     expect(templatize("https://h/event/get-blasts?event_api_id=ab&x=event", { eventApiId: "ab", slug: "event" }, fixedSegments(["https://h/event/get-posts?event_api_id={{eventApiId}}"]))).toBe("https://h/event/get-blasts?event_api_id={{eventApiId}}&x={{slug}}")
     expect(templatize("https://h/e/my-event/posts", { slug: "my-event" })).toBe("https://h/e/{{slug}}/posts")
+    expect(stripSecretParams("https://h/a?id=1&access_token=S&api_key={{k}}")).toBe("https://h/a?id=1&api_key={{k}}")
+    expect(redactUrl("https://h/a?id=1&session=S")).toBe("https://h/a?id=1&session=***")
+    expect(endpointOf({ method: "GET", url: "https://h/a?token=abc" })).toBe("GET https://h/a?token=***")
     expect(buildDiscoverScript("https://luma.com/x", "api2", ["https://api2/x"])).toContain("openTab")
   })
 

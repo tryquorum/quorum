@@ -16,7 +16,31 @@ export function fill(template: string, vars: Record<string, string>, encode = fa
 
 /** 사람에게 보여 줄 경로: 질의 값은 템플릿 그대로(비밀·긴 id 를 이벤트에 싣지 않게) */
 export function endpointOf(req: RequestSpec): string {
-  return `${req.method} ${req.url}`
+  return `${req.method} ${redactUrl(req.url)}`
+}
+
+/** 비밀처럼 보이는 질의 키 */
+export const SECRET_KEY = /token|secret|key|sig|auth|session|passw|cookie|credential|code/i
+const mapQuery = (url: string, fn: (k: string, v: string) => string | null) => {
+  const q = url.indexOf("?")
+  if (q < 0) return url
+  const kept = url.slice(q + 1).split("&").flatMap((pair) => {
+    const eq = pair.indexOf("=")
+    const k = eq < 0 ? pair : pair.slice(0, eq)
+    const out = fn(decodeURIComponentSafe(k), eq < 0 ? "" : pair.slice(eq + 1))
+    return out === null ? [] : [eq < 0 ? pair : `${pair.slice(0, eq)}=${out}`]
+  })
+  return kept.length ? `${url.slice(0, q)}?${kept.join("&")}` : url.slice(0, q)
+}
+const decodeURIComponentSafe = (s: string) => { try { return decodeURIComponent(s) } catch { return s } }
+const isTemplate = (v: string) => /^\{\{[^}]+\}\}$/.test(v)
+/** 이벤트·기록에 싣는 URL: 비밀처럼 보이는 질의 값은 *** (템플릿 값은 그대로) */
+export function redactUrl(url: string): string {
+  return mapQuery(url, (k, v) => (SECRET_KEY.test(k) && v && !isTemplate(v) ? "***" : v))
+}
+/** 찾은 URL 에서 비밀처럼 보이는 질의 값(템플릿 아닌 것)을 빼요. 저장·이벤트·gbrain 에 남지 않게 */
+export function stripSecretParams(url: string): string {
+  return mapQuery(url, (k, v) => (SECRET_KEY.test(k) && v && !isTemplate(v) ? null : v))
 }
 
 /** 점 경로("data.event.name"). "a|b" 는 앞에서부터 값이 있는 첫 경로. 빈 경로는 값 그대로 */

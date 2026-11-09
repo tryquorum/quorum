@@ -3,8 +3,8 @@
 import { buildDiscoverScript, parseProbes } from "./aside"
 import { callRecipe, checkBody, fixedSegments, templatize } from "./call"
 import { classifyRunError, RecipeError, RUN_ERROR_MESSAGE } from "./errors"
-import { endpointOf, fill } from "./spec"
-import type { Candidate, RecipeCtx, RecipeDef } from "./types"
+import { endpointOf, fill, stripSecretParams } from "./spec"
+import type { Candidate, RecipeCtx, RecipeDef, RequestSpec } from "./types"
 
 export type Attempt = { via: "http" | "aside"; endpoint: string; ok: boolean; status?: number; reason?: string }
 export type Found = { candidate: Candidate; result: unknown; via: "http" | "aside"; status: number }
@@ -15,11 +15,13 @@ export async function discover(def: RecipeDef, ctx: RecipeCtx & { vars: Record<s
   const attempts: Attempt[] = []
   const note = (a: Attempt) => { attempts.push(a); onAttempt(a) }
   const broken = endpointOf(def.request)
-  const tried = new Set<string>([broken])
+  // 같은 URL 이라도 머리글(쿠키)이 다르면 다른 후보예요
+  const keyOf = (q: RequestSpec) => `${q.method} ${q.url} ${JSON.stringify(q.headers || {})}`
+  const tried = new Set<string>([keyOf(def.request)])
   for (const c of [...recalled, ...(def.discover.http?.candidates || [])]) {
     const endpoint = endpointOf(c.request)
-    if (tried.has(endpoint)) continue
-    tried.add(endpoint)
+    if (tried.has(keyOf(c.request))) continue
+    tried.add(keyOf(c.request))
     try {
       const r = await callRecipe({ request: c.request, parse: c.parse || def.parse, verify: def.verify }, ctx.vars, ctx.fetch, ctx.timeoutMs)
       note({ via: "http", endpoint, ok: true, status: r.status })
@@ -46,11 +48,17 @@ export async function discover(def: RecipeDef, ctx: RecipeCtx & { vars: Record<s
   const probesOut = parseProbes(run.stdout)
   if (!probesOut.length) return { found: null, attempts, asideError: "Aside 가 후보를 하나도 보내지 않았어요" }
   const fixed = fixedSegments([def.request.url, a.startUrl, ...(def.discover.http?.candidates || []).map((c) => c.request.url)])
+  // 머리글은 a.headers, 없으면 같은 호스트로 선언된 요청의 것을 물려받아요(쿠키 템플릿이 v2 에서 빠지지 않게)
+  const hostOf = (u: string) => { try { return new URL(u).host } catch { return "" } }
+  const declared = [def.request, ...(def.discover.http?.candidates || []).map((c) => c.request)]
+  const headersFor = (u: string) => a.headers || declared.find((q) => q.headers && hostOf(q.url) === hostOf(u))?.headers
   for (const p of probesOut) {
-    const url = templatize(p.url, ctx.vars, fixed)
-    const candidate: Candidate = { request: { method: a.method || "GET", url, ...(a.headers ? { headers: a.headers } : {}) }, parse: a.parse || def.parse, note: "aside" }
+    const url = stripSecretParams(templatize(p.url, ctx.vars, fixed))
+    const headers = headersFor(url)
+    const candidate: Candidate = { request: { method: a.method || "GET", url, ...(headers ? { headers } : {}) }, parse: a.parse || def.parse, note: "aside" }
     const endpoint = endpointOf(candidate.request)
-    if (endpoint === broken && p.status >= 400) { note({ via: "aside", endpoint, ok: false, status: p.status, reason: `HTTP ${p.status}` }); continue }
+    // 지금 버전과 똑같은 요청이 브라우저에서만 되면 새 버전을 만들지 않아요(서버에는 로그인 쿠키가 필요) — 같은 버전을 계속 쌓지 않게
+    if (keyOf(candidate.request) === keyOf(def.request)) { note({ via: "aside", endpoint, ok: false, status: p.status, reason: p.status < 300 ? "브라우저에서만 돼요 — 서버에는 로그인 쿠키(예: LUMA_COOKIE)가 필요해요" : `HTTP ${p.status}` }); continue }
     if (p.status < 200 || p.status >= 300) { note({ via: "aside", endpoint, ok: false, status: p.status, reason: p.error || `HTTP ${p.status}` }); continue }
     try {
       const result = checkBody(p.body, candidate.parse!, def.verify)
