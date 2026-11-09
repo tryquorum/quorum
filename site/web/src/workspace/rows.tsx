@@ -94,20 +94,20 @@ export function SignalRow({ s, selected, busy, onSelect, onOpen, onApprove, onRe
           {s.reason}{s.body && tone === "review" ? " — " + s.body.split("\n")[0] : ""}
         </p>
       </div>
-      <div className="flex shrink-0 items-center gap-1.5 max-sm:flex-col max-sm:items-end">
+      <div className="flex shrink-0 items-center gap-1.5">
         {onApprove && (
           <Button type="button" size="xs" className="rounded-full bg-keep text-background hover:bg-keep/85" onClick={onApprove} disabled={busy} title="Approve (A)">
-            <Check />Approve
+            <Check /><span className="max-sm:sr-only">Approve</span>
           </Button>
         )}
         {onReject && (
           <Button type="button" variant="outline" size="xs" className="rounded-full" onClick={onReject} disabled={busy} title="Reject (X)">
-            <X />Reject
+            <X /><span className="max-sm:sr-only">Reject</span>
           </Button>
         )}
         {onResolve && (
           <Button type="button" variant="outline" size="xs" className="rounded-full" onClick={onResolve} disabled={busy} title={s.lane === "review" ? "Mark reviewed (E)" : "Mark handled here (E)"}>
-            <Check />{s.lane === "review" ? "Reviewed" : "Handled"}
+            <Check /><span className="max-sm:sr-only">{s.lane === "review" ? "Reviewed" : "Handled"}</span>
           </Button>
         )}
         {s.meta?.runId && !onApprove && !onResolve && (
