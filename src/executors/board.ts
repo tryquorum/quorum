@@ -66,7 +66,7 @@ export class BoardClient {
   private readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
   private readonly token?: string;
-  private readonly writeEnabled: boolean;
+  readonly writeEnabled: boolean;
   private nextId = 1;
 
   constructor(opts: BoardClientOptions = {}) {
@@ -177,22 +177,24 @@ export class BoardClient {
       return { posted: false, reason: "QUORUM_BOARD_WRITE is not 1" };
     }
 
-    // board_write fields used: ref (run-result document ref), mode "append"
-    // (no expectedVersion/edits needed), md (title + body + tags rendered as
-    // markdown), onceKey (idempotent per run title). See header comment.
-    const ref = `quorum:run:${input.title}`;
-    const tagLine = input.tags && input.tags.length > 0 ? `\ntags: ${input.tags.join(", ")}` : "";
-    const md = `# ${input.title}\n\n${input.body}${tagLine}\n`;
-    const data = (await this.callTool("board_write", {
-      ref,
-      mode: "append",
-      md,
-      onceKey: `quorum:run:${input.title}`,
-    })) as { ref?: unknown; error?: unknown };
-    if (typeof data?.ref === "string") {
-      return { posted: true, ref: data.ref };
+    // 방향판 MCP 스키마(board/apps/server/server/mcp/schemas.ts actionDescription)를 읽고 고쳤어요:
+    // board_write 는 이미 있는 ref 에만 쓰므로, 새 결과 문서는 board_act 의 doc 동작(필수 do, title, md; 선택 tags)으로 만들어요.
+    // doc 은 같은 제목이면 합쳐요(parent 생략 = 전체에서 제목 합치기). 결과는 actions.ts 의 Result { ok, do, ref?, error? } 예요.
+    return this.act({ do: "doc", title: input.title, md: input.body, ...(input.tags?.length ? { tags: input.tags } : {}) });
+  }
+
+  /** 사람이 골라야 하는 일(hold)을 방향판 결정 칸 사건으로 올려요. board_act decide: 필수 do, title; 선택 body, link */
+  async postDecision(input: { title: string; body: string; link?: string }): Promise<{ posted: false; reason: string } | { posted: true; ref: string }> {
+    if (!this.writeEnabled) {
+      return { posted: false, reason: "QUORUM_BOARD_WRITE is not 1" };
     }
-    if (typeof data?.error === "string") throw new Error(data.error);
-    throw new Error("board_write did not return a created ref");
+    return this.act({ do: "decide", title: input.title, body: input.body, ...(input.link ? { link: input.link } : {}) });
+  }
+
+  private async act(action: Record<string, unknown>): Promise<{ posted: true; ref: string }> {
+    const data = (await this.callTool("board_act", { actions: [action] })) as { results?: { ok?: boolean; ref?: unknown; error?: unknown }[] } | null;
+    const r = data?.results?.[0];
+    if (r?.ok && typeof r.ref === "string") return { posted: true, ref: r.ref };
+    throw new Error(typeof r?.error === "string" ? r.error : "board_act " + String(action.do) + " did not return a ref");
   }
 }

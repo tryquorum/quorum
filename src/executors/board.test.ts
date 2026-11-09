@@ -117,21 +117,31 @@ describe("BoardClient", () => {
     expect(count).toBe(0);
   });
 
-  test("postRunResult with writeEnabled true sends a tools/call named board_write", async () => {
+  test("postRunResult with writeEnabled true creates a doc through board_act", async () => {
     const { impl, calls } = makeFakeFetch(
-      rpcResult({ structuredContent: { ref: "item:new-doc", version: 1, applied: 1, warnings: [] } }),
+      rpcResult({ structuredContent: { results: [{ ok: true, do: "doc", ref: "doc:new-doc" }] } }),
     );
     const client = new BoardClient({ fetchImpl: impl, writeEnabled: true });
     const out = await client.postRunResult({ title: "Run done", body: "# body", tags: ["quorum"] });
     expect(calls.length).toBe(1);
-    expect(out).toEqual({ posted: true, ref: "item:new-doc" });
+    expect(out).toEqual({ posted: true, ref: "doc:new-doc" });
     const sent = JSON.parse(String(calls[0]?.init?.body));
     expect(sent.method).toBe("tools/call");
-    expect(sent.params.name).toBe("board_write");
-    expect(sent.params.arguments.mode).toBe("append");
-    expect(sent.params.arguments.ref).toContain("Run done");
-    expect(sent.params.arguments.md).toContain("Run done");
-    expect(sent.params.arguments.md).toContain("# body");
+    expect(sent.params.name).toBe("board_act");
+    expect(sent.params.arguments.actions).toEqual([{ do: "doc", title: "Run done", md: "# body", tags: ["quorum"] }]);
+  });
+
+  test("postDecision sends board_act decide and surfaces a board error", async () => {
+    const ok = makeFakeFetch(rpcResult({ structuredContent: { results: [{ ok: true, do: "decide", ref: "signal:s1" }] } }));
+    const client = new BoardClient({ fetchImpl: ok.impl, writeEnabled: true });
+    expect(await client.postDecision({ title: "결제해도 될까요?", body: "cso escalate" })).toEqual({ posted: true, ref: "signal:s1" });
+    expect(JSON.parse(String(ok.calls[0]?.init?.body)).params.arguments.actions[0].do).toBe("decide");
+    const bad = makeFakeFetch(rpcResult({ structuredContent: { results: [{ ok: false, do: "decide", error: "질문이 너무 짧아요" }] } }));
+    await expect(new BoardClient({ fetchImpl: bad.impl, writeEnabled: true }).postDecision({ title: "짧", body: "" })).rejects.toThrow("질문이 너무 짧아요");
+    let count = 0;
+    const off = new BoardClient({ fetchImpl: (async () => { count++; return new Response("{}"); }) as typeof fetch, writeEnabled: false });
+    expect((await off.postDecision({ title: "x", body: "y" })).posted).toBe(false);
+    expect(count).toBe(0);
   });
 
   test("Authorization header present only when token set", async () => {

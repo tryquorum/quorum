@@ -155,4 +155,25 @@ export class Store {
   close(): void {
     this.db.close();
   }
+
+  /**
+   * 서버가 다시 시작됐을 때 "running" 으로 남은 실행을 끊긴 것으로 닫아요.
+   * 출처: board/apps/server/server/runs.ts initRuns 의 "서버가 다시 시작돼서 끊겼어요" 처리. 바꾼 점: 이벤트 흐름도 닫히도록 error·run.end 이벤트를 붙여요.
+   */
+  interruptRunning(at: string): string[] {
+    const rows = this.db.query("SELECT run_id FROM runs WHERE status = 'running'").all() as { run_id: string }[];
+    const next = this.db.query("SELECT COALESCE(MAX(seq), -1) + 1 AS n FROM events WHERE run_id = ?");
+    const tx = this.db.transaction((ids: string[]) => {
+      for (const id of ids) {
+        const n = (next.get(id) as { n: number }).n;
+        const mode = (this.getRunStmt.get(id) as RunRow).mode;
+        this.appendEvent({ runId: id, seq: n, at, mode, type: "error", actor: "council", text: "서버가 다시 시작돼서 끊겼어요", data: { errorKind: "interrupted" } });
+        this.appendEvent({ runId: id, seq: n + 1, at, mode, type: "run.end", actor: "council", text: "끊겨서 끝났어요", data: { status: "error" } });
+        this.updateRunStatusStmt.run("error", id);
+      }
+    });
+    const ids = rows.map((r) => r.run_id);
+    tx(ids);
+    return ids;
+  }
 }
