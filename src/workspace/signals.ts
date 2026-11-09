@@ -88,8 +88,12 @@ export function ingestSignal(db: Database, raw: any, now = Date.now()): Signal |
   if (existing) {
     const prev = pubSignal(existing)
     if (prev.meta.decidedBy || (existing.status === "resolved" && prev.meta.resolvedBy)) return prev
+    const next = { source: str(raw.source, 40) || existing.source, kind, title, body: str(raw.body, 8000) || null, lane, reason, status: resolved ? "resolved" : "open", meta: JSON.stringify({ ...prev.meta, ...meta }) }
+    // 3070 사건은 60초마다, 의회 판정은 읽을 때마다 다시 들어와요. 바뀐 게 없으면 손대지 않아요(updated_at 이 그대로라 Needs you 순서가 흔들리지 않아요)
+    const same = next.source === existing.source && next.kind === existing.kind && next.title === existing.title && next.body === existing.body && next.lane === existing.lane && next.reason === existing.reason && next.status === existing.status && next.meta === (existing.meta ?? "{}")
+    if (same) return prev
     db.query("UPDATE signals SET source=?,kind=?,title=?,body=?,lane=?,reason=?,status=?,meta=?,updated_at=?,resolved_at=? WHERE id=?")
-      .run(str(raw.source, 40) || existing.source, kind, title, str(raw.body, 8000) || null, lane, reason, resolved ? "resolved" : "open", JSON.stringify({ ...prev.meta, ...meta }), now, resolved ? now : null, existing.id)
+      .run(next.source, next.kind, next.title, next.body, next.lane, next.reason, next.status, next.meta, now, resolved ? now : null, existing.id)
     return getSignal(db, existing.id)!
   }
   const id = crypto.randomUUID().replace(/-/g, "").slice(0, 12)

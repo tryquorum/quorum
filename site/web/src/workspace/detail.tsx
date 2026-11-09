@@ -67,14 +67,18 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf }: {
   // hold 판정의 사건(Approve/Reject 대상). 실행이 도는 동안 2.5초마다 다시 읽어요(읽기가 의회 판정을 Workspace 로 옮겨요)
   const [runSignals, setRunSignals] = useState<Signal[]>([])
   const holds = run ? run.order.filter((id) => run.proposals[id].verdict?.decision === "hold").length : 0
+  // 다시 읽을 일이 있을 때만 2.5초마다: 의회가 도는 중, 승인한 일이 실행 중, 아직 사건이 안 된 판정이 있을 때. 끝나면 한 번만 읽어요
+  const verdicts = run ? run.order.filter((id) => run.proposals[id].verdict).length : 0
+  const pending = !!run && (run.status === "running" || run.status === "connecting" || runSignals.some((s) => s.status === "running") || runSignals.filter((s) => s.meta?.proposalId).length < verdicts)
   useEffect(() => {
     if (!runId) { setRunSignals([]); return }
     let live = true
     const load = () => call<Signal[]>("/api/ws/signals?run=" + encodeURIComponent(runId)).then((s) => { if (live) setRunSignals(s) }).catch(() => {})
     void load()
+    if (!pending) return () => { live = false }
     const t = window.setInterval(load, 2500)
     return () => { live = false; window.clearInterval(t) }
-  }, [runId, holds])
+  }, [runId, holds, pending])
 
   const refresh = (msg?: string) => { if (msg) setSaved(msg); setTick((t) => t + 1); onChanged() }
   const run_ = async (fn: () => Promise<unknown>, msg: string) => {
