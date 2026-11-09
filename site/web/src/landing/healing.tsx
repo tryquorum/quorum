@@ -1,42 +1,44 @@
-import { cn } from "@/lib/utils"
+import { CHIP } from "@/workspace/tone"
+
+// tone.ts LATE is red-400, tuned for the dark-only workspace; on the light landing it fails AA, so the landing uses
+// red-700 in light and red-400 in dark (measured by docs/design/audit/a11y.cjs).
+const LATE = "text-red-700 dark:text-red-400"
 
 // The luma-blasts recipe (src/recipes/defs/luma-blasts.json): v1 called event/get-posts, which now 404s.
 // The repair path below follows lane/recipes: detect, recall past repairs, re-explore in Aside, validate, save v2.
-const LINES: { tag: string; tone: string; text: string; ms: number }[] = [
-  { tag: "$", tone: "text-muted-foreground", text: "quorum recipe run luma-blasts", ms: 500 },
-  { tag: "recipe.run", tone: "text-muted-foreground", text: "v1 · GET api2.luma.com/event/get-posts?event_api_id=…", ms: 900 },
-  { tag: "recipe.broken", tone: "text-cut", text: "404 · verify failed: expected a non-empty array with id", ms: 1100 },
-  { tag: "recall", tone: "text-memory", text: "gbrain · past repairs on api2.luma.com", ms: 1000 },
-  { tag: "aside", tone: "text-live", text: "re-explore in the signed-in tab · watching network on luma.com/<event>", ms: 1500 },
-  { tag: "candidate", tone: "text-foreground", text: "GET api2.luma.com/event/get-blasts?event_api_id=…  200", ms: 1000 },
-  { tag: "verify", tone: "text-keep", text: "7 announcements · schema ok · non-empty ✓", ms: 900 },
-  { tag: "recipe.repaired", tone: "text-keep", text: "luma-blasts v2 saved · prev endpoint and reason kept", ms: 900 },
-  { tag: "memory.saved", tone: "text-memory", text: "gbrain remembers why v1 broke", ms: 900 },
+// One tone (DESIGN-READ hue budget): ink for what happened, muted for context, red only for the failure.
+type Tone = "ink" | "muted" | "fail"
+const TONE: Record<Tone, string> = { ink: "text-foreground", muted: "text-muted-foreground", fail: LATE }
+const LINES: { tag: string; tone: Tone; text: string }[] = [
+  { tag: "$", tone: "ink", text: "quorum recipe run luma-blasts" },
+  { tag: "recipe.run", tone: "muted", text: "v1 · GET api2.luma.com/event/get-posts?event_api_id=…" },
+  { tag: "recipe.broken", tone: "fail", text: "404 · verify failed: expected a non-empty array with id" },
+  { tag: "recall", tone: "muted", text: "gbrain · past repairs on api2.luma.com" },
+  { tag: "aside", tone: "muted", text: "re-explore in the signed-in tab · watching network on luma.com/<event>" },
+  { tag: "candidate", tone: "ink", text: "GET api2.luma.com/event/get-blasts?event_api_id=…  200" },
+  { tag: "verify", tone: "ink", text: "7 announcements · schema ok · non-empty" },
+  { tag: "recipe.repaired", tone: "ink", text: "luma-blasts v2 saved · prev endpoint and reason kept" },
+  { tag: "memory.saved", tone: "muted", text: "gbrain remembers why v1 broke" },
 ]
 
 export function Healing() {
-  // The whole transcript is always shown: a replay that cleared and retyped it left an empty box mid-scroll (audit c5).
-  const n = LINES.length
-  const done = n >= LINES.length
   return (
-    <div className="dark lp-float overflow-hidden rounded-[20px] border bg-[#050506] text-foreground">
+    <div className="lp-ring overflow-hidden rounded-2xl bg-card">
       <div className="flex items-center gap-2 border-b px-4 py-2.5 font-mono text-xs text-muted-foreground">
-        <span className="size-2.5 rounded-full bg-foreground/15" /><span className="size-2.5 rounded-full bg-foreground/15" /><span className="size-2.5 rounded-full bg-foreground/15" />
-        <span className="ml-2">recipe · luma-blasts</span>
-        <span className={cn("ml-auto rounded-full px-2 py-0.5 text-2xs", done ? "bg-keep/15 text-keep" : n >= 3 ? "bg-cut/15 text-cut" : "bg-muted")}>{done ? "v2 verified" : n >= 3 ? "repairing" : "v1"}</span>
+        <span>recipe · luma-blasts</span>
+        <span className={"ml-auto rounded-full px-2 py-0.5 text-2xs " + CHIP}>v2 verified</span>
       </div>
-      <ol className="min-h-[19rem] space-y-1.5 p-4 font-mono text-[12.5px] leading-relaxed sm:p-5">
-        {LINES.slice(0, n).map((l, i) => (
+      <ol className="space-y-1.5 p-4 font-mono text-[12.5px] leading-relaxed sm:p-5">
+        {LINES.map((l, i) => (
           <li key={i} className="grid grid-cols-[7.5rem_1fr] gap-3 max-sm:grid-cols-1 max-sm:gap-0">
-            <span className={cn(l.tone, l.tag === "$" && "text-signal")}>{l.tag}</span>
-            <span className={cn("break-words", l.tag === "$" ? "text-foreground" : l.tone)}>{l.text}</span>
+            <span className="text-muted-foreground">{l.tag}</span>
+            <span className={"break-words " + TONE[l.tone]}>{l.text}</span>
           </li>
         ))}
-        {!done && <li className="caret text-muted-foreground" aria-hidden />}
       </ol>
       <div className="border-t px-4 py-3 font-mono text-[12.5px] sm:px-5">
-        <p className="rounded-md bg-cut/10 px-3 py-1 text-cut">- GET /event/get-posts   404</p>
-        <p className={cn("mt-1 rounded-md px-3 py-1 transition-colors duration-500", done ? "bg-keep/10 text-keep" : "text-muted-foreground/40")}>+ GET /event/get-blasts  200 · 7 posts</p>
+        <p className={"rounded-md border border-red-700/50 dark:border-red-500/45 px-3 py-1 " + LATE}>- GET /event/get-posts   404</p>
+        <p className="mt-1 rounded-md border border-border px-3 py-1 text-foreground">+ GET /event/get-blasts  200 · 7 posts</p>
       </div>
     </div>
   )
