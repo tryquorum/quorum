@@ -63,7 +63,7 @@ export function Workspace() {
   const [space, setSpace] = useStored("qw:space", "all")
   const [area, setArea] = useStored("qw:area", "all")
   const data = useWorkspaceData(list.showDone)
-  const { now, items, signals, meta } = data
+  const { now: nowAll, items, signals, meta } = data
   const open: Open = route.open ?? null
   const setOpen = useCallback((o: Open) => {
     if (o) {
@@ -88,6 +88,12 @@ export function Workspace() {
   const lastFocus = useRef<HTMLElement | null>(null)
 
   const inSpace = useCallback((i: Item) => space === "all" || (i.space ?? "personal") === space, [space])
+  // 고른 공간으로 거른 Now(board 처럼 목록·배지·사이드바가 같은 공간을 봐요). 3070 사건 사본은 공간이 없어 거르지 않아요
+  const now = useMemo<NowView | null>(() => {
+    if (!nowAll || space === "all") return nowAll
+    const dueToday = nowAll.dueToday.filter(inSpace), inbox = nowAll.inbox.filter(inSpace), later = nowAll.later.filter(inSpace), goals = nowAll.goals.filter((g) => inSpace(g.goal))
+    return { ...nowAll, dueToday, inbox, later, goals, counts: { ...nowAll.counts, dueToday: dueToday.length, inbox: inbox.length, goals: goals.length } }
+  }, [nowAll, space, inSpace])
   const areaOf = useCallback((i: Item) => (meta?.boards.find((b) => b.id === i.boardId)?.areas.find((a) => a.id === i.area)) ?? null, [meta])
   const areas = useMemo(() => (meta?.boards ?? []).flatMap((b) => b.areas), [meta])
 
@@ -115,7 +121,7 @@ export function Workspace() {
     const council = (s: Signal) => !!s.meta?.runId && !!s.meta?.proposalId
     const itemRows = (list: Item[], ask = false): RowSpec[] => list.filter(inSpace).map((i) => ({ key: "i:" + i.id, kind: "item", item: i, ask }))
     if (route.view === "now") return [
-      { id: "needs", title: "Needs you", hint: "council holds and decisions waiting on you", tone: "decide", rows: now.needsYou.map((s) => ({ key: "s:" + s.id, kind: "signal", signal: s, decide: council(s), resolve: !council(s) })), empty: "Nothing is waiting on you." },
+      { id: "needs", title: "Needs you", hint: "council holds and decisions waiting on you", tone: "decide", rows: now.needsYou.map((s) => ({ key: "s:" + s.id, kind: "signal", signal: s, decide: council(s), resolve: !council(s) })), empty: "Nothing is waiting on you.", extra: now.running.length ? <a href="#/signals" className="mt-1 flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted/50 hover:text-foreground max-md:min-h-11"><span className="size-1.5 shrink-0 animate-pulse rounded-full bg-foreground/60" aria-hidden /><span className="shrink-0">{now.running.length} running on agents</span><span className="min-w-0 truncate">· {now.running[0].title}</span><span className="shrink-0">→</span></a> : null },
       { id: "due", title: "Due today", hint: "and overdue", rows: itemRows(now.dueToday), empty: "Nothing due today. Write a task with a date (내일 3시 …) and it lands here." },
       { id: "goals", title: "Goals", rows: [], extra: now.goals.length ? <GoalStrip goals={now.goals} onOpen={goGoal} /> : null, empty: now.goals.length ? undefined : "No open goals. Goals come from Direction Board." },
       { id: "review", title: "Review", hint: "what the council ran", tone: "review", rows: now.review.map((s) => ({ key: "s:" + s.id, kind: "signal", signal: s, resolve: true })), empty: "Nothing to review." },
@@ -251,7 +257,7 @@ export function Workspace() {
                   </h2>
                 )}
                 {s.id.startsWith("goal-") && s.extra}
-                {s.rows.length > 0 ? <ul className={cn("flex flex-col", s.id.startsWith("goal-") && "mt-2")}>{s.rows.map(renderRow)}</ul> : s.empty && !s.extra ? <p className="px-3 py-2 text-xs text-muted-foreground">{s.empty}</p> : s.empty && s.id.startsWith("goal-") ? <p className="mt-2 px-1 text-xs text-muted-foreground">{s.empty}</p> : null}
+                {s.rows.length > 0 ? <ul className={cn("flex flex-col", s.id.startsWith("goal-") && "mt-2")}>{s.rows.map(renderRow)}</ul> : s.empty && (!s.extra || s.id === "needs") ? <p className="px-3 py-2 text-xs text-muted-foreground">{s.empty}</p> : s.empty && s.id.startsWith("goal-") ? <p className="mt-2 px-1 text-xs text-muted-foreground">{s.empty}</p> : null}
                 {!s.id.startsWith("goal-") && s.extra}
               </section>
             ))}
