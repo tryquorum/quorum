@@ -6,17 +6,17 @@ import { useEffect, useRef } from "react"
 // Pointer: moon, stars and boat move at different depths (max ~10 css px) and a "flashlight" lifts the dither near
 // the cursor. Scroll (hero only): the boat sails along the horizon, the moon sinks and the sky darkens.
 // Reduced motion draws one still frame. The loop stops while the hero is off screen.
-const SCALE = 4
-const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16)
-type RGB = [number, number, number]
-const hex = (h: string): RGB => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]
+export const SCALE = 4
+export const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16)
+export type RGB = [number, number, number]
+export const hex = (h: string): RGB => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]
 // Low-chroma ramps that sit on the site tokens: paper to ink in light mode, navy steps and moon cream in dark mode.
-const PALETTES = {
+export const PALETTES = {
   light: { sky: ["#f3f3f4", "#efeff1", "#e8e8eb", "#dfe0e4"], sea: ["#c7c8cf", "#a9abb5", "#7d808c", "#4a4c57"], moon: "#fbfaf6", rim: "#2a2b31", shade: "#d9d6cc", star: "#9a9ca6", boat: "#1c1d22", glint: "#ffffff" },
   dark: { sky: ["#08080a", "#0b0d16", "#10142a", "#18203c"], sea: ["#141a33", "#0f1428", "#0b0e1d", "#07080f"], moon: "#f4ecd2", rim: "#f9f4e4", shade: "#b9b096", star: "#c9c6b8", boat: "#020204", glint: "#e9dfbd" },
 } as const
 // Sailboat, 13x11 art pixels: 1 = hull and sail.
-const BOAT = [
+export const BOAT = [
   "......1......",
   "......11.....",
   "......111....",
@@ -30,7 +30,7 @@ const BOAT = [
   "..111111111..",
 ]
 
-function hash(n: number) { const s = Math.sin(n * 127.1) * 43758.5453; return s - Math.floor(s) }
+export function hash(n: number) { const s = Math.sin(n * 127.1) * 43758.5453; return s - Math.floor(s) }
 
 export function PixelSea({ className, seaPx = 200 }: { className?: string; seaPx?: number }) {
   const ref = useRef<HTMLCanvasElement | null>(null)
