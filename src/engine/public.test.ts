@@ -43,9 +43,9 @@ function setup(fetchImpl = certsFetch, localUser: string | null = null) {
 const tok = (t: string) => ({ "cf-access-jwt-assertion": t })
 
 describe("public listener: Cloudflare Access (board auth.ts)", () => {
-  test("401 without a valid Access login on /api, /mcp and static files; health stays minimal", async () => {
+  test("401 without a valid Access login on /api, /mcp, /w and /app; health stays minimal", async () => {
     const { pub, call } = setup()
-    for (const path of ["/api/me", "/api/runs", "/mcp", "/", "/app"]) expect((await call(pub, path)).status).toBe(401)
+    for (const path of ["/api/me", "/api/runs", "/mcp", "/w", "/app"]) expect((await call(pub, path)).status).toBe(401)
     expect(await (await call(pub, "/api/health")).json()).toEqual({ ok: true, version: expect.any(String) })
     // 로컬인 척하는 헤더는 공개 리스너에서 아무 의미가 없어요
     const spoofs: Record<string, string>[] = [{ host: "localhost" }, { host: "127.0.0.1" }, { "x-forwarded-for": "127.0.0.1" }, { "cf-connecting-ip": "127.0.0.1" }, { origin: "http://localhost" }]
@@ -83,11 +83,8 @@ describe("public listener: Cloudflare Access (board auth.ts)", () => {
     expect(await cookie.json()).toEqual({ email: "jun@lidgeai.com", listener: "public" })
     expect((await (await call(pub, "/api/health", { headers: tok(good) })).json()) as object).toHaveProperty("executors")
     expect((await call(pub, "/app", { headers: tok(good) })).status).toBe(404) // 인증은 통과, 테스트용 siteRoot 에 파일이 없을 뿐
-    // 로그인한 사람의 '/' 는 Workspace 대시보드로 보내요(쿼리는 그대로)
-    const home = await call(pub, "/?from=mail", { headers: tok(good), redirect: "manual" })
-    expect(home.status).toBe(302)
-    expect(home.headers.get("location")).toBe("/w?from=mail")
-    expect((await call(pub, "/", { headers: tok(good), method: "POST", body: "{}" })).status).not.toBe(302)
+    // 로그인한 사람의 '/' 도 랜딩이에요(리다이렉트 없음). 테스트 siteRoot 에 파일이 없어 404
+    expect((await call(pub, "/?from=mail", { headers: tok(good), redirect: "manual" })).status).toBe(404)
     const mcp = await call(pub, "/mcp", { method: "POST", headers: { ...tok(good), "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }) })
     expect(mcp.status).toBe(200)
   })
@@ -164,7 +161,7 @@ describe("server.ts listeners (spawned)", () => {
     const { local, pub } = await spawnServer({ ACCESS_AUD: "test-aud", ALLOWED_EMAILS: "jun@lidgeai.com" })
     expect(await (await fetch(local + "/api/me")).json()).toEqual({ email: null, listener: "local" })
     expect((await fetch(pub + "/api/me")).status).toBe(401)
-    expect((await fetch(pub + "/")).status).toBe(401)
+    expect((await fetch(pub + "/w")).status).toBe(401)
     const me = await fetch(pub + "/api/me", { headers: tok(await jwt()) })
     expect(me.status).toBe(200)
     expect(await me.json()).toEqual({ email: "jun@lidgeai.com", listener: "public" })
@@ -175,4 +172,34 @@ describe("server.ts listeners (spawned)", () => {
     expect((await fetch(local + "/api/me")).status).toBe(200)
     await expect(fetch(pub + "/api/me")).rejects.toThrow()
   }, 15000)
+})
+
+describe("public landing on quorum.lidgeai.com", () => {
+  test("landing files are open without login; workspace, console, API and MCP still need it", async () => {
+    const site = await mkdtemp(join(tmpdir(), "quorum-site-"))
+    await writeFile(join(site, "index.html"), "<h1>landing</h1>")
+    await writeFile(join(site, "app.html"), "console")
+    await writeFile(join(site, "workspace.html"), "workspace")
+    await Bun.write(join(site, "assets", "index-x.js"), "js")
+    await Bun.write(join(site, "logos", "aside.svg"), "<svg/>")
+    try {
+      const store = new Store(":memory:")
+      const runs = new RunManager(store, councilDeps, { sleep: async () => {} })
+      const deps: AppDeps = { store, runs, siteRoot: site, health: async () => ({ aside: true, codex: true, gbrain: true, board: false }), memory: async () => [], recipes: async () => null, localUser: null }
+      const access = createAccess({ team: "test-team", aud: "test-aud", allowed: ["jun@lidgeai.com"], fetch: certsFetch })
+      const pub = createApp(deps, "public", { who: access.who, origin: ORIGIN })
+      const get = (path: string, headers: Record<string, string> = {}) => pub(new Request("http://127.0.0.1:4318" + path, { headers: { host: "quorum.lidgeai.com", ...headers }, redirect: "manual" }))
+      expect(await (await get("/")).text()).toBe("<h1>landing</h1>")
+      expect((await get("/assets/index-x.js")).status).toBe(200)
+      expect((await get("/logos/aside.svg")).status).toBe(200)
+      for (const path of ["/w", "/app", "/app.html", "/workspace.html", "/api/runs", "/api/me"]) expect((await get(path)).status).toBe(401)
+      expect((await pub(new Request("http://127.0.0.1:4318/mcp", { method: "POST", headers: { host: "quorum.lidgeai.com", "content-type": "application/json" }, body: "{}" }))).status).toBe(401)
+      expect((await pub(new Request("http://127.0.0.1:4318/", { method: "POST", headers: { host: "quorum.lidgeai.com", origin: ORIGIN }, body: "x" }))).status).toBe(401)
+      const signedIn = { "cf-access-jwt-assertion": await jwt() }
+      expect(await (await get("/", signedIn)).text()).toBe("<h1>landing</h1>")
+      expect(await (await get("/w", signedIn)).text()).toBe("workspace")
+    } finally {
+      await rm(site, { recursive: true, force: true })
+    }
+  })
 })

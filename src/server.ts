@@ -61,7 +61,7 @@ function cached<T>(fn: () => Promise<T>, ms: number): () => Promise<T> {
 }
 
 async function serveStatic(siteRoot: string, pathname: string): Promise<Response> {
-  const rel = pathname === "/" ? "index.html" : pathname === "/app" ? "app.html" : pathname.slice(1)
+  const rel = pathname === "/" ? "index.html" : pathname === "/app" ? "app.html" : pathname === "/w" ? "workspace.html" : pathname.slice(1)
   const full = normalize(join(siteRoot, rel))
   if (!full.startsWith(siteRoot)) return new Response("forbidden", { status: 403 })
   const file = Bun.file(full)
@@ -113,6 +113,15 @@ function recipeVars(body: Record<string, unknown>): Record<string, string> {
   return out
 }
 
+const LANDING_FILES = new Set(["/", "/index.html", "/og.png", "/og.svg", "/favicon.svg"])
+const LANDING_DIRS = ["/assets/", "/logos/", "/fixtures/", "/media/"]
+/** 공개 리스너에서 로그인 없이 줄 수 있는 랜딩 파일인지. 읽기(GET/HEAD)만 */
+export function isPublicLanding(method: string, pathname: string): boolean {
+  if (method !== "GET" && method !== "HEAD") return false
+  if (pathname.includes("..")) return false
+  return LANDING_FILES.has(pathname) || LANDING_DIRS.some((dir) => pathname.startsWith(dir))
+}
+
 export function createApp(d: AppDeps, listener: Listener = "local", pub?: PublicAuth): (req: Request) => Promise<Response> {
   if (listener === "public" && !pub) throw new Error("public listener needs Access auth")
   return async (req) => {
@@ -132,16 +141,14 @@ export function createApp(d: AppDeps, listener: Listener = "local", pub?: Public
       if (!user) {
         // 터널 상태 확인용으로 health 만 열어 두되, 실행기 상태는 로그인한 사람에게만 보여요 (board 공개 리스너와 같음)
         if (url.pathname === "/api/health" && m === "GET") return json({ ok: true, version: VERSION })
+        // 랜딩(소개 페이지)과 그 정적 파일은 로그인 없이 보여요. Workspace(/w)·콘솔(/app)·API·MCP 는 로그인한 사람만
+        if (isPublicLanding(m, url.pathname)) return serveStatic(d.siteRoot, url.pathname)
         return guarded ? err(401, "login required (Cloudflare Access)") : new Response("login required", { status: 401 })
       }
     }
 
     if (parts[0] === "mcp" && parts.length === 1) {
       return mcpHandler({ store: d.store, start: (request) => d.runs.start(request).runId, memory: d.memory, allowPropose: !!d.mcpPropose, version: VERSION }, req)
-    }
-    // 공개 리스너(quorum.lidgeai.com)에서 로그인한 사람의 첫 화면은 Workspace 대시보드(/w, workspace 레인)예요. 로컬 '/' 는 랜딩 그대로
-    if (listener === "public" && url.pathname === "/" && (m === "GET" || m === "HEAD")) {
-      return new Response(null, { status: 302, headers: { location: "/w" + url.search, "cache-control": "no-store" } })
     }
     if (parts[0] !== "api") return serveStatic(d.siteRoot, url.pathname)
 
