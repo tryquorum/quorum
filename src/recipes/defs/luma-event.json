@@ -1,0 +1,79 @@
+{
+  "id": "luma-event",
+  "site": "luma.com",
+  "intent": "Luma 행사 정보 읽기",
+  "version": 1,
+  "vars": [
+    "slug"
+  ],
+  "request": {
+    "method": "GET",
+    "url": "https://api2.luma.com/url?url={{slug}}",
+    "headers": {
+      "cookie": "{{env.LUMA_COOKIE}}"
+    }
+  },
+  "parse": {
+    "path": "data",
+    "pick": {
+      "api_id": "api_id|event.api_id",
+      "name": "event.name",
+      "start_at": "event.start_at|start_at",
+      "end_at": "event.end_at",
+      "timezone": "event.timezone",
+      "url": "event.url"
+    }
+  },
+  "verify": {
+    "schema": {
+      "type": "object",
+      "required": [
+        "api_id",
+        "name",
+        "start_at"
+      ],
+      "properties": {
+        "api_id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "start_at": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "discover": {
+    "http": {
+      "candidates": [
+        {
+          "request": {
+            "method": "GET",
+            "url": "https://api2.luma.com/event/get?event_api_id={{eventApiId}}",
+            "headers": {
+              "cookie": "{{env.LUMA_COOKIE}}"
+            }
+          },
+          "parse": {
+            "path": "",
+            "pick": {
+              "api_id": "api_id|event.api_id",
+              "name": "event.name",
+              "start_at": "event.start_at|start_at",
+              "end_at": "event.end_at",
+              "timezone": "event.timezone",
+              "url": "event.url"
+            }
+          },
+          "note": "행사 id 를 알 때"
+        }
+      ]
+    },
+    "aside": {
+      "startUrl": "https://luma.com/{{slug}}",
+      "match": "api2.luma.com/"
+    }
+  }
+}
