@@ -15,10 +15,9 @@ import "./landing.css"
 // Three section grammars only: Stage (hero), Claim + artifact (every middle section, .lp-ca), Statement (closing).
 // Colors are Direction Board tokens (index.css) and workspace tone.ts; spacing and type come from landing.css.
 const REPO = "https://github.com/tryquorum/quorum"
-/** Same domain on the Quorum server (/w sits behind Cloudflare Access); the GitHub Pages copy links to the live one. */
 // Judges cannot sign in, so every "Open workspace" opens the public demo workspace (real /w components, recorded Seoul run).
 const WORKSPACE = asset("media/workspace-demo.html")
-/** The 84.6 s submission film (video/final, cut from captures of real runs). */
+/** The 58 s submission film (video/final v2, cut from captures of real runs). */
 const DEMO = { src: asset("media/quorum-demo.mp4"), poster: asset("media/quorum-demo-poster.jpg"), seconds: 58 }
 
 const btn = "inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 text-base font-medium whitespace-nowrap transition-colors"
