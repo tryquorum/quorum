@@ -77,7 +77,8 @@ export async function runCouncil(runId: string, request: string, deps: CouncilDe
   if (best) {
     // 2a) 충분히 가까운 판정이 있으면 의회를 열지 않아요
     proposals = best.verdicts.map((v) => ({ proposalId: v.proposalId, title: v.title, executor: v.executor as Proposal["executor"], why: "기억에서 가져온 제안", task: v.task, risk: [], actor: "gbrain", alsoBy: [] }))
-    for (const p of proposals) emit("proposal", "gbrain", p.title, { proposalId: p.proposalId, title: p.title, executor: p.executor, why: p.why, reused: true })
+    // 재사용한 제안도 지시(task)를 그대로 실어요: Workspace 가 보류 카드와 승인 실행에 이 지시를 써요(빠지면 제목만으로 실행돼요)
+    for (const p of proposals) emit("proposal", "gbrain", p.title, { proposalId: p.proposalId, title: p.title, executor: p.executor, why: p.why, task: p.task, risk: p.risk, reused: true })
     decisions = best.verdicts.map((v) => ({ ...v }))
     for (const d of decisions) emit("verdict", "council", d.decision + " · " + d.title, { proposalId: d.proposalId, decision: d.decision, reason: "기억한 판정 재사용: " + d.reason, reusedFrom: best.id })
   } else {

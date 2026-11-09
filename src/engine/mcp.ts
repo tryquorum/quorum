@@ -14,9 +14,14 @@ export type McpDeps = {
   version: string
   /** 호스팅 비소유자의 작업 대기열(src/hosted/guest.ts). 있으면 quorum_next_task·quorum_report_result 를 보여요 */
   queue?: McpQueue
+  /** 배치 안의 호출 하나하나를 속도 제한에 세요(server.ts). false 면 429 */
+  charge?: (calls: number) => boolean
+  /** 기다리는 동안 토큰이 폐기되거나 허용 목록에서 빠졌는지 다시 봐요(server.ts) */
+  stillAllowed?: () => boolean
 }
 export type McpQueue = {
-  next: (args: { kinds?: string[]; waitSeconds?: number }) => Promise<object>
+  /** 실패는 { error, guidance } 로 돌려줘요. signal 은 부른 쪽이 끊기면 기다림을 멈춰요 */
+  next: (args: { kinds?: string[]; waitSeconds?: number; signal?: AbortSignal; stillAllowed?: () => boolean }) => Promise<object>
   /** 실패는 { error, guidance } 로 돌려줘요 */
   report: (args: { taskId: string; leaseId: string; ok: boolean; result: string }) => object
 }
@@ -74,7 +79,7 @@ export function runDigest(store: Store, runId: string) {
   return { ...(run as RunSummary), proposals: props, verdicts, results, errors, end: pick("run.end").at(-1)?.data ?? null }
 }
 
-async function callTool(d: McpDeps, name: string, args: Record<string, unknown>) {
+async function callTool(d: McpDeps, name: string, args: Record<string, unknown>, signal?: AbortSignal) {
   const str = (v: unknown, n: number) => (typeof v === "string" ? v.trim().slice(0, n) : "")
   switch (name) {
     case "quorum_runs": return ok({ runs: d.store.listRuns(Math.max(1, Math.min(50, Number(args.limit) || 10))) })
@@ -88,7 +93,9 @@ async function callTool(d: McpDeps, name: string, args: Record<string, unknown>)
       if (!d.queue) break
       const kinds = Array.isArray(args.kinds) ? args.kinds.map(String).slice(0, 3) : undefined
       const wait = Math.max(0, Math.min(25, Number(args.waitSeconds) || 0))
-      return ok(await d.queue.next({ kinds, waitSeconds: wait }), false)
+      const out = (await d.queue.next({ kinds, waitSeconds: wait, ...(signal ? { signal } : {}), ...(d.stillAllowed ? { stillAllowed: d.stillAllowed } : {}) })) as { error?: string; guidance?: string }
+      if (out.error) throw new ToolError(out.error, out.guidance || "Check your connection token.")
+      return ok(out, false)
     }
     case "quorum_report_result": {
       if (!d.queue) break
@@ -114,7 +121,7 @@ type Rpc = { jsonrpc?: string; id?: string | number | null; method?: string; par
 const reply = (id: Rpc["id"], result: unknown) => ({ jsonrpc: "2.0", id: id ?? null, result })
 const rpcError = (id: Rpc["id"], code: number, message: string) => ({ jsonrpc: "2.0", id: id ?? null, error: { code, message } })
 
-async function handleOne(d: McpDeps, m: Rpc): Promise<object | null> {
+async function handleOne(d: McpDeps, m: Rpc, signal?: AbortSignal): Promise<object | null> {
   if (!m || m.jsonrpc !== "2.0" || typeof m.method !== "string") return rpcError(m?.id, -32600, "Invalid Request")
   const isNotification = m.id === undefined
   switch (m.method) {
@@ -127,7 +134,7 @@ async function handleOne(d: McpDeps, m: Rpc): Promise<object | null> {
     case "tools/call": {
       const name = String(m.params?.name ?? "")
       const args = (m.params?.arguments && typeof m.params.arguments === "object" ? m.params.arguments : {}) as Record<string, unknown>
-      try { return reply(m.id, await callTool(d, name, args)) } catch (e) { return reply(m.id, fail(e)) }
+      try { return reply(m.id, await callTool(d, name, args, signal)) } catch (e) { return reply(m.id, fail(e)) }
     }
   }
   if (isNotification) return null
@@ -142,7 +149,11 @@ export async function mcpHandler(d: McpDeps, req: Request): Promise<Response> {
   try { body = await req.json() } catch { return Response.json(rpcError(null, -32700, "Parse error"), { status: 400 }) }
   const batch = Array.isArray(body)
   const list = (batch ? body : [body]) as unknown[]
-  const out = (await Promise.all(list.map((m) => handleOne(d, m as Rpc)))).filter((x): x is object => x !== null)
+  // 배치는 열 개까지, 그리고 호출 하나하나를 속도 제한에 세요(한 번의 HTTP 요청에 기다림을 잔뜩 싣지 못하게)
+  if (list.length > BATCH_MAX) return Response.json(rpcError(null, -32600, "batch too large (max " + BATCH_MAX + ")"), { status: 400 })
+  if (d.charge && !d.charge(list.length)) return Response.json(rpcError(null, -32000, "too many requests; slow down"), { status: 429 })
+  const out = (await Promise.all(list.map((m) => handleOne(d, m as Rpc, req.signal)))).filter((x): x is object => x !== null)
   if (!out.length) return new Response(null, { status: 202 })
   return Response.json(batch ? out : out[0], { headers: { "cache-control": "no-store" } })
 }
+export const BATCH_MAX = 10

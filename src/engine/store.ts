@@ -9,7 +9,12 @@ type CreateRunInput = {
   mode: "live" | "replay";
   startedAt: string;
   replayOf?: string;
+  /** 누가 연 실행인지(서버가 정해요): council = 의회, custom = 레시피·Workspace 승인 실행, replay = 다시 틀기. 요청 글로 짐작하지 않아요 */
+  kind?: RunKind;
 };
+
+export type RunKind = "council" | "custom" | "replay";
+export type StoredRun = RunSummary & { kind?: RunKind };
 
 type RunRow = {
   run_id: string;
@@ -18,6 +23,7 @@ type RunRow = {
   started_at: string;
   status: "running" | "done" | "error";
   replay_of: string | null;
+  kind: RunKind | null;
 };
 
 type EventRow = {
@@ -31,13 +37,14 @@ type EventRow = {
   data: string | null;
 };
 
-function toSummary(row: RunRow): RunSummary {
+function toSummary(row: RunRow): StoredRun {
   return {
     runId: row.run_id,
     request: row.request,
     mode: row.mode,
     startedAt: row.started_at,
     status: row.status,
+    ...(row.kind ? { kind: row.kind } : {}),
   };
 }
 
@@ -79,8 +86,11 @@ export class Store {
         PRIMARY KEY (run_id, seq)
       );
     `);
+    // 옛 DB 에는 kind 열이 없어요(그 행은 null: 소유자 저장소의 옛 실행이에요)
+    const cols = this.db.query("PRAGMA table_info(runs)").all() as { name: string }[];
+    if (!cols.some((c) => c.name === "kind")) this.db.exec("ALTER TABLE runs ADD COLUMN kind TEXT NULL");
     this.insertRunStmt = this.db.prepare(
-      "INSERT INTO runs (run_id, request, mode, started_at, status, replay_of) VALUES (?, ?, ?, ?, 'running', ?)"
+      "INSERT INTO runs (run_id, request, mode, started_at, status, replay_of, kind) VALUES (?, ?, ?, ?, 'running', ?, ?)"
     );
     this.insertEventStmt = this.db.prepare(
       "INSERT INTO events (run_id, seq, at, mode, type, actor, text, data) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
@@ -89,10 +99,10 @@ export class Store {
       "UPDATE runs SET status = ? WHERE run_id = ?"
     );
     this.getRunStmt = this.db.prepare(
-      "SELECT run_id, request, mode, started_at, status, replay_of FROM runs WHERE run_id = ?"
+      "SELECT run_id, request, mode, started_at, status, replay_of, kind FROM runs WHERE run_id = ?"
     );
     this.listRunsStmt = this.db.prepare(
-      "SELECT run_id, request, mode, started_at, status, replay_of FROM runs ORDER BY started_at DESC LIMIT ?"
+      "SELECT run_id, request, mode, started_at, status, replay_of, kind FROM runs ORDER BY started_at DESC LIMIT ?"
     );
     this.getEventsStmt = this.db.prepare(
       "SELECT run_id, seq, at, mode, type, actor, text, data FROM events WHERE run_id = ? AND seq > ? ORDER BY seq ASC"
@@ -100,7 +110,7 @@ export class Store {
   }
 
   createRun(r: CreateRunInput): void {
-    this.insertRunStmt.run(r.runId, r.request, r.mode, r.startedAt, r.replayOf ?? null);
+    this.insertRunStmt.run(r.runId, r.request, r.mode, r.startedAt, r.replayOf ?? null, r.kind ?? null);
   }
 
   appendEvent(e: QuorumEvent): void {
@@ -120,7 +130,7 @@ export class Store {
     this.updateRunStatusStmt.run(status, runId);
   }
 
-  getRun(runId: string): (RunSummary & { replayOf?: string }) | null {
+  getRun(runId: string): (StoredRun & { replayOf?: string }) | null {
     const row = this.getRunStmt.get(runId) as RunRow | null;
     if (!row) return null;
     const summary = toSummary(row);
@@ -128,14 +138,14 @@ export class Store {
     return summary;
   }
 
-  listRuns(limit = 50): RunSummary[] {
+  listRuns(limit = 50): StoredRun[] {
     const rows = this.listRunsStmt.all(limit) as RunRow[];
     return rows.map(toSummary);
   }
 
-  /** since(ISO) 이후 연 실제 의회 수(다시 틀기·Workspace 승인 실행은 빼요). 호스팅 사용자별 시간당 제한에 써요 */
+  /** since(ISO) 이후 연 의회 수(서버가 kind = council 로 적은 것). 호스팅 사용자별 시간당 제한에 써요. 사용자가 쓴 요청 글로 거르지 않아요 */
   countLiveRunsSince(since: string): number {
-    const r = this.db.query("SELECT COUNT(*) AS n FROM runs WHERE mode = 'live' AND started_at >= ? AND request NOT LIKE 'workspace approve: %'").get(since) as { n: number };
+    const r = this.db.query("SELECT COUNT(*) AS n FROM runs WHERE kind = 'council' AND started_at >= ?").get(since) as { n: number };
     return r.n;
   }
 

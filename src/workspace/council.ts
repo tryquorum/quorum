@@ -13,13 +13,13 @@ import { getSignal, ingestSignal, listSignals, moveSignal, type Signal } from ".
 import { itemByRun, logItem } from "./items"
 
 export const APPROVE_PREFIX = "workspace approve: "
-export type EngineStore = { listRuns(limit?: number): RunSummary[]; getEvents(runId: string, afterSeq?: number): QuorumEvent[] }
+export type EngineStore = { listRuns(limit?: number): (RunSummary & { kind?: string })[]; getEvents(runId: string, afterSeq?: number): QuorumEvent[] }
 export type ExecOut = { ok: true; summary: string; data?: Record<string, unknown> } | { ok: false; error: string }
 export type ProposalRef = { proposalId: string; title: string; executor: string; task: string; why: string }
 /** 승인한 제안 하나 실행. 바로 runId 를 주고, done 은 결과로 끝나요(던지지 않아요) */
 export type ExecuteFn = (p: ProposalRef, ctx: { runId: string; request: string }) => { runId: string; done: Promise<ExecOut> }
 /** 호스팅 비소유자: 승인한 일을 실행하지 않고 그 사람의 대기열에 넣어요. taskId 를 돌려줘요 */
-export type EnqueueFn = (p: { signalId: string; ref: string; executor: string; title: string; task: string; request: string; runId: string; proposalId: string }) => { taskId: string }
+export type EnqueueFn = (p: { signalId: string; ref: string; executor: string; title: string; task: string; request: string; runId: string; proposalId: string }) => { taskId: string; prompt: string }
 
 const msg = (e: unknown) => (e instanceof Error ? e.message : String(e))
 const firstLine = (s: string, n = 160) => (s.split("\n").find((l) => l.trim()) || "").trim().slice(0, n)
@@ -32,7 +32,8 @@ export function initCouncilSync(db: Database) {
 export function syncCouncil(db: Database, store: EngineStore, now = Date.now()): number {
   let n = 0
   for (const run of store.listRuns(100)) {
-    if (run.mode === "replay" || run.request.startsWith(APPROVE_PREFIX)) continue
+    // 서버가 적은 kind 로 걸러요. kind 가 없는 옛 행(소유자 저장소)만 요청 글 머리로 짐작해요
+    if (run.mode === "replay" || run.kind === "custom" || run.kind === "replay" || (!run.kind && run.request.startsWith(APPROVE_PREFIX))) continue
     const mark = db.query("SELECT last_seq, closed FROM council_sync WHERE run_id=?").get(run.runId) as { last_seq: number; closed: number } | null
     if (mark?.closed) continue
     const events = store.getEvents(run.runId)
@@ -133,9 +134,13 @@ export function approveSignal(db: Database, id: string, execute: ExecuteFn | und
     if (m.executor === "board") return { status: 400, body: { error: "Direction Board is not available on the hosted site" } }
     const moved = moveSignal(db, id, ["open"], { status: "running", lane: "running", reason: "Approved · waiting for your Aside", kind: "start", meta: decided }, now)
     if (!moved) return { status: 409, body: { error: "이미 처리됐어요" } }
-    const { taskId } = enqueue({ signalId: id, ref: "approve:" + id, executor: m.executor, title: cur.title, task: approvalTask(db, cur), request: String(m.request || cur.title), runId: String(m.runId), proposalId: String(m.proposalId) })
+    // 다시 승인(실패 뒤 재시도)도 새 일이 되도록 ref 에 시각을 붙여요. 대기열 결과는 ref 의 사건 id 로 돌아와요
+    const { taskId, prompt } = enqueue({ signalId: id, ref: "approve:" + id + ":" + now, executor: m.executor, title: cur.title, task: approvalTask(db, cur), request: String(m.request || cur.title), runId: String(m.runId), proposalId: String(m.proposalId) })
     const s = moveSignal(db, id, ["running"], { status: "running", lane: "running", reason: moved.reason ?? "Approved", meta: { taskId } }, now)
-    appendNote(db, "signal:" + id, "## Approved\nQueued for your Aside (task " + taskId + "). It runs when your Aside calls quorum_next_task.", "system", now)
+    // 승인한 사람이 실제로 넘어간 글을 그대로 볼 수 있게 노트에 남겨요
+    const longest = Math.max(2, ...[...prompt.matchAll(/`+/g)].map((x) => x[0].length))
+    const f = "`".repeat(longest + 1)
+    appendNote(db, "signal:" + id, "## Approved\nQueued for your Aside (task " + taskId + "). It runs when your Aside calls quorum_next_task. Exactly this text was sent:\n\n" + f + "text\n" + prompt + "\n" + f, "system", now)
     return { status: 202, body: { signal: s ?? moved, taskId } }
   }
   if (!execute) return { status: 501, body: { error: "이 서버에는 실행기가 연결되지 않았어요" } }

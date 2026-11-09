@@ -61,14 +61,14 @@ describe("task queue", () => {
     expect(queue.report({ taskId: "nope", leaseId: l.leaseId, ok: true, text: "x" }).status).toBe(404)
   })
 
-  test("a task leased too many times without a report fails instead of looping", () => {
-    const { queue, clock, reports } = q()
-    queue.enqueue(browser("b1"))
+  test("an opinion leased too many times without a report fails instead of looping", async () => {
+    const { queue, clock } = q()
+    const op = queue.enqueue({ kind: "opinion", ref: "opinion:r9:bot:qa", title: "qa", prompt: "{}", actor: "bot:qa", runId: "r9" })
+    const waiting = queue.waitFor(op.id, 60_000)
     for (let i = 0; i < 3; i++) { expect(queue.lease({})).not.toBeNull(); clock.t += 1001 }
     expect(queue.lease({})).toBeNull()
     expect(queue.counts().failed).toBe(1)
-    expect(reports.length).toBe(1)
-    expect(reports[0].ok).toBe(false)
+    await expect(waiting).rejects.toThrow("without a report")
   })
 
   test("an opinion nobody answers in time is expired and the council sees an error", async () => {

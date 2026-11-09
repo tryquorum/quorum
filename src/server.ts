@@ -207,7 +207,8 @@ export function createApp(d: AppDeps, listener: Listener = "local", pub?: Public
         if (isPublicLanding(m, url.pathname)) return serveStatic(d.siteRoot, url.pathname)
         return guarded ? err(401, "login required (Cloudflare Access)") : new Response("login required", { status: 401 })
       }
-      if (d.hosted && guarded && !d.hosted.limiter.take((parts[0] === "mcp" ? "mcp:" : "api:") + user.email, parts[0] === "mcp" ? PUBLIC_LIMITS.mcpPerMin : PUBLIC_LIMITS.apiPerMin, 60_000)) {
+      // /mcp 는 배치 안의 호출 수만큼 mcpHandler 가 charge 로 세요
+      if (d.hosted && guarded && parts[0] !== "mcp" && !d.hosted.limiter.take("api:" + user.email, PUBLIC_LIMITS.apiPerMin, 60_000)) {
         return err(429, "too many requests; slow down")
       }
     }
@@ -220,7 +221,17 @@ export function createApp(d: AppDeps, listener: Listener = "local", pub?: Public
 
     if (parts[0] === "mcp") {
       if (parts.length !== 1) return err(404, "unknown route " + m + " " + url.pathname)
-      return mcpHandler({ store: t.store, start: (request) => { const r = t.start(request); if ("error" in r) throw new Error(r.error); return r.runId }, memory: t.memory, allowPropose: t.mcpPropose, version: VERSION, ...(t.queue ? { queue: t.queue } : {}) }, req)
+      const h = listener === "public" ? d.hosted : undefined
+      const email = user?.email ?? ""
+      const secret = viaToken ? /^Bearer\s+(\S+)$/i.exec(req.headers.get("authorization") || "")?.[1] ?? "" : ""
+      const p = pub as PublicAuth
+      return mcpHandler({
+        store: t.store, start: (request) => { const r = t.start(request); if ("error" in r) throw new Error(r.error); return r.runId }, memory: t.memory, allowPropose: t.mcpPropose, version: VERSION,
+        ...(t.queue ? { queue: t.queue } : {}),
+        ...(h ? { charge: (n: number) => { for (let i = 0; i < n; i++) if (!h.limiter.take("mcp:" + email, PUBLIC_LIMITS.mcpPerMin, 60_000)) return false; return true } } : {}),
+        // 토큰으로 들어온 요청은 기다린 뒤 일을 넘기기 직전에 토큰·허용 목록을 다시 봐요(기다리는 사이 폐기될 수 있어요)
+        ...(h && viaToken ? { stillAllowed: () => { const f = h.tokens.authenticate(secret); return !!f && f.owner === email && (p.allowed ? p.allowed(email) : false) } } : {}),
+      }, req)
     }
     if (parts[1] === "ws" && t.workspace) return t.workspace(req, parts, user?.email ?? null)
 

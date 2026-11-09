@@ -50,7 +50,7 @@ export class RunManager {
   /** 실제 의회를 열어요. 끝을 기다리지 않고 runId 를 돌려줘요. done 은 시험이 기다릴 때 써요 */
   start(request: string): { runId: string; done: Promise<void> } {
     const runId = this.newId()
-    this.store.createRun({ runId, request, mode: "live", startedAt: new Date((this.opts.now ?? Date.now)()).toISOString() })
+    this.store.createRun({ runId, request, mode: "live", startedAt: new Date((this.opts.now ?? Date.now)()).toISOString(), kind: "council" })
     this.live.add(runId)
     const emit = this.emitter(runId, "live")
     const done = (async () => {
@@ -69,7 +69,7 @@ export class RunManager {
   /** 의회가 아닌 실행(레시피)도 같은 저장·SSE 흐름에 태워요 */
   startCustom(request: string, body: (emit: Emit) => Promise<"done" | "error">): { runId: string; done: Promise<void> } {
     const runId = this.newId()
-    this.store.createRun({ runId, request, mode: "live", startedAt: new Date((this.opts.now ?? Date.now)()).toISOString() })
+    this.store.createRun({ runId, request, mode: "live", startedAt: new Date((this.opts.now ?? Date.now)()).toISOString(), kind: "custom" })
     this.live.add(runId)
     const emit = this.emitter(runId, "live")
     const done = (async () => {
@@ -92,7 +92,7 @@ export class RunManager {
     const events = this.store.getEvents(replayId)
     if (!events.length) return { error: "녹화된 이벤트가 없어요", status: 409 }
     const runId = this.newId()
-    this.store.createRun({ runId, request: src.request, mode: "replay", startedAt: new Date((this.opts.now ?? Date.now)()).toISOString(), replayOf: replayId })
+    this.store.createRun({ runId, request: src.request, mode: "replay", startedAt: new Date((this.opts.now ?? Date.now)()).toISOString(), replayOf: replayId, kind: "replay" })
     this.live.add(runId)
     const emit = this.emitter(runId, "replay")
     const speed = this.opts.replaySpeed ?? Number(process.env.QUORUM_REPLAY_SPEED || 4)
