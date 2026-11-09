@@ -5,6 +5,7 @@ import { Search } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Area, GoalView, Item, Signal } from "./api"
 import { SourceChip, whenOf } from "./rows"
+import { ALERT, CHIP } from "./tone"
 
 export type RowSpec = { key: string; kind: "item"; item: Item; ask?: boolean } | { key: string; kind: "signal"; signal: Signal; decide?: boolean; resolve?: boolean }
 export type SectionSpec = { id: string; title: string; hint?: string; rows: RowSpec[]; empty?: string; tone?: "decide" | "review" | "plain"; extra?: React.ReactNode }
@@ -36,8 +37,8 @@ export function Roadmap({ goals, onOpen }: { goals: GoalView[]; onOpen: (id: str
           return (
             <li key={g.goal.id}>
               <button type="button" onClick={() => onOpen(g.goal.id)} className="group block w-full text-left">
-                <div className="mb-1 flex items-center gap-2 text-xs"><span className="min-w-0 flex-1 truncate group-hover:underline">{g.goal.text}</span><span className={cn("num font-mono text-2xs", d.late ? "text-cut" : "text-muted-foreground")}>{d.t}</span></div>
-                <div className="h-2 rounded-full bg-foreground/5"><div className="relative h-full rounded-full bg-foreground/15" style={{ width: w + "%" }}><div className="absolute inset-y-0 left-0 rounded-full bg-keep" style={{ width: pct * 100 + "%" }} /></div></div>
+                <div className="mb-1 flex items-center gap-2 text-xs"><span className="min-w-0 flex-1 truncate group-hover:underline">{g.goal.text}</span><span className={cn("num font-mono text-2xs", d.late ? "rounded px-1 " + ALERT : "text-muted-foreground")}>{d.t}</span></div>
+                <div className="h-2 rounded-full bg-foreground/5"><div className="relative h-full rounded-full bg-foreground/15" style={{ width: w + "%" }}><div className="absolute inset-y-0 left-0 rounded-full bg-foreground" style={{ width: pct * 100 + "%" }} /></div></div>
               </button>
             </li>
           )
@@ -56,10 +57,10 @@ export function GoalHeader({ g, focus }: { g: GoalView; focus?: boolean }) {
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="min-w-0 flex-1 truncate text-sm font-semibold">{g.goal.text}</h3>
         <SourceChip item={g.goal} />
-        {d && <span className={cn("rounded-full px-2 py-0.5 font-mono text-2xs", d.late ? "bg-cut/10 text-cut ring-1 ring-cut/20" : "bg-keep/10 text-keep ring-1 ring-keep/30")}>{d.t}</span>}
+        {d && <span className={cn("rounded-full px-2 py-0.5 font-mono text-2xs", d.late ? ALERT : CHIP)}>{d.t}</span>}
       </div>
       <div className="flex items-center gap-2">
-        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-foreground/10"><div className="h-full rounded-full bg-keep transition-[width]" style={{ width: pct + "%" }} /></div>
+        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-foreground/10"><div className="h-full rounded-full bg-foreground transition-[width]" style={{ width: pct + "%" }} /></div>
         <span className="num font-mono text-2xs text-muted-foreground">{g.done}/{g.total} · {pct}%</span>
       </div>
     </div>

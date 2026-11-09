@@ -7,6 +7,7 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from "./ui/sidebar"
 import { TooltipProvider } from "./ui/tooltip"
 import { cn } from "@/lib/utils"
 import { ws, type Item, type Meta, type NowView, type Signal } from "./api"
+import { ALERT } from "./tone"
 import { CaptureBar } from "./capture-bar"
 import { CommandPalette } from "./command-palette"
 import { Detail, type Open } from "./detail"
@@ -202,8 +203,8 @@ export function Workspace() {
           </header>
 
           <main className="mx-auto w-full max-w-[880px] px-2 pt-4 pb-24 sm:px-4">
-            {data.error && <p role="alert" className="mx-2 mb-3 rounded-xl border border-cut/30 bg-cut/10 px-3 py-2 text-xs text-cut">Can't reach the Quorum server: {data.error}. Showing the last data.</p>}
-            {imp && !imp.ok && imp.error && <p className="mx-2 mb-3 rounded-xl border border-escalate/30 bg-escalate/10 px-3 py-2 text-xs text-escalate">Direction Board import paused: {imp.error}</p>}
+            {data.error && <p role="alert" className={"mx-2 mb-3 rounded-xl px-3 py-2 text-xs " + ALERT}>Can't reach the Quorum server: {data.error}. Showing the last data.</p>}
+            {imp && !imp.ok && imp.error && <p className={"mx-2 mb-3 rounded-xl px-3 py-2 text-xs " + ALERT}>Direction Board import paused: {imp.error}</p>}
             {route.view === "goals" && now && !route.goal && <div className="mx-2 mb-4"><Roadmap goals={now.goals} onOpen={(id) => setOpen({ kind: "item", id })} /></div>}
             {route.view === "list" && <div className="mx-2"><ListFilters areas={areas} area={area} onArea={setArea} q={list.q} onQ={list.setQ} showDone={list.showDone} onShowDone={list.setShowDone} /></div>}
             {!now && !data.error && <p className="px-3 py-8 text-sm text-muted-foreground">Loading…</p>}
@@ -211,8 +212,8 @@ export function Workspace() {
               <section key={s.id} aria-label={s.title || "Goal"} className={cn("mb-5", s.id.startsWith("goal-") && "mx-2 rounded-2xl border bg-card/40 p-3")}>
                 {s.title && (
                   <h2 className="mb-1 flex items-baseline gap-2 px-3">
-                    <span className={cn("text-xs font-semibold tracking-wide uppercase", s.tone === "decide" ? "text-escalate" : s.tone === "review" ? "text-keep" : "text-foreground")}>{s.title}</span>
-                    {s.rows.length > 0 && <span className="num font-mono text-2xs text-muted-foreground">{s.rows.length}</span>}
+                    <span className={cn("text-xs font-semibold tracking-wide uppercase", "text-foreground")}>{s.title}</span>
+                    {s.rows.length > 0 && <span className={cn("num font-mono text-2xs", s.tone === "decide" ? "rounded-full px-1.5 " + ALERT : "text-muted-foreground")}>{s.rows.length}</span>}
                     {s.hint && <span className="truncate text-2xs text-muted-foreground max-sm:hidden">{s.hint}</span>}
                   </h2>
                 )}
@@ -234,7 +235,7 @@ export function Workspace() {
         onAsk={(t) => void act("ask", "Sent to the council", async () => { const r = await ws.capture(t, "p" + Date.now().toString(36)); await ws.ask(r.item) })}
         onShortcuts={() => setHelp(true)} returnFocus={() => lastFocus.current?.focus?.()} />
       <ShortcutHelp open={help} onOpenChange={setHelp} />
-      {toast && <div role="status" className={cn("fixed right-4 bottom-4 z-50 max-w-sm rounded-xl border px-3 py-2 text-sm shadow-lg backdrop-blur-xl", toast.tone === "error" ? "border-cut/40 bg-cut/15 text-cut" : "bg-card/90")}>{toast.text}</div>}
+      {toast && <div role="status" className={cn("fixed right-4 bottom-4 z-50 max-w-sm rounded-xl border px-3 py-2 text-sm shadow-lg backdrop-blur-xl", toast.tone === "error" ? "border-transparent " + ALERT : "bg-card/90")}>{toast.text}</div>}
     </TooltipProvider>
   )
 }
