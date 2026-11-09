@@ -33,8 +33,8 @@ function requestFor(d: Loaded, goal: GoalView | null): string {
   return ((it.raw ?? it.text) + (w ? "\n(기한 " + w + ")" : "")).slice(0, 4000)
 }
 
-export function Detail({ open, onClose, onChanged, act, areaOf, goalOf }: {
-  open: Open; onClose: () => void; onChanged: () => void; act: Acts
+export function Detail({ open, onClose, onChanged, act, areaOf, goalOf, returnFocus }: {
+  open: Open; onClose: () => void; onChanged: () => void; act: Acts; returnFocus?: () => void
   areaOf: (i: Item) => Area | null; goalOf: (id: string) => GoalView | null
 }) {
   const [data, setData] = useState<Loaded | null>(null)
@@ -102,7 +102,7 @@ export function Detail({ open, onClose, onChanged, act, areaOf, goalOf }: {
   const head = data ? headOf(data, areaOf) : null
   return (
     <Dialog open={!!open} onOpenChange={(o) => { if (!o) onClose() }}>
-      <DialogContent className="max-h-[90svh] grid-cols-[minmax(0,1fr)] gap-0 overflow-x-hidden overflow-y-auto p-0 sm:max-w-2xl max-sm:inset-0 max-sm:h-dvh max-sm:max-h-none max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-none">
+      <DialogContent onCloseAutoFocus={(e) => { if (returnFocus) { e.preventDefault(); returnFocus() } }} className="max-h-[90svh] grid-cols-[minmax(0,1fr)] gap-0 overflow-x-hidden overflow-y-auto p-0 sm:max-w-2xl max-sm:inset-0 max-sm:h-dvh max-sm:max-h-none max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-none">
         {!data && (
           <div className="flex flex-col gap-3 p-5">
             <DialogTitle className="text-sm text-muted-foreground">{error ? "Couldn't open this" : "Loading…"}</DialogTitle>
