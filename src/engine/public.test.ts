@@ -78,9 +78,9 @@ describe("public listener: Cloudflare Access (board auth.ts)", () => {
     const good = await jwt()
     const me = await call(pub, "/api/me", { headers: tok(good) })
     expect(me.status).toBe(200)
-    expect(await me.json()).toEqual({ email: "jun@lidgeai.com", listener: "public" })
+    expect(await me.json()).toEqual({ email: "jun@lidgeai.com", listener: "public", role: "owner" })
     const cookie = await call(pub, "/api/me", { headers: { cookie: "a=b; CF_Authorization=" + good } })
-    expect(await cookie.json()).toEqual({ email: "jun@lidgeai.com", listener: "public" })
+    expect(await cookie.json()).toEqual({ email: "jun@lidgeai.com", listener: "public", role: "owner" })
     expect((await (await call(pub, "/api/health", { headers: tok(good) })).json()) as object).toHaveProperty("executors")
     expect((await call(pub, "/app", { headers: tok(good) })).status).toBe(404) // 인증은 통과, 테스트용 siteRoot 에 파일이 없을 뿐
     // 로그인한 사람의 '/' 도 랜딩이에요(리다이렉트 없음). 테스트 siteRoot 에 파일이 없어 404
@@ -109,7 +109,7 @@ describe("public listener: Cloudflare Access (board auth.ts)", () => {
   test("local listener keeps local-only rules and reports QUORUM_LOCAL_USER", async () => {
     const { local } = setup(certsFetch, "jun@lidgeai.com")
     const r = await local(new Request("http://localhost:4317/api/me", { headers: { host: "localhost:4317" } }))
-    expect(await r.json()).toEqual({ email: "jun@lidgeai.com", listener: "local" })
+    expect(await r.json()).toEqual({ email: "jun@lidgeai.com", listener: "local", role: "owner" })
     // 로컬 '/' 는 Workspace 로 보내지 않고 랜딩을 그대로 줘요(테스트 siteRoot 에 파일이 없어 404)
     expect((await local(new Request("http://localhost:4317/", { headers: { host: "localhost:4317" }, redirect: "manual" }))).status).toBe(404)
     expect((await local(new Request("http://localhost:4317/api/me", { headers: { host: "quorum.lidgeai.com" } }))).status).toBe(403)
@@ -159,12 +159,12 @@ async function spawnServer(env: Record<string, string>) {
 describe("server.ts listeners (spawned)", () => {
   test("opens the public listener only with ACCESS_AUD and ALLOWED_EMAILS, and enforces Access there", async () => {
     const { local, pub } = await spawnServer({ ACCESS_AUD: "test-aud", ALLOWED_EMAILS: "jun@lidgeai.com" })
-    expect(await (await fetch(local + "/api/me")).json()).toEqual({ email: null, listener: "local" })
+    expect(await (await fetch(local + "/api/me")).json()).toEqual({ email: null, listener: "local", role: "owner" })
     expect((await fetch(pub + "/api/me")).status).toBe(401)
     expect((await fetch(pub + "/w")).status).toBe(401)
     const me = await fetch(pub + "/api/me", { headers: tok(await jwt()) })
     expect(me.status).toBe(200)
-    expect(await me.json()).toEqual({ email: "jun@lidgeai.com", listener: "public" })
+    expect(await me.json()).toEqual({ email: "jun@lidgeai.com", listener: "public", role: "owner" })
     expect((await fetch(pub + "/app", { headers: tok(await jwt()) })).status).toBe(200)
   }, 15000)
   test("without ACCESS_AUD the public port stays closed", async () => {
